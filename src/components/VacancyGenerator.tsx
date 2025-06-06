@@ -1,0 +1,181 @@
+
+import React, { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Wand2, Copy, Download, Sparkles } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+export const VacancyGenerator = () => {
+  const [prompt, setPrompt] = useState('');
+  const [generatedVacancy, setGeneratedVacancy] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { toast } = useToast();
+
+  const generateVacancy = async () => {
+    if (!prompt.trim()) {
+      toast({
+        title: "Please enter a prompt",
+        description: "Describe the job position you want to create a vacancy for.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    // Simulate AI generation (in a real app, this would call an AI API)
+    setTimeout(() => {
+      const sampleVacancy = `# ${extractJobTitle(prompt)}
+
+## About the Role
+We are seeking a talented professional to join our dynamic team in an exciting opportunity that matches your vision: ${prompt}
+
+## Key Responsibilities
+• Lead and execute strategic initiatives that drive business growth
+• Collaborate with cross-functional teams to deliver exceptional results
+• Develop innovative solutions to complex challenges
+• Mentor team members and contribute to a positive work culture
+
+## Requirements
+• Bachelor's degree in relevant field or equivalent experience
+• 3+ years of experience in a similar role
+• Strong analytical and problem-solving skills
+• Excellent communication and leadership abilities
+• Passion for innovation and continuous learning
+
+## What We Offer
+• Competitive salary and comprehensive benefits package
+• Flexible working arrangements and professional development opportunities
+• Collaborative and inclusive work environment
+• Opportunities for career growth and advancement
+
+Ready to make an impact? Apply now and become part of our innovative team!`;
+
+      setGeneratedVacancy(sampleVacancy);
+      setIsGenerating(false);
+      
+      toast({
+        title: "Vacancy generated successfully!",
+        description: "Your AI-powered job description is ready.",
+      });
+    }, 2000);
+  };
+
+  const extractJobTitle = (prompt: string) => {
+    // Simple extraction - in real app would use more sophisticated parsing
+    const words = prompt.toLowerCase().split(' ');
+    if (words.includes('developer')) return 'Software Developer';
+    if (words.includes('designer')) return 'UX/UI Designer';
+    if (words.includes('manager')) return 'Project Manager';
+    if (words.includes('analyst')) return 'Business Analyst';
+    return 'Professional Position';
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedVacancy);
+    toast({
+      title: "Copied to clipboard!",
+      description: "The vacancy text has been copied to your clipboard.",
+    });
+  };
+
+  const downloadAsText = () => {
+    const element = document.createElement('a');
+    const file = new Blob([generatedVacancy], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = 'vacancy.txt';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    
+    toast({
+      title: "Download started!",
+      description: "The vacancy text file is being downloaded.",
+    });
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white">
+            <Sparkles className="w-5 h-5 text-pink-400" />
+            Create Your Vacancy
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="prompt" className="text-slate-200 text-sm font-medium">
+              Describe the position you want to create a vacancy for
+            </Label>
+            <Textarea
+              id="prompt"
+              placeholder="e.g., Senior React Developer for a fintech startup, remote work, 5+ years experience, TypeScript expertise..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="mt-2 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-pink-400 focus:ring-pink-400"
+              rows={4}
+            />
+          </div>
+          
+          <Button 
+            onClick={generateVacancy}
+            disabled={isGenerating}
+            className="w-full bg-pink-600 hover:bg-pink-700 text-white font-medium py-3"
+          >
+            {isGenerating ? (
+              <>
+                <Wand2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-4 h-4 mr-2" />
+                Generate Vacancy
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {generatedVacancy && (
+        <Card className="bg-slate-800 border-slate-700">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-white">
+              <span>Generated Vacancy</span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyToClipboard}
+                  className="border-pink-400 text-pink-400 hover:bg-pink-400 hover:text-white"
+                >
+                  <Copy className="w-4 h-4 mr-1" />
+                  Copy
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadAsText}
+                  className="border-pink-400 text-pink-400 hover:bg-pink-400 hover:text-white"
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Download
+                </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-slate-900 border border-slate-600 rounded-lg p-6">
+              <pre className="whitespace-pre-wrap text-slate-200 font-mono text-sm leading-relaxed">
+                {generatedVacancy}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
