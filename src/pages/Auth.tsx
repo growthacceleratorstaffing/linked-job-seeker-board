@@ -80,7 +80,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-secondary-blue flex items-center justify-center p-4">
+    <div className="min-h-screen bg-primary-blue flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white">
         <CardHeader className="text-center">
           <div className="mb-4">
@@ -90,7 +90,7 @@ const Auth = () => {
               className="mx-auto h-16 w-16 object-contain"
             />
           </div>
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-[#1F2647] to-[#EB3D6A] bg-clip-text text-transparent">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary-blue to-secondary-pink bg-clip-text text-transparent">
             Growth Accelerator Jobs
           </CardTitle>
           <CardDescription>
@@ -150,7 +150,7 @@ const Auth = () => {
 
             <Button
               type="submit"
-              className="w-full bg-[#EB3D6A] hover:bg-[#EB3D6A]/80 text-white"
+              className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white"
               disabled={loading}
             >
               {loading ? (isSignUp ? "Creating Account..." : "Signing In...") : (isSignUp ? "Create Account" : "Sign In")}
@@ -161,7 +161,7 @@ const Auth = () => {
             <Button
               variant="link"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-[#1F2647] hover:text-[#EB3D6A]"
+              className="text-primary-blue hover:text-secondary-pink"
             >
               {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
             </Button>

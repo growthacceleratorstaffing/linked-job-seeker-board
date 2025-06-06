@@ -3,7 +3,7 @@ import { VacancyGenerator } from "@/components/VacancyGenerator";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-secondary-blue text-white">
+    <div className="min-h-screen bg-primary-blue text-white">
       <div className="container mx-auto px-4 py-8">
         <header className="text-center mb-12">
           <div className="mb-6">

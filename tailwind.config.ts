@@ -27,13 +27,13 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					blue: '#031e42'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
 					foreground: 'hsl(var(--secondary-foreground))',
-					blue: 'hsl(var(--secondary-blue))',
-					pink: 'hsl(var(--secondary-pink))'
+					pink: '#EB3D6A'
 				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',

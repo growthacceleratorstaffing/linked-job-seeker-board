@@ -178,7 +178,7 @@ export const VacancyGenerator = () => {
       <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
-            <Sparkles className="w-5 h-5 text-pink-400" />
+            <Sparkles className="w-5 h-5 text-secondary-pink" />
             Create Your Vacancy with AI
           </CardTitle>
         </CardHeader>
@@ -192,7 +192,7 @@ export const VacancyGenerator = () => {
               placeholder="e.g., Senior React Developer for a fintech startup, remote work, 5+ years experience, TypeScript expertise..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              className="mt-2 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-pink-400 focus:ring-pink-400"
+              className="mt-2 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink"
               rows={4}
             />
           </div>
@@ -200,7 +200,7 @@ export const VacancyGenerator = () => {
           <Button 
             onClick={generateVacancy}
             disabled={isGenerating}
-            className="w-full bg-pink-600 hover:bg-pink-700 text-white font-medium py-3"
+            className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white font-medium py-3"
           >
             {isGenerating ? (
               <>
@@ -227,7 +227,7 @@ export const VacancyGenerator = () => {
                   onClick={publishToWorkable}
                   disabled={isPublishing}
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-primary-blue hover:bg-primary-blue/80 text-white"
                 >
                   {isPublishing ? (
                     <>
@@ -254,7 +254,7 @@ export const VacancyGenerator = () => {
                   variant="outline"
                   size="sm"
                   onClick={copyToClipboard}
-                  className="border-pink-400 text-pink-400 hover:bg-pink-400 hover:text-white"
+                  className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
                 >
                   <Copy className="w-4 h-4 mr-1" />
                   Copy
@@ -263,7 +263,7 @@ export const VacancyGenerator = () => {
                   variant="outline"
                   size="sm"
                   onClick={downloadAsText}
-                  className="border-pink-400 text-pink-400 hover:bg-pink-400 hover:text-white"
+                  className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Download
@@ -276,7 +276,7 @@ export const VacancyGenerator = () => {
               <Textarea
                 value={generatedVacancy}
                 onChange={(e) => setGeneratedVacancy(e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-pink-400 focus:ring-pink-400 min-h-[400px]"
+                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[400px]"
                 placeholder="Edit your vacancy text here..."
               />
             ) : (

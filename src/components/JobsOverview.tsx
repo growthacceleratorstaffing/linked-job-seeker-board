@@ -84,7 +84,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
   };
 
   return (
-    <Card className="bg-secondary-blue border-slate-700">
+    <Card className="bg-primary-blue border-slate-700">
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-white">
           <div className="flex items-center gap-2">
