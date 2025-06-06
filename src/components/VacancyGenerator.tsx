@@ -15,6 +15,7 @@ export const VacancyGenerator = () => {
   const [generatedVacancy, setGeneratedVacancy] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [refreshJobsOverview, setRefreshJobsOverview] = useState(0);
   const { toast } = useToast();
 
   const generateVacancy = async () => {
@@ -68,7 +69,7 @@ export const VacancyGenerator = () => {
     if (!generatedVacancy) {
       toast({
         title: "No vacancy to publish",
-        description: "Please generate a vacancy first before publishing to Workable.",
+        description: "Please generate a vacancy first before publishing.",
         variant: "destructive",
       });
       return;
@@ -89,9 +90,12 @@ export const VacancyGenerator = () => {
       if (error) throw error;
 
       toast({
-        title: "Job published to Workable! 🎉",
-        description: "Your vacancy has been successfully created in Workable.",
+        title: "Job published successfully! 🎉",
+        description: "Your vacancy has been created in Workable and will appear in Jobs Overview.",
       });
+
+      // Trigger refresh of Jobs Overview
+      setRefreshJobsOverview(prev => prev + 1);
 
     } catch (error) {
       console.error('Error publishing to Workable:', error);
@@ -165,7 +169,7 @@ export const VacancyGenerator = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 relative">
       {/* Jobs Overview Section */}
-      <JobsOverview />
+      <JobsOverview key={refreshJobsOverview} />
 
       <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
@@ -229,7 +233,7 @@ export const VacancyGenerator = () => {
                   ) : (
                     <>
                       <Upload className="w-4 h-4 mr-2" />
-                      Publish to Workable
+                      Publish Job
                     </>
                   )}
                 </Button>

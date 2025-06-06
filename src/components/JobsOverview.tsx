@@ -19,7 +19,11 @@ interface WorkableJob {
   application_url: string;
 }
 
-export const JobsOverview: React.FC = () => {
+interface JobsOverviewProps {
+  refreshTrigger?: number;
+}
+
+export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) => {
   const [workableJobs, setWorkableJobs] = useState<WorkableJob[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
@@ -54,7 +58,7 @@ export const JobsOverview: React.FC = () => {
 
   useEffect(() => {
     syncJobs();
-  }, []);
+  }, [refreshTrigger]);
 
   return (
     <Card className="bg-slate-800 border-slate-700">
