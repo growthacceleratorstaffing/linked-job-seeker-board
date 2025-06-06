@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Wand2, Copy, Download, Sparkles, Upload } from "lucide-react";
+import { Wand2, Copy, Download, Sparkles, Upload, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CopilotTrigger } from './CopilotTrigger';
@@ -15,6 +14,7 @@ export const VacancyGenerator = () => {
   const [generatedVacancy, setGeneratedVacancy] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [refreshJobsOverview, setRefreshJobsOverview] = useState(0);
   const { toast } = useToast();
 
@@ -166,10 +166,14 @@ export const VacancyGenerator = () => {
     setGeneratedVacancy(vacancy);
   };
 
+  const toggleEditMode = () => {
+    setIsEditing(!isEditing);
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 relative">
       {/* Jobs Overview Section */}
-      <JobsOverview key={refreshJobsOverview} />
+      <JobsOverview refreshTrigger={refreshJobsOverview} />
 
       <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
@@ -238,6 +242,15 @@ export const VacancyGenerator = () => {
                   )}
                 </Button>
                 <Button
+                  onClick={toggleEditMode}
+                  size="sm"
+                  variant="outline"
+                  className="border-slate-400 text-slate-400 hover:bg-slate-400 hover:text-white"
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  {isEditing ? 'View' : 'Edit'}
+                </Button>
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={copyToClipboard}
@@ -259,11 +272,20 @@ export const VacancyGenerator = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="bg-slate-900 border border-slate-600 rounded-lg p-6">
-              <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
-                {generatedVacancy}
+            {isEditing ? (
+              <Textarea
+                value={generatedVacancy}
+                onChange={(e) => setGeneratedVacancy(e.target.value)}
+                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-pink-400 focus:ring-pink-400 min-h-[400px]"
+                placeholder="Edit your vacancy text here..."
+              />
+            ) : (
+              <div className="bg-slate-900 border border-slate-600 rounded-lg p-6">
+                <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
+                  {generatedVacancy}
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Briefcase, RefreshCw, ExternalLink, CheckCircle } from "lucide-react";
+import { Briefcase, RefreshCw, ExternalLink, CheckCircle, Archive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,7 +41,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
       
       toast({
         title: "Jobs synced successfully!",
-        description: `Found ${data.total} published jobs in Workable.`,
+        description: `Found ${data.published || 0} published and ${data.archived || 0} archived jobs in Workable.`,
       });
 
     } catch (error) {
@@ -59,6 +59,29 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
   useEffect(() => {
     syncJobs();
   }, [refreshTrigger]);
+
+  const getStatusBadge = (state: string) => {
+    if (state === 'published') {
+      return (
+        <Badge variant="outline" className="border-green-400 text-green-400">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Published
+        </Badge>
+      );
+    } else if (state === 'archived') {
+      return (
+        <Badge variant="outline" className="border-orange-400 text-orange-400">
+          <Archive className="w-3 h-3 mr-1" />
+          Archived
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="border-slate-400 text-slate-400">
+        {state}
+      </Badge>
+    );
+  };
 
   return (
     <Card className="bg-slate-800 border-slate-700">
@@ -93,7 +116,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
         {workableJobs.length > 0 ? (
           <div className="space-y-4">
             <p className="text-slate-300 text-sm">
-              {workableJobs.length} published jobs in your Workable account
+              {workableJobs.length} total jobs in your Workable account
             </p>
             <Table>
               <TableHeader>
@@ -111,10 +134,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
                       {job.title}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="border-green-400 text-green-400">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        {job.state}
-                      </Badge>
+                      {getStatusBadge(job.state)}
                     </TableCell>
                     <TableCell className="text-slate-400">
                       {new Date(job.created_at).toLocaleDateString()}
@@ -140,7 +160,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
           <div className="text-center py-8">
             <Briefcase className="w-12 h-12 text-slate-500 mx-auto mb-3" />
             <p className="text-slate-400 text-sm">
-              No published jobs found. Click "Refresh" to sync your latest jobs!
+              No jobs found. Click "Refresh" to sync your latest jobs!
             </p>
           </div>
         )}

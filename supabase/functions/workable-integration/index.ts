@@ -87,24 +87,45 @@ serve(async (req) => {
       case 'sync_jobs': {
         console.log('Syncing jobs from Workable...');
         
-        const response = await fetch(`${baseUrl}/jobs?state=published&limit=50`, {
-          method: 'GET',
-          headers,
-        });
+        // Fetch both published and archived jobs
+        const [publishedResponse, archivedResponse] = await Promise.all([
+          fetch(`${baseUrl}/jobs?state=published&limit=50`, {
+            method: 'GET',
+            headers,
+          }),
+          fetch(`${baseUrl}/jobs?state=archived&limit=50`, {
+            method: 'GET',
+            headers,
+          })
+        ]);
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Workable API error:', response.status, errorText);
-          throw new Error(`Failed to sync jobs: ${response.status}`);
+        if (!publishedResponse.ok) {
+          const errorText = await publishedResponse.text();
+          console.error('Workable API error (published):', publishedResponse.status, errorText);
+          throw new Error(`Failed to sync published jobs: ${publishedResponse.status}`);
         }
 
-        const data = await response.json();
+        if (!archivedResponse.ok) {
+          const errorText = await archivedResponse.text();
+          console.error('Workable API error (archived):', archivedResponse.status, errorText);
+          throw new Error(`Failed to sync archived jobs: ${archivedResponse.status}`);
+        }
+
+        const publishedData = await publishedResponse.json();
+        const archivedData = await archivedResponse.json();
+        
+        const allJobs = [
+          ...(publishedData.jobs || []),
+          ...(archivedData.jobs || [])
+        ];
         
         return new Response(
           JSON.stringify({ 
             success: true, 
-            jobs: data.jobs || [],
-            total: data.jobs?.length || 0
+            jobs: allJobs,
+            total: allJobs.length,
+            published: publishedData.jobs?.length || 0,
+            archived: archivedData.jobs?.length || 0
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
