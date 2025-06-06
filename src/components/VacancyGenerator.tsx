@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +7,7 @@ import { Wand2, Copy, Download, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CopilotTrigger } from './CopilotTrigger';
+import { WorkableIntegration } from './WorkableIntegration';
 
 export const VacancyGenerator = () => {
   const [prompt, setPrompt] = useState('');
@@ -169,6 +169,9 @@ export const VacancyGenerator = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Workable Integration */}
+      <WorkableIntegration generatedVacancy={generatedVacancy} />
 
       {/* AI Copilot Trigger */}
       <CopilotTrigger onVacancyGenerated={handleCopilotVacancy} />
