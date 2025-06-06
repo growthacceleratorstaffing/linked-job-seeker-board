@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Wand2, Copy, Download, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { CopilotTrigger } from './CopilotTrigger';
 
 export const VacancyGenerator = () => {
   const [prompt, setPrompt] = useState('');
@@ -83,8 +85,12 @@ export const VacancyGenerator = () => {
     });
   };
 
+  const handleCopilotVacancy = (vacancy: string) => {
+    setGeneratedVacancy(vacancy);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 relative">
       <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
@@ -163,6 +169,9 @@ export const VacancyGenerator = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* AI Copilot Trigger */}
+      <CopilotTrigger onVacancyGenerated={handleCopilotVacancy} />
     </div>
   );
 };
