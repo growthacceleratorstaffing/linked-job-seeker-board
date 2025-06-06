@@ -1,18 +1,20 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Wand2, Copy, Download, Sparkles } from "lucide-react";
+import { Wand2, Copy, Download, Sparkles, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CopilotTrigger } from './CopilotTrigger';
-import { WorkableIntegration } from './WorkableIntegration';
+import { JobsOverview } from './JobsOverview';
 
 export const VacancyGenerator = () => {
   const [prompt, setPrompt] = useState('');
   const [generatedVacancy, setGeneratedVacancy] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const { toast } = useToast();
 
   const generateVacancy = async () => {
@@ -62,6 +64,77 @@ export const VacancyGenerator = () => {
     }
   };
 
+  const publishToWorkable = async () => {
+    if (!generatedVacancy) {
+      toast({
+        title: "No vacancy to publish",
+        description: "Please generate a vacancy first before publishing to Workable.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      // Parse the generated vacancy to extract job details
+      const jobData = parseVacancyText(generatedVacancy);
+      
+      const { data, error } = await supabase.functions.invoke('workable-integration', {
+        body: { 
+          action: 'publish_job',
+          jobData
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Job published to Workable! 🎉",
+        description: "Your vacancy has been successfully created in Workable.",
+      });
+
+    } catch (error) {
+      console.error('Error publishing to Workable:', error);
+      toast({
+        title: "Publishing failed",
+        description: error instanceof Error ? error.message : "Failed to publish job to Workable.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const parseVacancyText = (text: string) => {
+    const lines = text.split('\n');
+    let title = 'Untitled Position';
+    let description = text;
+    
+    // Try to extract title from common patterns
+    const titlePatterns = [
+      /^#\s*(.+)$/m,
+      /^Job Title:\s*(.+)$/m,
+      /^Position:\s*(.+)$/m,
+      /^Role:\s*(.+)$/m,
+    ];
+    
+    for (const pattern of titlePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        title = match[1].trim();
+        break;
+      }
+    }
+    
+    return {
+      title,
+      description,
+      employment_type: 'full_time',
+      remote: text.toLowerCase().includes('remote'),
+      department: 'General',
+    };
+  };
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedVacancy);
     toast({
@@ -91,6 +164,9 @@ export const VacancyGenerator = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 relative">
+      {/* Jobs Overview Section */}
+      <JobsOverview />
+
       <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
@@ -140,6 +216,24 @@ export const VacancyGenerator = () => {
               <span>AI-Generated Vacancy</span>
               <div className="flex gap-2">
                 <Button
+                  onClick={publishToWorkable}
+                  disabled={isPublishing}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isPublishing ? (
+                    <>
+                      <Upload className="w-4 h-4 mr-2 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Publish to Workable
+                    </>
+                  )}
+                </Button>
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={copyToClipboard}
@@ -169,9 +263,6 @@ export const VacancyGenerator = () => {
           </CardContent>
         </Card>
       )}
-
-      {/* Workable Integration */}
-      <WorkableIntegration generatedVacancy={generatedVacancy} />
 
       {/* AI Copilot Trigger */}
       <CopilotTrigger onVacancyGenerated={handleCopilotVacancy} />

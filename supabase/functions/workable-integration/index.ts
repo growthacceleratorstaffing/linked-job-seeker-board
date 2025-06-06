@@ -29,11 +29,17 @@ serve(async (req) => {
       );
     }
 
-    const baseUrl = `https://${workableSubdomain}.workable.com/spi/v3`;
+    // Fix the URL construction - use either the full domain or just subdomain
+    const baseUrl = workableSubdomain.includes('.workable.com') 
+      ? `https://${workableSubdomain}/spi/v3`
+      : `https://${workableSubdomain}.workable.com/spi/v3`;
+    
     const headers = {
       'Authorization': `Bearer ${workableApiToken}`,
       'Content-Type': 'application/json',
     };
+
+    console.log('Using Workable API base URL:', baseUrl);
 
     switch (action) {
       case 'publish_job': {
