@@ -70,7 +70,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
       );
     } else if (state === 'archived') {
       return (
-        <Badge variant="outline" className="border-orange-400 text-orange-400">
+        <Badge variant="outline" className="border-secondary-pink text-secondary-pink">
           <Archive className="w-3 h-3 mr-1" />
           Archived
         </Badge>
@@ -84,11 +84,11 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
   };
 
   return (
-    <Card className="bg-slate-800 border-slate-700">
+    <Card className="bg-secondary-blue border-slate-700">
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-white">
           <div className="flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-blue-400" />
+            <Briefcase className="w-5 h-5 text-secondary-pink" />
             Jobs Overview
           </div>
           <Button
@@ -96,7 +96,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
             disabled={isSyncing}
             variant="outline"
             size="sm"
-            className="border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white"
+            className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
           >
             {isSyncing ? (
               <>
@@ -144,7 +144,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
                         size="sm"
                         variant="ghost"
                         asChild
-                        className="text-blue-400 hover:text-blue-300"
+                        className="text-secondary-pink hover:text-secondary-pink/80"
                       >
                         <a href={job.url} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="w-4 h-4" />
