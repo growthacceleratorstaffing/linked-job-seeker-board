@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Wand2, Copy, Download, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const VacancyGenerator = () => {
   const [prompt, setPrompt] = useState('');
@@ -25,52 +25,39 @@ export const VacancyGenerator = () => {
 
     setIsGenerating(true);
     
-    // Simulate AI generation (in a real app, this would call an AI API)
-    setTimeout(() => {
-      const sampleVacancy = `# ${extractJobTitle(prompt)}
+    try {
+      console.log('Calling Azure OpenAI through Supabase edge function...');
+      
+      const { data, error } = await supabase.functions.invoke('generate-vacancy', {
+        body: { prompt: prompt.trim() }
+      });
 
-## About the Role
-We are seeking a talented professional to join our dynamic team in an exciting opportunity that matches your vision: ${prompt}
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to generate vacancy');
+      }
 
-## Key Responsibilities
-• Lead and execute strategic initiatives that drive business growth
-• Collaborate with cross-functional teams to deliver exceptional results
-• Develop innovative solutions to complex challenges
-• Mentor team members and contribute to a positive work culture
+      if (!data || !data.generatedVacancy) {
+        throw new Error('No vacancy content received from AI');
+      }
 
-## Requirements
-• Bachelor's degree in relevant field or equivalent experience
-• 3+ years of experience in a similar role
-• Strong analytical and problem-solving skills
-• Excellent communication and leadership abilities
-• Passion for innovation and continuous learning
-
-## What We Offer
-• Competitive salary and comprehensive benefits package
-• Flexible working arrangements and professional development opportunities
-• Collaborative and inclusive work environment
-• Opportunities for career growth and advancement
-
-Ready to make an impact? Apply now and become part of our innovative team!`;
-
-      setGeneratedVacancy(sampleVacancy);
-      setIsGenerating(false);
+      setGeneratedVacancy(data.generatedVacancy);
       
       toast({
         title: "Vacancy generated successfully!",
         description: "Your AI-powered job description is ready.",
       });
-    }, 2000);
-  };
 
-  const extractJobTitle = (prompt: string) => {
-    // Simple extraction - in real app would use more sophisticated parsing
-    const words = prompt.toLowerCase().split(' ');
-    if (words.includes('developer')) return 'Software Developer';
-    if (words.includes('designer')) return 'UX/UI Designer';
-    if (words.includes('manager')) return 'Project Manager';
-    if (words.includes('analyst')) return 'Business Analyst';
-    return 'Professional Position';
+    } catch (error) {
+      console.error('Error generating vacancy:', error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Failed to generate vacancy. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -102,7 +89,7 @@ Ready to make an impact? Apply now and become part of our innovative team!`;
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Sparkles className="w-5 h-5 text-pink-400" />
-            Create Your Vacancy
+            Create Your Vacancy with AI
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -128,12 +115,12 @@ Ready to make an impact? Apply now and become part of our innovative team!`;
             {isGenerating ? (
               <>
                 <Wand2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating...
+                Generating with AI...
               </>
             ) : (
               <>
                 <Wand2 className="w-4 h-4 mr-2" />
-                Generate Vacancy
+                Generate Vacancy with AI
               </>
             )}
           </Button>
@@ -144,7 +131,7 @@ Ready to make an impact? Apply now and become part of our innovative team!`;
         <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-white">
-              <span>Generated Vacancy</span>
+              <span>AI-Generated Vacancy</span>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -169,9 +156,9 @@ Ready to make an impact? Apply now and become part of our innovative team!`;
           </CardHeader>
           <CardContent>
             <div className="bg-slate-900 border border-slate-600 rounded-lg p-6">
-              <pre className="whitespace-pre-wrap text-slate-200 font-mono text-sm leading-relaxed">
+              <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
                 {generatedVacancy}
-              </pre>
+              </div>
             </div>
           </CardContent>
         </Card>
