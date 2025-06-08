@@ -63,41 +63,54 @@ serve(async (req) => {
           .select()
           .single();
 
-        // Fetch BOTH published and archived jobs to get candidates from all jobs
-        console.log('Fetching published and archived jobs to sync candidates...');
-        const [publishedResponse, archivedResponse] = await Promise.all([
-          fetch(`${spiBaseUrl}/jobs?state=published&limit=100`, {
+        console.log('Starting candidate sync from both published and archived jobs...');
+        
+        // Fetch ALL jobs with increased limits to ensure we get everything
+        const [publishedResponse, archivedResponse, draftResponse] = await Promise.all([
+          fetch(`${spiBaseUrl}/jobs?state=published&limit=200`, {
             method: 'GET',
             headers,
           }),
-          fetch(`${spiBaseUrl}/jobs?state=archived&limit=200`, {
+          fetch(`${spiBaseUrl}/jobs?state=archived&limit=500`, { // Increased limit for archived jobs
+            method: 'GET',
+            headers,
+          }),
+          fetch(`${spiBaseUrl}/jobs?state=draft&limit=100`, {
             method: 'GET',
             headers,
           })
         ]);
 
         if (!publishedResponse.ok) {
-          throw new Error(`Failed to fetch published jobs: ${publishedResponse.status}`);
+          throw new Error(`Failed to fetch published jobs: ${publishedResponse.status} - ${await publishedResponse.text()}`);
         }
 
         if (!archivedResponse.ok) {
-          throw new Error(`Failed to fetch archived jobs: ${archivedResponse.status}`);
+          throw new Error(`Failed to fetch archived jobs: ${archivedResponse.status} - ${await archivedResponse.text()}`);
+        }
+
+        if (!draftResponse.ok) {
+          console.log('Failed to fetch draft jobs, continuing without them');
         }
 
         const publishedData = await publishedResponse.json();
         const archivedData = await archivedResponse.json();
+        const draftData = draftResponse.ok ? await draftResponse.json() : { jobs: [] };
         
-        // Combine published and archived jobs
+        // Combine ALL jobs from all states
         const jobs = [
           ...(publishedData.jobs || []),
-          ...(archivedData.jobs || [])
+          ...(archivedData.jobs || []),
+          ...(draftData.jobs || [])
         ];
 
-        console.log(`Total jobs to process: ${jobs.length} (${publishedData.jobs?.length || 0} published + ${archivedData.jobs?.length || 0} archived)`);
+        console.log(`Total jobs to process: ${jobs.length}`);
+        console.log(`Breakdown: ${publishedData.jobs?.length || 0} published, ${archivedData.jobs?.length || 0} archived, ${draftData.jobs?.length || 0} draft`);
 
         let totalCandidates = 0;
         let syncedCandidates = 0;
         let errors: string[] = [];
+        let jobsWithCandidates = 0;
 
         // Create a map to store job UUID mappings
         const jobUuidMap = new Map();
@@ -123,7 +136,7 @@ serve(async (req) => {
                   description: job.description || '',
                   requirements: job.requirements || '',
                   workable_job_id: job.id,
-                  status: job.state === 'published' ? 'active' : 'draft',
+                  status: job.state === 'published' ? 'active' : job.state === 'archived' ? 'closed' : 'draft',
                   location: job.location?.city || 'Remote',
                   salary_min: null,
                   salary_max: null,
@@ -148,7 +161,7 @@ serve(async (req) => {
           }
         }
 
-        // Now sync candidates from ALL jobs (published and archived)
+        // Now sync candidates from ALL jobs with enhanced pagination
         for (const job of jobs) {
           try {
             const jobUuid = jobUuidMap.get(job.id);
@@ -159,12 +172,15 @@ serve(async (req) => {
 
             console.log(`Fetching candidates for job: ${job.shortcode} (${job.state})`);
             
-            // Fetch ALL candidates for this job with pagination
+            // Fetch ALL candidates for this job with comprehensive pagination
             let page = 1;
             let hasMoreCandidates = true;
+            let jobCandidateCount = 0;
             
             while (hasMoreCandidates) {
-              const candidatesResponse = await fetch(`${spiBaseUrl}/jobs/${job.shortcode}/candidates?page=${page}&per_page=50`, {
+              console.log(`Fetching page ${page} for job ${job.shortcode}...`);
+              
+              const candidatesResponse = await fetch(`${spiBaseUrl}/jobs/${job.shortcode}/candidates?page=${page}&per_page=100`, {
                 method: 'GET',
                 headers,
               });
@@ -179,6 +195,7 @@ serve(async (req) => {
                 }
                 
                 totalCandidates += candidates.length;
+                jobCandidateCount += candidates.length;
                 console.log(`Found ${candidates.length} candidates on page ${page} for job ${job.shortcode} (${job.state})`);
 
                 for (const candidate of candidates) {
@@ -191,17 +208,32 @@ serve(async (req) => {
                   }
                 }
                 
-                // Check if we have more pages
-                if (candidates.length < 50) {
+                // Check if we have more pages - be more aggressive in checking
+                if (candidates.length < 100) {
                   hasMoreCandidates = false;
                 } else {
                   page++;
+                  // Add a small delay to avoid rate limiting
+                  await new Promise(resolve => setTimeout(resolve, 100));
                 }
               } else {
-                console.error(`Failed to fetch candidates for job ${job.shortcode} page ${page}: ${candidatesResponse.status}`);
-                errors.push(`Job ${job.shortcode} page ${page}: HTTP ${candidatesResponse.status}`);
-                hasMoreCandidates = false;
+                const errorText = await candidatesResponse.text();
+                console.error(`Failed to fetch candidates for job ${job.shortcode} page ${page}: ${candidatesResponse.status} - ${errorText}`);
+                
+                // If we get a 404, the job might not have candidates endpoint
+                if (candidatesResponse.status === 404) {
+                  console.log(`Job ${job.shortcode} has no candidates endpoint`);
+                  hasMoreCandidates = false;
+                } else {
+                  errors.push(`Job ${job.shortcode} page ${page}: HTTP ${candidatesResponse.status}`);
+                  hasMoreCandidates = false;
+                }
               }
+            }
+            
+            if (jobCandidateCount > 0) {
+              jobsWithCandidates++;
+              console.log(`Total candidates found for job ${job.shortcode}: ${jobCandidateCount}`);
             }
           } catch (error) {
             console.error(`Failed to fetch candidates for job ${job.shortcode}:`, error);
@@ -209,20 +241,22 @@ serve(async (req) => {
           }
         }
 
-        console.log(`Sync complete: ${syncedCandidates}/${totalCandidates} candidates synced from ${jobs.length} jobs`);
+        console.log(`Sync complete: ${syncedCandidates}/${totalCandidates} candidates synced from ${jobs.length} jobs (${jobsWithCandidates} jobs had candidates)`);
 
         // Update sync log with completion - always mark as success if we processed candidates
         await supabase
           .from('integration_sync_logs')
           .update({
-            status: 'success', // Always success if we got this far
+            status: 'success',
             completed_at: new Date().toISOString(),
             synced_data: { 
               totalCandidates, 
               syncedCandidates,
               jobsProcessed: jobs.length,
+              jobsWithCandidates,
               publishedJobs: publishedData.jobs?.length || 0,
               archivedJobs: archivedData.jobs?.length || 0,
+              draftJobs: draftData.jobs?.length || 0,
               errors: errors.slice(0, 10),
               timestamp: new Date().toISOString()
             }
@@ -243,10 +277,12 @@ serve(async (req) => {
             totalCandidates,
             syncedCandidates,
             jobsProcessed: jobs.length,
+            jobsWithCandidates,
             publishedJobs: publishedData.jobs?.length || 0,
             archivedJobs: archivedData.jobs?.length || 0,
+            draftJobs: draftData.jobs?.length || 0,
             errors: errors.length > 0 ? errors : undefined,
-            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from Workable (${publishedData.jobs?.length || 0} published + ${archivedData.jobs?.length || 0} archived jobs)`
+            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from ${jobs.length} Workable jobs (${publishedData.jobs?.length || 0} published + ${archivedData.jobs?.length || 0} archived + ${draftData.jobs?.length || 0} draft)`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
