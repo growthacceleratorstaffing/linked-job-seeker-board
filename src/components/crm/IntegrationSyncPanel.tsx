@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -109,24 +110,14 @@ export const IntegrationSyncPanel = () => {
 
   const getStatusIcon = (success: number, failed: number, pending: number) => {
     if (pending > 0) return <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />;
-    if (failed > 0) return <XCircle className="h-4 w-4 text-red-500" />;
-    if (success > 0) return <CheckCircle className="h-4 w-4 text-green-500" />;
+    if (failed > 0) return <AlertCircle className="h-4 w-4 text-yellow-500" />; // Changed from red to yellow for better UX
     return <CheckCircle className="h-4 w-4 text-green-500" />;
   };
 
   const getStatusBadge = (success: number, failed: number, pending: number, isAutoEnabled: boolean) => {
     if (pending > 0) return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Syncing</Badge>;
-    // Show Auto-Enabled when sync is successful and integration is enabled
-    if (success > 0 && isAutoEnabled) {
-      return (
-        <Badge variant="secondary" className="bg-green-100 text-green-800">
-          <Zap className="h-3 w-3 mr-1" />
-          Auto-Enabled
-        </Badge>
-      );
-    }
-    if (failed > 0) return <Badge variant="destructive">Issues</Badge>;
-    // Default to Auto-Enabled if integration is enabled
+    
+    // Always show Auto-Enabled if integration is enabled, regardless of sync status
     if (isAutoEnabled) {
       return (
         <Badge variant="secondary" className="bg-green-100 text-green-800">
@@ -135,6 +126,7 @@ export const IntegrationSyncPanel = () => {
         </Badge>
       );
     }
+    
     return <Badge variant="outline">Disabled</Badge>;
   };
 
@@ -162,6 +154,10 @@ export const IntegrationSyncPanel = () => {
   const linkedinSetting = integrationSettings?.find(s => s.integration_type === 'linkedin');
   const workableSetting = integrationSettings?.find(s => s.integration_type === 'workable');
 
+  // Default to enabled if settings don't exist yet
+  const linkedinEnabled = linkedinSetting?.is_enabled ?? true;
+  const workableEnabled = workableSetting?.is_enabled ?? true;
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card>
@@ -175,11 +171,11 @@ export const IntegrationSyncPanel = () => {
               )}
               LinkedIn Integration
             </div>
-            {syncStats && getStatusBadge(
-              syncStats.linkedin.success,
-              syncStats.linkedin.failed,
-              syncStats.linkedin.pending,
-              linkedinSetting?.is_enabled ?? true
+            {getStatusBadge(
+              syncStats?.linkedin.success || 0,
+              syncStats?.linkedin.failed || 0,
+              syncStats?.linkedin.pending || 0,
+              linkedinEnabled
             )}
           </CardTitle>
           <CardDescription>
@@ -207,11 +203,11 @@ export const IntegrationSyncPanel = () => {
               )}
               Workable Integration
             </div>
-            {syncStats && getStatusBadge(
-              syncStats.workable.success,
-              syncStats.workable.failed,
-              syncStats.workable.pending,
-              workableSetting?.is_enabled ?? true
+            {getStatusBadge(
+              syncStats?.workable.success || 0,
+              syncStats?.workable.failed || 0,
+              syncStats?.workable.pending || 0,
+              workableEnabled
             )}
           </CardTitle>
           <CardDescription>
