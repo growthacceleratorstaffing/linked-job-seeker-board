@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +36,8 @@ export const IntegrationSyncPanel = () => {
       });
 
       return stats;
-    }
+    },
+    refetchInterval: 5000 // Refetch every 5 seconds to update status in real-time
   });
 
   const { data: integrationSettings } = useQuery({
@@ -116,13 +116,26 @@ export const IntegrationSyncPanel = () => {
 
   const getStatusBadge = (success: number, failed: number, pending: number, isAutoEnabled: boolean) => {
     if (pending > 0) return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Syncing</Badge>;
+    // Show Auto-Enabled when sync is successful and integration is enabled
+    if (success > 0 && isAutoEnabled) {
+      return (
+        <Badge variant="secondary" className="bg-green-100 text-green-800">
+          <Zap className="h-3 w-3 mr-1" />
+          Auto-Enabled
+        </Badge>
+      );
+    }
     if (failed > 0) return <Badge variant="destructive">Issues</Badge>;
-    return (
-      <Badge variant="secondary" className="bg-green-100 text-green-800">
-        <Zap className="h-3 w-3 mr-1" />
-        Auto-Enabled
-      </Badge>
-    );
+    // Default to Auto-Enabled if integration is enabled
+    if (isAutoEnabled) {
+      return (
+        <Badge variant="secondary" className="bg-green-100 text-green-800">
+          <Zap className="h-3 w-3 mr-1" />
+          Auto-Enabled
+        </Badge>
+      );
+    }
+    return <Badge variant="outline">Disabled</Badge>;
   };
 
   const getNextSyncInfo = (integrationSettings: any, type: string) => {
