@@ -40,10 +40,28 @@ serve(async (req) => {
 
     console.log('Using Workable API base URL:', baseUrl);
 
+    // Ensure integration settings exist and are enabled
+    await ensureIntegrationSettings(supabase);
+
     switch (action) {
       case 'sync_candidates': {
         console.log('Syncing candidates from Workable...');
         
+        // Log sync start
+        const { data: syncLog } = await supabase
+          .from('integration_sync_logs')
+          .insert([{
+            integration_type: 'workable',
+            sync_type: 'candidate_sync',
+            status: 'in_progress',
+            synced_data: { 
+              action: 'sync_candidates',
+              timestamp: new Date().toISOString()
+            }
+          }])
+          .select()
+          .single();
+
         // First get all jobs to then fetch candidates for each
         const jobsResponse = await fetch(`${baseUrl}/jobs?state=published&limit=50`, {
           method: 'GET',
@@ -58,9 +76,11 @@ serve(async (req) => {
         const jobs = jobsData.jobs || [];
         let totalCandidates = 0;
         let syncedCandidates = 0;
+        let errors: string[] = [];
 
         for (const job of jobs) {
           try {
+            console.log(`Fetching candidates for job: ${job.shortcode}`);
             const candidatesResponse = await fetch(`${baseUrl}/jobs/${job.shortcode}/candidates`, {
               method: 'GET',
               headers,
@@ -70,6 +90,7 @@ serve(async (req) => {
               const candidatesData = await candidatesResponse.json();
               const candidates = candidatesData.candidates || [];
               totalCandidates += candidates.length;
+              console.log(`Found ${candidates.length} candidates for job ${job.shortcode}`);
 
               for (const candidate of candidates) {
                 try {
@@ -77,34 +98,50 @@ serve(async (req) => {
                   syncedCandidates++;
                 } catch (error) {
                   console.error(`Failed to sync candidate ${candidate.id}:`, error);
+                  errors.push(`Candidate ${candidate.id}: ${error.message}`);
                 }
               }
+            } else {
+              console.error(`Failed to fetch candidates for job ${job.shortcode}: ${candidatesResponse.status}`);
+              errors.push(`Job ${job.shortcode}: HTTP ${candidatesResponse.status}`);
             }
           } catch (error) {
             console.error(`Failed to fetch candidates for job ${job.shortcode}:`, error);
+            errors.push(`Job ${job.shortcode}: ${error.message}`);
           }
         }
 
-        // Log successful sync
+        // Update sync log with completion
         await supabase
           .from('integration_sync_logs')
-          .insert([{
-            integration_type: 'workable',
-            sync_type: 'candidate_sync',
+          .update({
             status: 'success',
+            completed_at: new Date().toISOString(),
             synced_data: { 
               totalCandidates, 
               syncedCandidates,
               jobsProcessed: jobs.length,
+              errors: errors.slice(0, 10), // Limit errors to avoid payload size issues
               timestamp: new Date().toISOString()
             }
-          }]);
+          })
+          .eq('id', syncLog?.id);
+
+        // Update integration settings last sync
+        await supabase
+          .from('integration_settings')
+          .update({
+            last_sync_at: new Date().toISOString(),
+          })
+          .eq('integration_type', 'workable');
 
         return new Response(
           JSON.stringify({ 
             success: true, 
             totalCandidates,
             syncedCandidates,
+            jobsProcessed: jobs.length,
+            errors: errors.length > 0 ? errors : undefined,
             message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from Workable`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -240,6 +277,7 @@ serve(async (req) => {
           sync_type: 'error',
           status: 'failed',
           error_message: error.message,
+          completed_at: new Date().toISOString(),
           synced_data: { 
             error: error.message,
             timestamp: new Date().toISOString()
@@ -256,23 +294,65 @@ serve(async (req) => {
   }
 });
 
+async function ensureIntegrationSettings(supabase: any) {
+  // Check if settings exist
+  const { data: existingSettings } = await supabase
+    .from('integration_settings')
+    .select('*');
+
+  const linkedinExists = existingSettings?.some((s: any) => s.integration_type === 'linkedin');
+  const workableExists = existingSettings?.some((s: any) => s.integration_type === 'workable');
+
+  const settingsToInsert = [];
+
+  if (!linkedinExists) {
+    settingsToInsert.push({
+      integration_type: 'linkedin',
+      is_enabled: true,
+      sync_frequency_hours: 24,
+      settings: { auto_sync_enabled: true }
+    });
+  }
+
+  if (!workableExists) {
+    settingsToInsert.push({
+      integration_type: 'workable',
+      is_enabled: true,
+      sync_frequency_hours: 2,
+      settings: { auto_sync_enabled: true, sync_jobs: true, sync_candidates: true }
+    });
+  }
+
+  if (settingsToInsert.length > 0) {
+    await supabase
+      .from('integration_settings')
+      .insert(settingsToInsert);
+  }
+}
+
 async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jobId: string) {
+  console.log(`Syncing candidate: ${workableCandidate.name} (${workableCandidate.email})`);
+  
   const candidateData = {
-    name: workableCandidate.name,
-    email: workableCandidate.email,
+    name: workableCandidate.name || 'Unknown',
+    email: workableCandidate.email || `unknown_${workableCandidate.id}@workable.com`,
     phone: workableCandidate.phone,
     workable_candidate_id: workableCandidate.id,
     source_platform: 'workable',
+    location: workableCandidate.address,
+    current_position: workableCandidate.headline,
+    company: workableCandidate.company,
+    skills: workableCandidate.skills ? [workableCandidate.skills] : [],
     last_synced_at: new Date().toISOString(),
     profile_completeness_score: calculateCompletenessScore(workableCandidate)
   };
 
-  // Check if candidate already exists
+  // Check if candidate already exists by email
   const { data: existingCandidate } = await supabase
     .from('candidates')
     .select('*')
     .eq('email', candidateData.email)
-    .single();
+    .maybeSingle();
 
   let candidateId;
 
@@ -283,6 +363,10 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
       .update({
         workable_candidate_id: candidateData.workable_candidate_id,
         source_platform: existingCandidate.source_platform === 'manual' ? 'workable' : existingCandidate.source_platform,
+        location: candidateData.location || existingCandidate.location,
+        current_position: candidateData.current_position || existingCandidate.current_position,
+        company: candidateData.company || existingCandidate.company,
+        skills: candidateData.skills.length > 0 ? candidateData.skills : existingCandidate.skills,
         last_synced_at: candidateData.last_synced_at,
         profile_completeness_score: candidateData.profile_completeness_score
       })
@@ -290,8 +374,12 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating candidate:', error);
+      throw error;
+    }
     candidateId = existingCandidate.id;
+    console.log(`Updated existing candidate: ${candidateData.name}`);
   } else {
     // Create new candidate
     const { data, error } = await supabase
@@ -300,8 +388,12 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating candidate:', error);
+      throw error;
+    }
     candidateId = data.id;
+    console.log(`Created new candidate: ${candidateData.name}`);
   }
 
   // Create or update candidate response record
@@ -322,24 +414,15 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
     console.error('Failed to create candidate response:', responseError);
   }
 
-  // Log the sync operation
-  await supabase
-    .from('integration_sync_logs')
-    .insert([{
-      integration_type: 'workable',
-      sync_type: 'candidate_import',
-      candidate_id: candidateId,
-      status: 'success',
-      synced_data: workableCandidate
-    }]);
+  return candidateId;
 }
 
 function calculateCompletenessScore(candidate: any): number {
   let score = 0;
-  const fields = ['name', 'email', 'phone'];
+  const fields = ['name', 'email', 'phone', 'address', 'headline', 'company'];
   
   fields.forEach(field => {
-    if (candidate[field]) score += 33;
+    if (candidate[field]) score += Math.floor(100 / fields.length);
   });
   
   return Math.min(score, 100);

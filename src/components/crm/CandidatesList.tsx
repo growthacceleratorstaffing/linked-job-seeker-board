@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +10,7 @@ import { CandidateProfileCard } from "./CandidateProfileCard";
 import { IntegrationSyncPanel } from "./IntegrationSyncPanel";
 import { Search, Mail, Phone, ExternalLink, Users } from "lucide-react";
 import { toast } from "sonner";
+import { WorkableSyncButton } from "./WorkableSyncButton";
 
 type Candidate = {
   id: string;
@@ -63,7 +63,7 @@ export const CandidatesList = () => {
         throw error;
       }
       
-      console.log('Fetched candidates:', data?.length);
+      console.log('Fetched candidates:', data?.length, 'candidates');
       return data as Candidate[];
     }
   });
@@ -171,7 +171,14 @@ export const CandidatesList = () => {
 
   if (error) {
     console.error('Candidates query error:', error);
-    return <div className="flex justify-center p-4 text-red-500">Error loading candidates: {(error as any).message}</div>;
+    return (
+      <div className="flex flex-col justify-center items-center p-8 space-y-4">
+        <div className="text-red-500">Error loading candidates: {(error as any).message}</div>
+        <Button onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -199,6 +206,7 @@ export const CandidatesList = () => {
           </select>
         </div>
         <div className="flex gap-2">
+          <WorkableSyncButton />
           <Button onClick={() => setShowAddDialog(true)}>
             <Users className="h-4 w-4 mr-2" />
             Add Candidate
@@ -210,6 +218,13 @@ export const CandidatesList = () => {
 
       {candidates && candidates.length > 0 ? (
         <div className="rounded-md border bg-card">
+          <div className="p-4 border-b">
+            <p className="text-sm text-muted-foreground">
+              Showing {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+              {searchTerm && ` matching "${searchTerm}"`}
+              {sourceFilter !== "all" && ` from ${sourceFilter}`}
+            </p>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -317,12 +332,15 @@ export const CandidatesList = () => {
           <p className="text-muted-foreground mb-4">
             {searchTerm || sourceFilter !== "all" 
               ? "Try adjusting your search or filters" 
-              : "Get started by adding your first candidate or enabling automatic sync"}
+              : "Get started by syncing candidates from Workable or adding them manually"}
           </p>
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Users className="h-4 w-4 mr-2" />
-            Add Candidate
-          </Button>
+          <div className="flex gap-2 justify-center">
+            <WorkableSyncButton />
+            <Button onClick={() => setShowAddDialog(true)}>
+              <Users className="h-4 w-4 mr-2" />
+              Add Candidate
+            </Button>
+          </div>
         </div>
       )}
 

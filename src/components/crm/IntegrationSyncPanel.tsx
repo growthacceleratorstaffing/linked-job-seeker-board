@@ -43,37 +43,53 @@ export const IntegrationSyncPanel = () => {
   const { data: integrationSettings } = useQuery({
     queryKey: ["integration-settings"],
     queryFn: async () => {
+      console.log('Fetching integration settings...');
+      
       // First try to get existing settings
       const { data: existingSettings, error } = await supabase
         .from("integration_settings")
         .select("*");
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching integration settings:', error);
+        throw error;
+      }
 
-      // Create default settings for LinkedIn and Workable if they don't exist
+      console.log('Existing integration settings:', existingSettings);
+
+      // Check what's missing and create defaults
       const linkedinSettings = existingSettings?.find(s => s.integration_type === 'linkedin');
       const workableSettings = existingSettings?.find(s => s.integration_type === 'workable');
 
+      const settingsToCreate = [];
+
       if (!linkedinSettings) {
-        await supabase
-          .from("integration_settings")
-          .insert({
-            integration_type: 'linkedin',
-            is_enabled: true,
-            sync_frequency_hours: 24,
-            settings: { auto_sync_enabled: true }
-          });
+        settingsToCreate.push({
+          integration_type: 'linkedin',
+          is_enabled: true,
+          sync_frequency_hours: 24,
+          settings: { auto_sync_enabled: true }
+        });
       }
 
       if (!workableSettings) {
-        await supabase
+        settingsToCreate.push({
+          integration_type: 'workable',
+          is_enabled: true,
+          sync_frequency_hours: 2,
+          settings: { auto_sync_enabled: true, sync_jobs: true, sync_candidates: true }
+        });
+      }
+
+      if (settingsToCreate.length > 0) {
+        console.log('Creating missing integration settings:', settingsToCreate);
+        const { error: insertError } = await supabase
           .from("integration_settings")
-          .insert({
-            integration_type: 'workable',
-            is_enabled: true,
-            sync_frequency_hours: 2,
-            settings: { auto_sync_enabled: true, sync_jobs: true, sync_candidates: true }
-          });
+          .insert(settingsToCreate);
+
+        if (insertError) {
+          console.error('Error creating integration settings:', insertError);
+        }
       }
 
       // Fetch updated settings
@@ -81,7 +97,12 @@ export const IntegrationSyncPanel = () => {
         .from("integration_settings")
         .select("*");
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error fetching updated settings:', updateError);
+        throw updateError;
+      }
+      
+      console.log('Final integration settings:', updatedSettings);
       return updatedSettings;
     }
   });
@@ -150,11 +171,11 @@ export const IntegrationSyncPanel = () => {
               syncStats.linkedin.success,
               syncStats.linkedin.failed,
               syncStats.linkedin.pending,
-              linkedinSetting?.is_enabled || false
+              linkedinSetting?.is_enabled ?? true
             )}
           </CardTitle>
           <CardDescription>
-            {linkedinSetting?.is_enabled 
+            {linkedinSetting?.is_enabled ?? true
               ? 'LinkedIn integration is enabled' 
               : 'LinkedIn integration is disabled'
             }
@@ -185,11 +206,11 @@ export const IntegrationSyncPanel = () => {
               syncStats.workable.success,
               syncStats.workable.failed,
               syncStats.workable.pending,
-              workableSetting?.is_enabled || false
+              workableSetting?.is_enabled ?? true
             )}
           </CardTitle>
           <CardDescription>
-            {workableSetting?.is_enabled 
+            {workableSetting?.is_enabled ?? true
               ? 'Workable auto-sync is enabled' 
               : 'Workable integration is disabled'
             }
