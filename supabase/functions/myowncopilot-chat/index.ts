@@ -64,7 +64,7 @@ serve(async (req) => {
 5. Offer advice on candidate evaluation
 6. Help with recruitment strategy
 
-Be conversational, helpful, and professional. When creating job vacancies, use a clear structure with sections like job title, about the role, key responsibilities, requirements, and what the company offers. Keep responses concise but informative.`
+Be conversational, helpful, and professional. Keep responses concise and to the point - aim for 2-3 short paragraphs maximum. When creating job vacancies, use a clear structure with sections like job title, about the role, key responsibilities, requirements, and what the company offers. Focus on being helpful rather than overly detailed.`
       }
     ];
 
@@ -86,7 +86,7 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
     const requestBody = {
       messages: messages,
       temperature: 0.7,
-      max_tokens: 1500,
+      max_tokens: 800,
       top_p: 0.95,
       frequency_penalty: 0,
       presence_penalty: 0,

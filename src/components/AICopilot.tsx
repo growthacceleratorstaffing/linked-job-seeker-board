@@ -1,10 +1,10 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, User, Send, Sparkles, X, MessageSquare, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,15 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const { toast } = useToast();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // Listen for quick questions
   useEffect(() => {
@@ -206,72 +215,75 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-0">
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`flex max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start space-x-2`}>
-                  <Avatar className="w-7 h-7 mt-1">
-                    <AvatarFallback className={`${message.role === 'user' ? 'bg-gradient-to-r from-secondary-pink to-primary-blue' : 'bg-gradient-to-r from-purple-500 to-purple-600'} text-white text-xs`}>
-                      {message.role === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div
-                      className={`rounded-lg px-3 py-2 max-w-full text-sm ${
-                        message.role === 'user'
-                          ? 'bg-gradient-to-r from-secondary-pink to-primary-blue text-white rounded-br-sm'
-                          : 'bg-gradient-to-r from-slate-700 to-slate-800 text-slate-100 rounded-bl-sm border border-slate-600'
-                      }`}
-                    >
-                      <div className="whitespace-pre-wrap leading-relaxed">
-                        {message.content}
+          {/* Messages Area with ScrollArea */}
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`flex max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start space-x-2`}>
+                    <Avatar className="w-7 h-7 mt-1">
+                      <AvatarFallback className={`${message.role === 'user' ? 'bg-gradient-to-r from-secondary-pink to-primary-blue' : 'bg-gradient-to-r from-purple-500 to-purple-600'} text-white text-xs`}>
+                        {message.role === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div
+                        className={`rounded-lg px-3 py-2 max-w-full text-sm ${
+                          message.role === 'user'
+                            ? 'bg-gradient-to-r from-secondary-pink to-primary-blue text-white rounded-br-sm'
+                            : 'bg-gradient-to-r from-slate-700 to-slate-800 text-slate-100 rounded-bl-sm border border-slate-600'
+                        }`}
+                      >
+                        <div className="whitespace-pre-wrap leading-relaxed">
+                          {message.content}
+                        </div>
+                        
+                        {message.role === 'assistant' && (message.content.includes('Job Title') || message.content.includes('Position:') || message.content.includes('# ')) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUseVacancy(message.content)}
+                            className="mt-2 text-xs border-pink-400 text-pink-400 hover:bg-pink-400 hover:text-white h-6"
+                          >
+                            <Sparkles className="w-2 h-2 mr-1" />
+                            Use This
+                          </Button>
+                        )}
                       </div>
                       
-                      {message.role === 'assistant' && (message.content.includes('Job Title') || message.content.includes('Position:') || message.content.includes('# ')) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUseVacancy(message.content)}
-                          className="mt-2 text-xs border-pink-400 text-pink-400 hover:bg-pink-400 hover:text-white h-6"
-                        >
-                          <Sparkles className="w-2 h-2 mr-1" />
-                          Use This
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <span className="text-xs text-slate-400 mt-1 px-1">
-                      {formatTime(message.timestamp)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="flex items-start space-x-2">
-                  <Avatar className="w-7 h-7 mt-1">
-                    <AvatarFallback className="bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs">
-                      <Bot className="w-3 h-3" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-lg rounded-bl-sm px-3 py-2 border border-slate-600">
-                    <div className="flex space-x-1">
-                      <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce"></div>
-                      <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <span className="text-xs text-slate-400 mt-1 px-1">
+                        {formatTime(message.timestamp)}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              ))}
+              
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="flex items-start space-x-2">
+                    <Avatar className="w-7 h-7 mt-1">
+                      <AvatarFallback className="bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs">
+                        <Bot className="w-3 h-3" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-lg rounded-bl-sm px-3 py-2 border border-slate-600">
+                      <div className="flex space-x-1">
+                        <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
 
           {/* Input Area */}
           <div className="border-t border-slate-600 p-3 bg-gradient-to-r from-slate-800/50 to-slate-700/50">
