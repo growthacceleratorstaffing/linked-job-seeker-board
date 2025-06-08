@@ -28,10 +28,15 @@ serve(async (req) => {
 
     const azureApiKey = Deno.env.get('AZURE_OPENAI_API_KEY');
     const azureEndpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT');
+    const deploymentName = Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME') || 'gpt-4o';
 
     if (!azureApiKey || !azureEndpoint) {
+      console.error('Missing Azure OpenAI configuration:', { 
+        hasApiKey: !!azureApiKey, 
+        hasEndpoint: !!azureEndpoint 
+      });
       return new Response(
-        JSON.stringify({ error: 'Azure OpenAI configuration missing' }),
+        JSON.stringify({ error: 'Azure OpenAI configuration missing. Please check AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT.' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -39,7 +44,12 @@ serve(async (req) => {
       );
     }
 
+    // Construct the proper Azure OpenAI endpoint URL
+    const baseUrl = azureEndpoint.endsWith('/') ? azureEndpoint.slice(0, -1) : azureEndpoint;
+    const apiUrl = `${baseUrl}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-02-15-preview`;
+
     console.log('Generating vacancy with Azure OpenAI for prompt:', prompt.substring(0, 100) + '...');
+    console.log('Using endpoint:', apiUrl);
 
     const systemPrompt = `You are an expert HR professional and job description writer. Create a compelling, professional job vacancy based on the user's requirements. 
 
@@ -53,7 +63,7 @@ Structure the vacancy with these sections:
 
 Make it engaging, professional, and tailored to the specific role described. Use markdown formatting for headers and lists.`;
 
-    const response = await fetch(azureEndpoint, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,8 +89,16 @@ Make it engaging, professional, and tailored to the specific role described. Use
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Azure OpenAI API error:', response.status, errorText);
+      
+      let errorMessage = `Azure OpenAI API error: ${response.status}`;
+      if (response.status === 404) {
+        errorMessage += ' - Check your endpoint URL and deployment name. The resource was not found.';
+      } else if (response.status === 401) {
+        errorMessage += ' - Invalid API key or unauthorized access.';
+      }
+      
       return new Response(
-        JSON.stringify({ error: `Azure OpenAI API error: ${response.status}` }),
+        JSON.stringify({ error: errorMessage }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -115,7 +133,7 @@ Make it engaging, professional, and tailored to the specific role described. Use
   } catch (error) {
     console.error('Error in generate-vacancy function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error: ' + error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
