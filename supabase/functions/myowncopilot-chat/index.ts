@@ -48,7 +48,13 @@ serve(async (req) => {
       content: message
     });
 
-    const response = await fetch(`https://${copilotUrl}/api/chat`, {
+    // Ensure URL has proper protocol
+    const baseUrl = copilotUrl.startsWith('http') ? copilotUrl : `https://${copilotUrl}`;
+    const apiUrl = `${baseUrl}/api/chat`;
+
+    console.log('Using MyOwnCopilot URL:', apiUrl);
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -77,7 +83,7 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
       const errorText = await response.text();
       console.error('MyOwnCopilot API error:', response.status, errorText);
       return new Response(
-        JSON.stringify({ error: `MyOwnCopilot API error: ${response.status}` }),
+        JSON.stringify({ error: `MyOwnCopilot API error: ${response.status} - ${errorText}` }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
