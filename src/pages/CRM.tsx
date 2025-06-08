@@ -12,7 +12,7 @@ const CRM = () => {
       <div className="container mx-auto py-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-primary-foreground">CRM Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-secondary-pink">CRM Dashboard</h1>
             <p className="text-primary-foreground/80">
               Manage candidates and track their responses to job advertisements
             </p>
