@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CandidatesList } from "@/components/crm/CandidatesList";
 import { ResponsesList } from "@/components/crm/ResponsesList";
 import { CRMStats } from "@/components/crm/CRMStats";
+import { WorkableSyncButton } from "@/components/crm/WorkableSyncButton";
+import { IntegrationSyncPanel } from "@/components/crm/IntegrationSyncPanel";
 
 const CRM = () => {
   return (
@@ -17,9 +19,12 @@ const CRM = () => {
               Manage candidates and track their responses to job advertisements
             </p>
           </div>
+          <WorkableSyncButton />
         </div>
 
         <CRMStats />
+
+        <IntegrationSyncPanel />
 
         <Tabs defaultValue="candidates" className="space-y-4">
           <TabsList className="bg-white/10 border-white/20">
