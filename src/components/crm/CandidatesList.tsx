@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddCandidateDialog } from "./AddCandidateDialog";
-import { Search, Mail, Phone } from "lucide-react";
+import { CandidateProfileCard } from "./CandidateProfileCard";
+import { IntegrationSyncPanel } from "./IntegrationSyncPanel";
+import { Search, Mail, Phone, ExternalLink, RefreshCw, Users, Download } from "lucide-react";
 import { toast } from "sonner";
 
 type Candidate = {
@@ -15,16 +17,30 @@ type Candidate = {
   name: string;
   email: string;
   phone: string | null;
+  linkedin_profile_url: string | null;
+  linkedin_id: string | null;
+  workable_candidate_id: string | null;
+  profile_picture_url: string | null;
+  location: string | null;
+  current_position: string | null;
+  company: string | null;
+  skills: any[] | null;
+  experience_years: number | null;
+  source_platform: string | null;
+  last_synced_at: string | null;
+  profile_completeness_score: number | null;
   created_at: string;
 };
 
 export const CandidatesList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const queryClient = useQueryClient();
 
   const { data: candidates, isLoading } = useQuery({
-    queryKey: ["candidates", searchTerm],
+    queryKey: ["candidates", searchTerm, sourceFilter],
     queryFn: async () => {
       let query = supabase
         .from("candidates")
@@ -32,7 +48,11 @@ export const CandidatesList = () => {
         .order("created_at", { ascending: false });
 
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,current_position.ilike.%${searchTerm}%`);
+      }
+
+      if (sourceFilter !== "all") {
+        query = query.eq("source_platform", sourceFilter);
       }
 
       const { data, error } = await query;
@@ -59,6 +79,60 @@ export const CandidatesList = () => {
     }
   });
 
+  const syncWorkableCandidatesMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('workable-integration', {
+        body: { action: 'sync_candidates' }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Synced ${data.syncedCandidates} candidates from Workable`);
+      queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to sync candidates: ${error.message}`);
+    }
+  });
+
+  const enrichCandidateMutation = useMutation({
+    mutationFn: async (candidateId: string) => {
+      const { data, error } = await supabase.functions.invoke('linkedin-integration', {
+        body: { 
+          action: 'enrich_candidate',
+          candidateData: { candidateId }
+        }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Candidate profile enriched");
+      queryClient.invalidateQueries({ queryKey: ["candidates"] });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to enrich candidate: ${error.message}`);
+    }
+  });
+
+  const getSourceBadgeColor = (source: string | null) => {
+    switch (source) {
+      case 'linkedin': return 'bg-blue-100 text-blue-800';
+      case 'workable': return 'bg-green-100 text-green-800';
+      case 'manual': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getCompletenessColor = (score: number | null) => {
+    if (!score) return 'text-gray-400';
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
   if (isLoading) {
     return <div className="flex justify-center p-4">Loading candidates...</div>;
   }
@@ -66,34 +140,87 @@ export const CandidatesList = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search candidates..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex gap-4 items-center">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search candidates..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm"
+          >
+            <option value="all">All Sources</option>
+            <option value="manual">Manual</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="workable">Workable</option>
+          </select>
         </div>
-        <Button onClick={() => setShowAddDialog(true)}>
-          Add Candidate
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => syncWorkableCandidatesMutation.mutate()}
+            disabled={syncWorkableCandidatesMutation.isPending}
+          >
+            {syncWorkableCandidatesMutation.isPending ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Sync Workable
+          </Button>
+          <Button onClick={() => setShowAddDialog(true)}>
+            <Users className="h-4 w-4 mr-2" />
+            Add Candidate
+          </Button>
+        </div>
       </div>
+
+      <IntegrationSyncPanel />
 
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
+              <TableHead>Candidate</TableHead>
               <TableHead>Contact</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Profile Score</TableHead>
               <TableHead>Responses</TableHead>
-              <TableHead>Added</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {candidates?.map((candidate) => (
               <TableRow key={candidate.id}>
-                <TableCell className="font-medium">{candidate.name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    {candidate.profile_picture_url && (
+                      <img
+                        src={candidate.profile_picture_url}
+                        alt={candidate.name}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    )}
+                    <div>
+                      <div className="font-medium">{candidate.name}</div>
+                      {candidate.current_position && (
+                        <div className="text-sm text-muted-foreground">
+                          {candidate.current_position}
+                          {candidate.company && ` at ${candidate.company}`}
+                        </div>
+                      )}
+                      {candidate.location && (
+                        <div className="text-xs text-muted-foreground">{candidate.location}</div>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-sm">
@@ -109,12 +236,48 @@ export const CandidatesList = () => {
                   </div>
                 </TableCell>
                 <TableCell>
+                  <Badge 
+                    variant="secondary" 
+                    className={getSourceBadgeColor(candidate.source_platform)}
+                  >
+                    {candidate.source_platform || 'manual'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
+                    {candidate.profile_completeness_score || 0}%
+                  </div>
+                </TableCell>
+                <TableCell>
                   <Badge variant="secondary">
                     {responseCounts?.[candidate.id] || 0} responses
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {new Date(candidate.created_at).toLocaleDateString()}
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCandidate(candidate)}
+                    >
+                      View
+                    </Button>
+                    {candidate.linkedin_profile_url && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                      >
+                        <a
+                          href={candidate.linkedin_profile_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -130,6 +293,16 @@ export const CandidatesList = () => {
           queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
         }}
       />
+
+      {selectedCandidate && (
+        <CandidateProfileCard
+          candidate={selectedCandidate}
+          open={!!selectedCandidate}
+          onOpenChange={(open) => !open && setSelectedCandidate(null)}
+          onEnrich={() => enrichCandidateMutation.mutate(selectedCandidate.id)}
+          isEnriching={enrichCandidateMutation.isPending}
+        />
+      )}
     </div>
   );
 };

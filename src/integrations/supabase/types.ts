@@ -65,28 +65,67 @@ export type Database = {
       }
       candidates: {
         Row: {
+          company: string | null
           created_at: string
+          current_position: string | null
+          education: Json | null
           email: string
+          experience_years: number | null
           id: string
+          last_synced_at: string | null
+          linkedin_id: string | null
+          linkedin_profile_url: string | null
+          location: string | null
           name: string
           phone: string | null
+          profile_completeness_score: number | null
+          profile_picture_url: string | null
+          skills: Json | null
+          source_platform: string | null
           updated_at: string
+          workable_candidate_id: string | null
         }
         Insert: {
+          company?: string | null
           created_at?: string
+          current_position?: string | null
+          education?: Json | null
           email: string
+          experience_years?: number | null
           id?: string
+          last_synced_at?: string | null
+          linkedin_id?: string | null
+          linkedin_profile_url?: string | null
+          location?: string | null
           name: string
           phone?: string | null
+          profile_completeness_score?: number | null
+          profile_picture_url?: string | null
+          skills?: Json | null
+          source_platform?: string | null
           updated_at?: string
+          workable_candidate_id?: string | null
         }
         Update: {
+          company?: string | null
           created_at?: string
+          current_position?: string | null
+          education?: Json | null
           email?: string
+          experience_years?: number | null
           id?: string
+          last_synced_at?: string | null
+          linkedin_id?: string | null
+          linkedin_profile_url?: string | null
+          location?: string | null
           name?: string
           phone?: string | null
+          profile_completeness_score?: number | null
+          profile_picture_url?: string | null
+          skills?: Json | null
+          source_platform?: string | null
           updated_at?: string
+          workable_candidate_id?: string | null
         }
         Relationships: []
       }
@@ -140,6 +179,89 @@ export type Database = {
           url?: string
         }
         Relationships: []
+      }
+      integration_settings: {
+        Row: {
+          api_rate_limit_remaining: number | null
+          api_rate_limit_reset_at: string | null
+          created_at: string
+          id: string
+          integration_type: string
+          is_enabled: boolean | null
+          last_sync_at: string | null
+          settings: Json | null
+          sync_frequency_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          api_rate_limit_remaining?: number | null
+          api_rate_limit_reset_at?: string | null
+          created_at?: string
+          id?: string
+          integration_type: string
+          is_enabled?: boolean | null
+          last_sync_at?: string | null
+          settings?: Json | null
+          sync_frequency_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          api_rate_limit_remaining?: number | null
+          api_rate_limit_reset_at?: string | null
+          created_at?: string
+          id?: string
+          integration_type?: string
+          is_enabled?: boolean | null
+          last_sync_at?: string | null
+          settings?: Json | null
+          sync_frequency_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      integration_sync_logs: {
+        Row: {
+          candidate_id: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          integration_type: string
+          status: string
+          sync_type: string
+          synced_data: Json | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          integration_type: string
+          status?: string
+          sync_type: string
+          synced_data?: Json | null
+        }
+        Update: {
+          candidate_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          integration_type?: string
+          status?: string
+          sync_type?: string
+          synced_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_sync_logs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {

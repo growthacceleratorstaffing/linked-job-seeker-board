@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, Upload, RefreshCw, ExternalLink, CheckCircle } from "lucide-react";
+import { Briefcase, Upload, RefreshCw, ExternalLink, CheckCircle, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -27,6 +27,7 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
   const [isLoading, setIsLoading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingCandidates, setIsSyncingCandidates] = useState(false);
   const { toast } = useToast();
 
   const syncJobs = async () => {
@@ -57,6 +58,32 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
     }
   };
 
+  const syncCandidates = async () => {
+    setIsSyncingCandidates(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('workable-integration', {
+        body: { action: 'sync_candidates' }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Candidates synced successfully!",
+        description: `Synced ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable.`,
+      });
+
+    } catch (error) {
+      console.error('Error syncing candidates:', error);
+      toast({
+        title: "Candidate sync failed",
+        description: error instanceof Error ? error.message : "Failed to sync candidates from Workable.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingCandidates(false);
+    }
+  };
+
   const publishToWorkable = async () => {
     if (!generatedVacancy) {
       toast({
@@ -69,7 +96,6 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
 
     setIsPublishing(true);
     try {
-      // Parse the generated vacancy to extract job details
       const jobData = parseVacancyText(generatedVacancy);
       
       const { data, error } = await supabase.functions.invoke('workable-integration', {
@@ -86,7 +112,6 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
         description: "Your vacancy has been successfully created in Workable.",
       });
 
-      // Refresh the jobs list
       await syncJobs();
 
     } catch (error) {
@@ -106,7 +131,6 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
     let title = 'Untitled Position';
     let description = text;
     
-    // Try to extract title from common patterns
     const titlePatterns = [
       /^#\s*(.+)$/m,
       /^Job Title:\s*(.+)$/m,
@@ -159,11 +183,29 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Publish to Workable
+                    Publish Job
                   </>
                 )}
               </Button>
             )}
+            <Button
+              onClick={syncCandidates}
+              disabled={isSyncingCandidates}
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isSyncingCandidates ? (
+                <>
+                  <Users className="w-4 h-4 mr-2 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <Users className="w-4 h-4 mr-2" />
+                  Sync Candidates
+                </>
+              )}
+            </Button>
             <Button
               onClick={syncJobs}
               disabled={isSyncing}
