@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CopilotTrigger } from './CopilotTrigger';
 import { JobsOverview } from './JobsOverview';
+import { EmploymentDetailsForm, EmploymentDetails } from './EmploymentDetailsForm';
 
 export const VacancyGenerator = () => {
   const [prompt, setPrompt] = useState('');
@@ -16,6 +18,14 @@ export const VacancyGenerator = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshJobsOverview, setRefreshJobsOverview] = useState(0);
+  const [employmentDetails, setEmploymentDetails] = useState<EmploymentDetails>({
+    jobTitle: '',
+    employmentType: 'full_time',
+    department: '',
+    jobCode: '',
+    officeLocation: '',
+    workplace: 'on_site',
+  });
   const { toast } = useToast();
 
   const generateVacancy = async () => {
@@ -66,19 +76,39 @@ export const VacancyGenerator = () => {
   };
 
   const publishToWorkable = async () => {
-    if (!generatedVacancy) {
+    // Validate required fields
+    if (!employmentDetails.jobTitle.trim()) {
       toast({
-        title: "No vacancy to publish",
-        description: "Please generate a vacancy first before publishing.",
+        title: "Job title required",
+        description: "Please enter a job title before publishing.",
         variant: "destructive",
       });
       return;
     }
 
+    if (!employmentDetails.officeLocation.trim()) {
+      toast({
+        title: "Office location required",
+        description: "Please enter an office location before publishing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const description = generatedVacancy.trim() || 'Job description to be added.';
+
     setIsPublishing(true);
     try {
-      // Parse the generated vacancy to extract job details
-      const jobData = parseVacancyText(generatedVacancy);
+      const jobData = {
+        title: employmentDetails.jobTitle,
+        description: description,
+        employment_type: employmentDetails.employmentType,
+        department: employmentDetails.department || 'General',
+        remote: employmentDetails.workplace === 'remote',
+        location: employmentDetails.officeLocation,
+        job_code: employmentDetails.jobCode,
+        workplace: employmentDetails.workplace,
+      };
       
       const { data, error } = await supabase.functions.invoke('workable-integration', {
         body: { 
@@ -107,36 +137,6 @@ export const VacancyGenerator = () => {
     } finally {
       setIsPublishing(false);
     }
-  };
-
-  const parseVacancyText = (text: string) => {
-    const lines = text.split('\n');
-    let title = 'Untitled Position';
-    let description = text;
-    
-    // Try to extract title from common patterns
-    const titlePatterns = [
-      /^#\s*(.+)$/m,
-      /^Job Title:\s*(.+)$/m,
-      /^Position:\s*(.+)$/m,
-      /^Role:\s*(.+)$/m,
-    ];
-    
-    for (const pattern of titlePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        title = match[1].trim();
-        break;
-      }
-    }
-    
-    return {
-      title,
-      description,
-      employment_type: 'full_time',
-      remote: text.toLowerCase().includes('remote'),
-      department: 'General',
-    };
   };
 
   const copyToClipboard = () => {
@@ -217,78 +217,93 @@ export const VacancyGenerator = () => {
         </CardContent>
       </Card>
 
-      {generatedVacancy && (
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between text-white">
-              <span>AI-Generated Vacancy</span>
-              <div className="flex gap-2">
-                <Button
-                  onClick={publishToWorkable}
-                  disabled={isPublishing}
-                  size="sm"
-                  className="bg-primary-blue hover:bg-primary-blue/80 text-white"
-                >
-                  {isPublishing ? (
-                    <>
-                      <Upload className="w-4 h-4 mr-2 animate-spin" />
-                      Publishing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Publish Job
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={toggleEditMode}
-                  size="sm"
-                  variant="outline"
-                  className="border-slate-400 text-slate-400 hover:bg-slate-400 hover:text-white"
-                >
-                  <Edit className="w-4 h-4 mr-1" />
-                  {isEditing ? 'View' : 'Edit'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyToClipboard}
-                  className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
-                >
-                  <Copy className="w-4 h-4 mr-1" />
-                  Copy
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadAsText}
-                  className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  Download
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isEditing ? (
+      {/* Employment Details Form */}
+      <EmploymentDetailsForm 
+        details={employmentDetails} 
+        onChange={setEmploymentDetails} 
+      />
+
+      {/* Manual Text Input and Publish Section */}
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-white">
+            <span>Job Description</span>
+            <div className="flex gap-2">
+              <Button
+                onClick={publishToWorkable}
+                disabled={isPublishing}
+                size="sm"
+                className="bg-primary-blue hover:bg-primary-blue/80 text-white"
+              >
+                {isPublishing ? (
+                  <>
+                    <Upload className="w-4 h-4 mr-2 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Publish Job
+                  </>
+                )}
+              </Button>
+              {generatedVacancy && (
+                <>
+                  <Button
+                    onClick={toggleEditMode}
+                    size="sm"
+                    variant="outline"
+                    className="border-slate-400 text-slate-400 hover:bg-slate-400 hover:text-white"
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    {isEditing ? 'View' : 'Edit'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadAsText}
+                    className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Download
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isEditing || !generatedVacancy ? (
+            <div>
+              <Label htmlFor="manual-description" className="text-slate-200 text-sm font-medium mb-2 block">
+                Write your job description or use AI to generate one above
+              </Label>
               <Textarea
+                id="manual-description"
                 value={generatedVacancy}
                 onChange={(e) => setGeneratedVacancy(e.target.value)}
                 className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[400px]"
-                placeholder="Edit your vacancy text here..."
+                placeholder="Enter your job description here, or use the AI generator above to create one..."
               />
-            ) : (
-              <div className="bg-slate-900 border border-slate-600 rounded-lg p-6">
-                <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
-                  {generatedVacancy}
-                </div>
+            </div>
+          ) : (
+            <div className="bg-slate-900 border border-slate-600 rounded-lg p-6">
+              <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
+                {generatedVacancy}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* AI Copilot Trigger */}
       <CopilotTrigger onVacancyGenerated={handleCopilotVacancy} />
