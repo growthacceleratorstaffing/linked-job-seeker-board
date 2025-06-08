@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bot, User, Send, Sparkles, X, MessageSquare } from "lucide-react";
+import { Bot, User, Send, Sparkles, X, MessageSquare, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,15 +23,15 @@ interface AICopilotProps {
   initialMessage?: string;
 }
 
+const initialGreeting: Message = {
+  id: '1',
+  role: 'assistant',
+  content: "Hello! I'm your AI recruitment assistant. I can help you create job vacancies, improve job descriptions, develop interview strategies, and provide hiring insights. What would you like to work on today?",
+  timestamp: new Date()
+};
+
 export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancyGenerated, initialMessage }) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "Hello! I'm your AI recruitment assistant. I can help you create job vacancies, improve job descriptions, develop interview strategies, and provide hiring insights. What would you like to work on today?",
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([initialGreeting]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const { toast } = useToast();
@@ -72,6 +72,19 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
       }
     }
   }, [isOpen, inputMessage]);
+
+  const handleNewChat = () => {
+    setMessages([{
+      ...initialGreeting,
+      id: Date.now().toString(),
+      timestamp: new Date()
+    }]);
+    setInputMessage('');
+    toast({
+      title: "New chat started! 🎉",
+      description: "Your conversation has been reset.",
+    });
+  };
 
   const handleSendMessage = async (messageText?: string) => {
     const message = messageText || inputMessage;
@@ -171,14 +184,25 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
               </div>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-full w-8 h-8 p-0"
-          >
-            <X className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleNewChat}
+              className="text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-full h-8 px-3"
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              New chat
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-full w-8 h-8 p-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-0">
