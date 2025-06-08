@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10";
@@ -173,10 +172,24 @@ serve(async (req) => {
       case 'publish_job': {
         console.log('Publishing job to Workable:', jobData.title);
         
+        // Clean and validate job title - remove markdown formatting
+        const cleanTitle = jobData.title
+          .replace(/^#\s*/, '')
+          .replace(/Job Title:\s*/i, '')
+          .trim();
+        
+        // Convert markdown description to plain text for better compatibility
+        const cleanDescription = jobData.description
+          .replace(/#{1,6}\s/g, '') // Remove markdown headers
+          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
+          .replace(/\*(.*?)\*/g, '$1') // Remove italic formatting
+          .replace(/- /g, '• ') // Convert dashes to bullets
+          .trim();
+
         const workableJob = {
-          title: jobData.title,
-          full_title: jobData.title,
-          description: jobData.description,
+          title: cleanTitle,
+          full_title: cleanTitle,
+          description: cleanDescription,
           requirements: jobData.requirements || '',
           benefits: jobData.benefits || '',
           employment_type: jobData.employment_type || 'full_time',
@@ -186,7 +199,10 @@ serve(async (req) => {
           function: jobData.function || 'Engineering',
           remote: jobData.remote || false,
           telecommuting: jobData.remote || false,
+          state: 'draft', // Start as draft to avoid immediate publication
         };
+
+        console.log('Prepared job data:', JSON.stringify(workableJob, null, 2));
 
         const response = await fetch(`${baseUrl}/jobs`, {
           method: 'POST',
@@ -194,13 +210,30 @@ serve(async (req) => {
           body: JSON.stringify(workableJob),
         });
 
+        console.log('Workable API response status:', response.status);
+        const responseText = await response.text();
+        console.log('Workable API response body:', responseText);
+
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Workable API error:', response.status, errorText);
-          throw new Error(`Failed to publish job: ${response.status}`);
+          let errorMessage = `HTTP ${response.status}`;
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || errorData.error || errorMessage;
+            console.error('Workable API error details:', errorData);
+          } catch (e) {
+            console.error('Could not parse error response:', responseText);
+          }
+          
+          throw new Error(`Failed to publish job: ${errorMessage}`);
         }
 
-        const publishedJob = await response.json();
+        let publishedJob;
+        try {
+          publishedJob = JSON.parse(responseText);
+        } catch (e) {
+          console.error('Failed to parse successful response:', responseText);
+          throw new Error('Received invalid response from Workable API');
+        }
         
         return new Response(
           JSON.stringify({ 
