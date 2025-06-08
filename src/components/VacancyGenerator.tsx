@@ -217,16 +217,10 @@ export const VacancyGenerator = () => {
         </CardContent>
       </Card>
 
-      {/* Employment Details Form */}
-      <EmploymentDetailsForm 
-        details={employmentDetails} 
-        onChange={setEmploymentDetails} 
-      />
-
-      {/* Manual Text Input and Publish Section */}
-      <Card className="bg-slate-800 border-slate-700">
+      {/* Job Description Section - Now First */}
+      <Card className="bg-white border-gray-200">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between text-white">
+          <CardTitle className="flex items-center justify-between text-primary-blue">
             <span>Job Description</span>
             <div className="flex gap-2">
               <Button
@@ -253,7 +247,7 @@ export const VacancyGenerator = () => {
                     onClick={toggleEditMode}
                     size="sm"
                     variant="outline"
-                    className="border-slate-400 text-slate-400 hover:bg-slate-400 hover:text-white"
+                    className="border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
                   >
                     <Edit className="w-4 h-4 mr-1" />
                     {isEditing ? 'View' : 'Edit'}
@@ -284,26 +278,32 @@ export const VacancyGenerator = () => {
         <CardContent>
           {isEditing || !generatedVacancy ? (
             <div>
-              <Label htmlFor="manual-description" className="text-slate-200 text-sm font-medium mb-2 block">
+              <Label htmlFor="manual-description" className="text-primary-blue text-sm font-medium mb-2 block">
                 Write your job description or use AI to generate one above
               </Label>
               <Textarea
                 id="manual-description"
                 value={generatedVacancy}
                 onChange={(e) => setGeneratedVacancy(e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[400px]"
+                className="bg-white border-gray-300 text-primary-blue placeholder:text-gray-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[400px]"
                 placeholder="Enter your job description here, or use the AI generator above to create one..."
               />
             </div>
           ) : (
-            <div className="bg-slate-900 border border-slate-600 rounded-lg p-6">
-              <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <div className="whitespace-pre-wrap text-primary-blue text-sm leading-relaxed">
                 {generatedVacancy}
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Employment Details Form - Now Second */}
+      <EmploymentDetailsForm 
+        details={employmentDetails} 
+        onChange={setEmploymentDetails} 
+      />
 
       {/* AI Copilot Trigger */}
       <CopilotTrigger onVacancyGenerated={handleCopilotVacancy} />
