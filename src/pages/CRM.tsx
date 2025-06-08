@@ -8,12 +8,12 @@ import { CRMStats } from "@/components/crm/CRMStats";
 
 const CRM = () => {
   return (
-    <div className="min-h-screen bg-secondary-pink">
+    <div className="min-h-screen bg-primary">
       <div className="container mx-auto py-6 space-y-6">
         <div className="flex justify-between items-center">
-          <div className="bg-primary-blue px-6 py-4 rounded-lg">
-            <h1 className="text-3xl font-bold tracking-tight text-white">CRM Dashboard</h1>
-            <p className="text-white/80">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-primary-foreground">CRM Dashboard</h1>
+            <p className="text-primary-foreground/80">
               Manage candidates and track their responses to job advertisements
             </p>
           </div>
@@ -23,8 +23,8 @@ const CRM = () => {
 
         <Tabs defaultValue="candidates" className="space-y-4">
           <TabsList className="bg-white/10 border-white/20">
-            <TabsTrigger value="candidates" className="data-[state=active]:bg-white data-[state=active]:text-secondary-pink">Candidates</TabsTrigger>
-            <TabsTrigger value="responses" className="data-[state=active]:bg-white data-[state=active]:text-secondary-pink">Responses</TabsTrigger>
+            <TabsTrigger value="candidates" className="data-[state=active]:bg-white data-[state=active]:text-primary">Candidates</TabsTrigger>
+            <TabsTrigger value="responses" className="data-[state=active]:bg-white data-[state=active]:text-primary">Responses</TabsTrigger>
           </TabsList>
           
           <TabsContent value="candidates" className="space-y-4">
