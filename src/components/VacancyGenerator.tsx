@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Wand2, Copy, Download, Sparkles, Upload, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ export const VacancyGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [autoPublish, setAutoPublish] = useState(false);
   const [refreshJobsOverview, setRefreshJobsOverview] = useState(0);
   const [employmentDetails, setEmploymentDetails] = useState<EmploymentDetails>({
     jobTitle: '',
@@ -107,6 +109,7 @@ export const VacancyGenerator = () => {
         location: employmentDetails.officeLocation,
         job_code: employmentDetails.jobCode,
         workplace: employmentDetails.workplace,
+        autoPublish: autoPublish, // Include auto-publish preference
       };
       
       const { data, error } = await supabase.functions.invoke('workable-integration', {
@@ -119,8 +122,8 @@ export const VacancyGenerator = () => {
       if (error) throw error;
 
       toast({
-        title: "Job published successfully! 🎉",
-        description: "Your vacancy has been created in Workable and will appear in Jobs Overview.",
+        title: data.published ? "Job published successfully! 🎉" : "Job created as draft! 📝",
+        description: data.message || "Your vacancy has been created in Workable.",
       });
 
       // Trigger refresh of Jobs Overview
@@ -201,7 +204,7 @@ export const VacancyGenerator = () => {
         </CardContent>
       </Card>
 
-      {/* Job Description Section - Now First */}
+      {/* Job Description Section */}
       <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-white">
@@ -221,7 +224,7 @@ export const VacancyGenerator = () => {
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Publish Job
+                    {autoPublish ? 'Create & Publish' : 'Create Draft'}
                   </>
                 )}
               </Button>
@@ -272,11 +275,36 @@ export const VacancyGenerator = () => {
         </CardContent>
       </Card>
 
-      {/* Employment Details Form - Now Second */}
+      {/* Employment Details Form */}
       <EmploymentDetailsForm 
         details={employmentDetails} 
         onChange={setEmploymentDetails} 
       />
+
+      {/* Publishing Options */}
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white text-lg">Publishing Options</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="auto-publish" 
+              checked={autoPublish}
+              onCheckedChange={setAutoPublish}
+            />
+            <Label htmlFor="auto-publish" className="text-slate-200">
+              Automatically publish job after creation (otherwise create as draft)
+            </Label>
+          </div>
+          <p className="text-slate-400 text-sm mt-2">
+            {autoPublish 
+              ? "Job will be created and immediately published to accept applications" 
+              : "Job will be created as draft for you to review and publish manually"
+            }
+          </p>
+        </CardContent>
+      </Card>
 
       {/* AI Copilot Trigger */}
       <CopilotTrigger onVacancyGenerated={handleCopilotVacancy} />

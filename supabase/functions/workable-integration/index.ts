@@ -172,7 +172,7 @@ serve(async (req) => {
       }
 
       case 'publish_job': {
-        console.log('Publishing job to Workable with full employment details:', jobData.title);
+        console.log('Creating job in Workable as draft with employment details:', jobData.title);
         
         // Clean and validate job title
         const cleanTitle = jobData.title
@@ -180,7 +180,7 @@ serve(async (req) => {
           .replace(/Job Title:\s*/i, '')
           .trim();
         
-        // Convert markdown description to plain text
+        // Convert markdown description to plain text and limit length
         let cleanDescription = jobData.description
           .replace(/#{1,6}\s/g, '')
           .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -188,76 +188,106 @@ serve(async (req) => {
           .replace(/- /g, '• ')
           .trim();
 
-        // Limit description length
         if (cleanDescription.length > 5000) {
           cleanDescription = cleanDescription.substring(0, 5000) + '...';
         }
 
-        // Build comprehensive job payload according to Workable API
+        // Build comprehensive job payload with all employment details
         const jobPayload = {
           title: cleanTitle,
           description: cleanDescription,
-          state: 'draft',
+          state: 'draft', // Always create as draft first
           employment_type: jobData.employment_type || 'full_time',
           department: jobData.department || 'General',
           location: {
-            location_str: jobData.location || jobData.officeLocation,
+            location_str: jobData.location || jobData.officeLocation || 'Remote',
             country_code: 'US',
             region_code: 'US',
-            telecommuting: jobData.remote || jobData.workplace === 'remote'
+            telecommuting: jobData.workplace === 'remote' || jobData.remote
           },
           workplace: jobData.workplace || 'on_site',
           job_code: jobData.job_code || null,
+          experience: jobData.experience || null,
+          education: jobData.education || null,
           requirements: cleanDescription,
-          benefits: cleanDescription
+          benefits: jobData.benefits || null
         };
 
-        console.log('Full job payload:', JSON.stringify(jobPayload, null, 2));
+        console.log('Job payload:', JSON.stringify(jobPayload, null, 2));
 
-        // Use the correct Workable Recruiting API endpoint
+        // Use Workable Recruiting API v1 for job creation
         const recruitingApiUrl = `https://${cleanSubdomain}.workable.com/api/v1/jobs`;
         
-        console.log('Using Recruiting API endpoint:', recruitingApiUrl);
+        console.log('Creating job at:', recruitingApiUrl);
 
-        const response = await fetch(recruitingApiUrl, {
+        const createResponse = await fetch(recruitingApiUrl, {
           method: 'POST',
           headers,
           body: JSON.stringify(jobPayload),
         });
 
-        console.log('API response status:', response.status);
-        const responseText = await response.text();
-        console.log('API response:', responseText);
+        console.log('Create job response status:', createResponse.status);
+        const createResponseText = await createResponse.text();
+        console.log('Create job response:', createResponseText);
 
-        if (response.ok) {
-          let publishedJob;
+        if (!createResponse.ok) {
+          let errorMessage = `HTTP ${createResponse.status}`;
           try {
-            publishedJob = JSON.parse(responseText);
-          } catch (e) {
-            publishedJob = { success: true, message: responseText };
-          }
-          
-          console.log('Successfully published job to Workable');
-          
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              job: publishedJob,
-              message: `Job "${cleanTitle}" created successfully in Workable! You can review and publish it manually when ready.`
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        } else {
-          let errorMessage = `HTTP ${response.status}`;
-          try {
-            const errorData = JSON.parse(responseText);
+            const errorData = JSON.parse(createResponseText);
             errorMessage = errorData.message || errorData.error || errorData.errors || errorMessage;
           } catch (e) {
-            errorMessage = responseText || errorMessage;
+            errorMessage = createResponseText || errorMessage;
           }
           
           throw new Error(`Failed to create job in Workable: ${errorMessage}`);
         }
+
+        let createdJob;
+        try {
+          createdJob = JSON.parse(createResponseText);
+        } catch (e) {
+          createdJob = { success: true, message: createResponseText };
+        }
+
+        console.log('Job created successfully as draft:', createdJob);
+
+        // Optional: Auto-publish the job if requested
+        if (jobData.autoPublish && createdJob.id) {
+          try {
+            console.log('Auto-publishing job:', createdJob.id);
+            const publishResponse = await fetch(`${recruitingApiUrl}/${createdJob.id}/publish`, {
+              method: 'POST',
+              headers,
+            });
+
+            if (publishResponse.ok) {
+              console.log('Job published successfully');
+              return new Response(
+                JSON.stringify({ 
+                  success: true, 
+                  job: createdJob,
+                  published: true,
+                  message: `Job "${cleanTitle}" created and published successfully in Workable!`
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            } else {
+              console.log('Failed to publish job, but creation was successful');
+            }
+          } catch (publishError) {
+            console.error('Failed to publish job:', publishError);
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            job: createdJob,
+            published: false,
+            message: `Job "${cleanTitle}" created successfully as draft in Workable! You can review and publish it manually when ready.`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       case 'sync_jobs': {
