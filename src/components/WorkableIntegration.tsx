@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, Upload, RefreshCw, ExternalLink, CheckCircle, Users } from "lucide-react";
+import { Briefcase, Upload, ExternalLink, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface WorkableJob {
   id: string;
@@ -24,63 +25,52 @@ interface WorkableIntegrationProps {
 
 export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ generatedVacancy }) => {
   const [workableJobs, setWorkableJobs] = useState<WorkableJob[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isSyncingCandidates, setIsSyncingCandidates] = useState(false);
   const { toast } = useToast();
 
-  const syncJobs = async () => {
-    setIsSyncing(true);
+  // Query for integration settings to show auto-sync status
+  const { data: integrationSettings } = useQuery({
+    queryKey: ["workable-integration-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("integration_settings")
+        .select("*")
+        .eq("integration_type", "workable")
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    }
+  });
+
+  // Query for recent sync logs to show sync status
+  const { data: recentSyncLog } = useQuery({
+    queryKey: ["workable-recent-sync"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("integration_sync_logs")
+        .select("*")
+        .eq("integration_type", "workable")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+    refetchInterval: 30000 // Refetch every 30 seconds
+  });
+
+  const loadJobs = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('workable-integration', {
         body: { action: 'sync_jobs' }
       });
 
       if (error) throw error;
-
       setWorkableJobs(data.jobs || []);
-      
-      toast({
-        title: "Jobs synced successfully!",
-        description: `Found ${data.total} published jobs in Workable.`,
-      });
-
     } catch (error) {
-      console.error('Error syncing jobs:', error);
-      toast({
-        title: "Sync failed",
-        description: error instanceof Error ? error.message : "Failed to sync jobs from Workable.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const syncCandidates = async () => {
-    setIsSyncingCandidates(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_candidates' }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Candidates synced successfully!",
-        description: `Synced ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable.`,
-      });
-
-    } catch (error) {
-      console.error('Error syncing candidates:', error);
-      toast({
-        title: "Candidate sync failed",
-        description: error instanceof Error ? error.message : "Failed to sync candidates from Workable.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSyncingCandidates(false);
+      console.error('Error loading jobs:', error);
     }
   };
 
@@ -112,7 +102,7 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
         description: "Your vacancy has been successfully created in Workable.",
       });
 
-      await syncJobs();
+      await loadJobs();
 
     } catch (error) {
       console.error('Error publishing to Workable:', error);
@@ -155,9 +145,65 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
     };
   };
 
+  const getSyncStatusInfo = () => {
+    if (!recentSyncLog) {
+      return { status: 'unknown', message: 'No sync data available', icon: AlertCircle, color: 'text-gray-400' };
+    }
+
+    switch (recentSyncLog.status) {
+      case 'success':
+        return { 
+          status: 'success', 
+          message: `Last synced: ${new Date(recentSyncLog.completed_at || recentSyncLog.created_at).toLocaleString()}`,
+          icon: CheckCircle,
+          color: 'text-green-600'
+        };
+      case 'in_progress':
+      case 'pending':
+        return { 
+          status: 'syncing', 
+          message: 'Auto-sync in progress...',
+          icon: Clock,
+          color: 'text-blue-600'
+        };
+      case 'failed':
+        return { 
+          status: 'error', 
+          message: `Sync failed: ${recentSyncLog.error_message || 'Unknown error'}`,
+          icon: AlertCircle,
+          color: 'text-red-600'
+        };
+      default:
+        return { 
+          status: 'unknown', 
+          message: 'Unknown sync status',
+          icon: AlertCircle,
+          color: 'text-gray-400'
+        };
+    }
+  };
+
+  const getNextSyncTime = () => {
+    if (!integrationSettings?.last_sync_at || !integrationSettings?.sync_frequency_hours) {
+      return 'Next sync: Soon';
+    }
+
+    const lastSync = new Date(integrationSettings.last_sync_at);
+    const nextSync = new Date(lastSync.getTime() + (integrationSettings.sync_frequency_hours * 60 * 60 * 1000));
+    
+    if (nextSync > new Date()) {
+      return `Next sync: ${nextSync.toLocaleString()}`;
+    } else {
+      return 'Next sync: Scheduled soon';
+    }
+  };
+
   useEffect(() => {
-    syncJobs();
+    loadJobs();
   }, []);
+
+  const syncInfo = getSyncStatusInfo();
+  const StatusIcon = syncInfo.icon;
 
   return (
     <Card className="bg-slate-800 border-slate-700">
@@ -188,45 +234,29 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
                 )}
               </Button>
             )}
-            <Button
-              onClick={syncCandidates}
-              disabled={isSyncingCandidates}
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              {isSyncingCandidates ? (
-                <>
-                  <Users className="w-4 h-4 mr-2 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                <>
-                  <Users className="w-4 h-4 mr-2" />
-                  Sync Candidates
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={syncJobs}
-              disabled={isSyncing}
-              variant="outline"
-              size="sm"
-              className="border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white"
-            >
-              {isSyncing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Sync Jobs
-                </>
-              )}
-            </Button>
           </div>
         </CardTitle>
+        
+        {/* Auto-sync status section */}
+        <div className="bg-slate-900 rounded-lg p-3 mt-3">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <StatusIcon className={`w-4 h-4 ${syncInfo.color}`} />
+              <span className="text-slate-300">Auto-sync Status:</span>
+              <span className={syncInfo.color}>{syncInfo.message}</span>
+            </div>
+            {integrationSettings?.is_enabled && (
+              <Badge variant="outline" className="text-green-400 border-green-400">
+                Auto-sync enabled
+              </Badge>
+            )}
+          </div>
+          {integrationSettings?.is_enabled && (
+            <div className="text-xs text-slate-400 mt-1">
+              Sync frequency: Every {integrationSettings.sync_frequency_hours || 2} hours • {getNextSyncTime()}
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {workableJobs.length > 0 ? (
@@ -274,7 +304,7 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
           <div className="text-center py-8">
             <Briefcase className="w-12 h-12 text-slate-500 mx-auto mb-3" />
             <p className="text-slate-400 text-sm">
-              No published jobs found. Click "Sync Jobs" to refresh or publish your first vacancy!
+              No published jobs found. Auto-sync will update this automatically, or publish your first vacancy!
             </p>
           </div>
         )}

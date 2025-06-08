@@ -85,6 +85,21 @@ serve(async (req) => {
           }
         }
 
+        // Log successful sync
+        await supabase
+          .from('integration_sync_logs')
+          .insert([{
+            integration_type: 'workable',
+            sync_type: 'candidate_sync',
+            status: 'success',
+            synced_data: { 
+              totalCandidates, 
+              syncedCandidates,
+              jobsProcessed: jobs.length,
+              timestamp: new Date().toISOString()
+            }
+          }]);
+
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -211,6 +226,29 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in workable-integration function:', error);
+    
+    // Log failed sync attempt
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+      
+      await supabase
+        .from('integration_sync_logs')
+        .insert([{
+          integration_type: 'workable',
+          sync_type: 'error',
+          status: 'failed',
+          error_message: error.message,
+          synced_data: { 
+            error: error.message,
+            timestamp: new Date().toISOString()
+          }
+        }]);
+    } catch (logError) {
+      console.error('Failed to log error:', logError);
+    }
+
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

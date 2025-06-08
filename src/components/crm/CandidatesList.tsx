@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AddCandidateDialog } from "./AddCandidateDialog";
 import { CandidateProfileCard } from "./CandidateProfileCard";
 import { IntegrationSyncPanel } from "./IntegrationSyncPanel";
-import { Search, Mail, Phone, ExternalLink, RefreshCw, Users, Download } from "lucide-react";
+import { Search, Mail, Phone, ExternalLink, Users } from "lucide-react";
 import { toast } from "sonner";
 
 type Candidate = {
@@ -78,6 +77,48 @@ export const CandidatesList = () => {
       return counts;
     }
   });
+
+  // Set up real-time subscription for candidate updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('candidates-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'candidates'
+        },
+        (payload) => {
+          console.log('Candidate updated:', payload);
+          queryClient.invalidateQueries({ queryKey: ["candidates"] });
+          
+          if (payload.eventType === 'INSERT') {
+            toast.success(`New candidate added: ${payload.new.name}`);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'integration_sync_logs'
+        },
+        (payload) => {
+          if (payload.new.integration_type === 'workable' && payload.new.status === 'success') {
+            console.log('Workable sync completed');
+            queryClient.invalidateQueries({ queryKey: ["candidates"] });
+            queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const syncWorkableCandidatesMutation = useMutation({
     mutationFn: async () => {
@@ -162,18 +203,6 @@ export const CandidatesList = () => {
           </select>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => syncWorkableCandidatesMutation.mutate()}
-            disabled={syncWorkableCandidatesMutation.isPending}
-          >
-            {syncWorkableCandidatesMutation.isPending ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            Sync Workable
-          </Button>
           <Button onClick={() => setShowAddDialog(true)}>
             <Users className="h-4 w-4 mr-2" />
             Add Candidate
