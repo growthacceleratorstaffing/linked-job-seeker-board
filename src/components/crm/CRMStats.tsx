@@ -2,24 +2,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, MessageSquare, CheckCircle, Clock } from "lucide-react";
+import { Users, MessageSquare, Clock } from "lucide-react";
 
 export const CRMStats = () => {
   const { data: stats } = useQuery({
     queryKey: ["crm-stats"],
     queryFn: async () => {
-      const [candidatesResult, responsesResult, newResponsesResult, activeJobsResult] = await Promise.all([
+      const [candidatesResult, responsesResult, newResponsesResult] = await Promise.all([
         supabase.from("candidates").select("id", { count: "exact" }),
         supabase.from("candidate_responses").select("id", { count: "exact" }),
-        supabase.from("candidate_responses").select("id", { count: "exact" }).eq("status", "new"),
-        supabase.from("crawled_jobs").select("id", { count: "exact" }).eq("is_active", true)
+        supabase.from("candidate_responses").select("id", { count: "exact" }).eq("status", "new")
       ]);
 
       return {
         totalCandidates: candidatesResult.count || 0,
         totalResponses: responsesResult.count || 0,
-        newResponses: newResponsesResult.count || 0,
-        activeJobs: activeJobsResult.count || 0
+        newResponses: newResponsesResult.count || 0
       };
     }
   });
@@ -42,17 +40,11 @@ export const CRMStats = () => {
       value: stats?.newResponses || 0,
       icon: Clock,
       description: "Pending review"
-    },
-    {
-      title: "Active Jobs",
-      value: stats?.activeJobs || 0,
-      icon: CheckCircle,
-      description: "Currently open positions"
     }
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-3">
       {statCards.map((stat) => (
         <Card key={stat.title} className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
