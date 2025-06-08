@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10";
@@ -30,7 +29,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
     
-    // Use the correct Workable API base URL and version
+    // Use the correct Workable API v3 endpoint
     const cleanSubdomain = workableSubdomain.replace('.workable.com', '');
     const baseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
     
@@ -196,29 +195,29 @@ serve(async (req) => {
           .replace(/Job Title:\s*/i, '')
           .trim();
         
-        // Convert markdown description to plain text
-        const cleanDescription = jobData.description
+        // Convert markdown description to plain text and limit length
+        let cleanDescription = jobData.description
           .replace(/#{1,6}\s/g, '')
           .replace(/\*\*(.*?)\*\*/g, '$1')
           .replace(/\*(.*?)\*/g, '$1')
           .replace(/- /g, '• ')
           .trim();
 
-        // Use the correct Workable API format for job creation
+        // Limit description length to prevent API issues
+        if (cleanDescription.length > 5000) {
+          cleanDescription = cleanDescription.substring(0, 5000) + '...';
+        }
+
+        // Use minimal required fields for Workable API
         const workableJob = {
           title: cleanTitle,
-          full_title: cleanTitle,
           description: cleanDescription,
-          employment_type: jobData.employment_type || 'full_time',
-          department: jobData.department || 'General',
-          location: jobData.location || '',
-          remote: jobData.remote || false,
           state: 'draft'
         };
 
-        console.log('Using job payload:', JSON.stringify(workableJob, null, 2));
+        console.log('Using minimal job payload:', JSON.stringify(workableJob, null, 2));
 
-        // Use the correct API endpoint for creating jobs
+        // Try creating the job with minimal payload first
         const response = await fetch(`${baseUrl}/jobs`, {
           method: 'POST',
           headers,
@@ -244,7 +243,9 @@ serve(async (req) => {
             } else if (response.status === 403) {
               errorMessage = 'Access forbidden. Please check your Workable API permissions.';
             } else if (response.status === 404) {
-              errorMessage = 'API endpoint not found. Please check your Workable subdomain configuration.';
+              errorMessage = 'API endpoint not found. Please verify your Workable account configuration and API access.';
+            } else if (response.status === 422) {
+              errorMessage = `Validation error: ${errorData.message || 'Invalid job data provided'}`;
             }
           } catch (e) {
             console.error('Could not parse error response:', responseText);
