@@ -28,9 +28,9 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
-    const baseUrl = workableSubdomain.includes('.workable.com') 
-      ? `https://${workableSubdomain}/spi/v3`
-      : `https://${workableSubdomain}.workable.com/spi/v3`;
+    
+    // Fix the base URL construction - use the API subdomain format
+    const baseUrl = `https://${workableSubdomain}.workable.com/spi/v3`;
     
     const headers = {
       'Authorization': `Bearer ${workableApiToken}`,
@@ -38,6 +38,7 @@ serve(async (req) => {
     };
 
     console.log('Using Workable API base URL:', baseUrl);
+    console.log('API Token length:', workableApiToken.length);
 
     // Ensure integration settings exist and are enabled
     await ensureIntegrationSettings(supabase);
@@ -199,7 +200,7 @@ serve(async (req) => {
           function: jobData.function || 'Engineering',
           remote: jobData.remote || false,
           telecommuting: jobData.remote || false,
-          state: 'draft', // Create as draft instead of published
+          state: 'archived', // Create as archived instead of published so you can review first
         };
 
         console.log('Prepared job data:', JSON.stringify(workableJob, null, 2));
@@ -239,7 +240,7 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             job: publishedJob,
-            message: 'Job created as draft in Workable successfully! You can manually publish it when ready.'
+            message: 'Job created as archived in Workable successfully! You can review and publish it manually when ready.'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
