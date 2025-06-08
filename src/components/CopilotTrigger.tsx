@@ -44,6 +44,23 @@ export const CopilotTrigger: React.FC<CopilotTriggerProps> = ({ onVacancyGenerat
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuickQuestion(value);
+    
+    // Auto-open chat when user starts typing
+    if (value.length === 1 && !isOpen) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleInputFocus = () => {
+    // Open chat when input is focused
+    if (!isOpen) {
+      setIsOpen(true);
+    }
+  };
+
   return (
     <>
       {/* Proactive Input Bar */}
@@ -59,7 +76,8 @@ export const CopilotTrigger: React.FC<CopilotTriggerProps> = ({ onVacancyGenerat
             <Input
               placeholder="Ask me anything about jobs, hiring, or recruitment..."
               value={quickQuestion}
-              onChange={(e) => setQuickQuestion(e.target.value)}
+              onChange={handleInputChange}
+              onFocus={handleInputFocus}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleQuickQuestion();

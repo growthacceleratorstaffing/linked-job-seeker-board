@@ -55,12 +55,23 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
     };
   }, []);
 
-  // Handle initial message from props
+  // Handle initial message from props and sync with input
   useEffect(() => {
     if (initialMessage && initialMessage.trim() && isOpen) {
       setInputMessage(initialMessage);
     }
   }, [initialMessage, isOpen]);
+
+  // Auto-focus input when modal opens
+  useEffect(() => {
+    if (isOpen && inputMessage) {
+      const textarea = document.querySelector('textarea[placeholder="Type your message..."]') as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      }
+    }
+  }, [isOpen, inputMessage]);
 
   const handleSendMessage = async (messageText?: string) => {
     const message = messageText || inputMessage;
