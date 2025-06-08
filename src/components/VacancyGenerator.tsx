@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -147,21 +146,6 @@ export const VacancyGenerator = () => {
     });
   };
 
-  const downloadAsText = () => {
-    const element = document.createElement('a');
-    const file = new Blob([generatedVacancy], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = 'vacancy.txt';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    
-    toast({
-      title: "Download started!",
-      description: "The vacancy text file is being downloaded.",
-    });
-  };
-
   const handleCopilotVacancy = (vacancy: string) => {
     setGeneratedVacancy(vacancy);
   };
@@ -246,29 +230,18 @@ export const VacancyGenerator = () => {
                   <Button
                     onClick={toggleEditMode}
                     size="sm"
-                    variant="outline"
-                    className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white"
+                    className="bg-secondary-pink hover:bg-secondary-pink/80 text-white"
                   >
                     <Edit className="w-4 h-4 mr-1" />
                     {isEditing ? 'View' : 'Edit'}
                   </Button>
                   <Button
-                    variant="outline"
                     size="sm"
                     onClick={copyToClipboard}
-                    className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white"
+                    className="bg-secondary-pink hover:bg-secondary-pink/80 text-white"
                   >
                     <Copy className="w-4 h-4 mr-1" />
                     Copy
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={downloadAsText}
-                    className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white"
-                  >
-                    <Download className="w-4 h-4 mr-1" />
-                    Download
                   </Button>
                 </>
               )}
