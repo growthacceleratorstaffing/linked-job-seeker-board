@@ -108,120 +108,66 @@ export const IntegrationSyncPanel = () => {
     }
   });
 
-  const getStatusIcon = (success: number, failed: number, pending: number) => {
-    if (pending > 0) return <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />;
-    if (failed > 0) return <AlertCircle className="h-4 w-4 text-yellow-500" />; // Changed from red to yellow for better UX
-    return <CheckCircle className="h-4 w-4 text-green-500" />;
-  };
-
-  const getStatusBadge = (success: number, failed: number, pending: number, isAutoEnabled: boolean) => {
-    if (pending > 0) return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Syncing</Badge>;
-    
-    // Always show Auto-Enabled if integration is enabled, regardless of sync status
-    if (isAutoEnabled) {
-      return (
-        <Badge variant="secondary" className="bg-green-100 text-green-800">
-          <Zap className="h-3 w-3 mr-1" />
-          Auto-Enabled
-        </Badge>
-      );
-    }
-    
-    return <Badge variant="outline">Disabled</Badge>;
-  };
-
-  const getNextSyncInfo = (integrationSettings: any, type: string) => {
-    const setting = integrationSettings?.find((s: any) => s.integration_type === type);
-    if (!setting?.is_enabled) {
-      return 'Auto-sync disabled';
-    }
-
-    if (!setting?.last_sync_at) {
-      return 'First sync scheduled';
-    }
-
-    const lastSync = new Date(setting.last_sync_at);
-    const nextSync = new Date(lastSync.getTime() + ((setting.sync_frequency_hours || 2) * 60 * 60 * 1000));
-    
-    if (nextSync > new Date()) {
-      const hours = Math.ceil((nextSync.getTime() - new Date().getTime()) / (1000 * 60 * 60));
-      return `Next sync in ~${hours}h`;
-    } else {
-      return 'Sync scheduled soon';
-    }
-  };
-
-  const linkedinSetting = integrationSettings?.find(s => s.integration_type === 'linkedin');
-  const workableSetting = integrationSettings?.find(s => s.integration_type === 'workable');
-
-  // Default to enabled if settings don't exist yet
-  const linkedinEnabled = linkedinSetting?.is_enabled ?? true;
-  const workableEnabled = workableSetting?.is_enabled ?? true;
-
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-1">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between text-base">
-            <div className="flex items-center gap-2">
-              {syncStats && getStatusIcon(
-                syncStats.linkedin.success,
-                syncStats.linkedin.failed,
-                syncStats.linkedin.pending
-              )}
-              LinkedIn Integration
-            </div>
-            {getStatusBadge(
-              syncStats?.linkedin.success || 0,
-              syncStats?.linkedin.failed || 0,
-              syncStats?.linkedin.pending || 0,
-              linkedinEnabled
-            )}
-          </CardTitle>
+          <CardTitle className="text-lg">Integration Status</CardTitle>
           <CardDescription>
-            LinkedIn auto-sync is enabled
+            Real-time sync status for LinkedIn and Workable integrations
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-sm space-y-1">
-            {syncStats?.linkedin.lastSync && (
-              <div>Last sync: {new Date(syncStats.linkedin.lastSync).toLocaleDateString()}</div>
-            )}
-            <div>Success: {syncStats?.linkedin.success || 0} | Failed: {syncStats?.linkedin.failed || 0}</div>
-          </div>
-        </CardContent>
-      </Card>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-3">
+                {syncStats && (
+                  syncStats.linkedin.pending > 0 ? 
+                    <Clock className="h-4 w-4 text-yellow-500 animate-pulse" /> :
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                )}
+                <div>
+                  <div className="font-medium">LinkedIn Integration</div>
+                  <div className="text-sm text-muted-foreground">
+                    {syncStats?.linkedin.lastSync ? 
+                      `Last sync: ${new Date(syncStats.linkedin.lastSync).toLocaleDateString()}` :
+                      'No sync data'
+                    }
+                  </div>
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Zap className="h-3 w-3 mr-1" />
+                Auto-Enabled
+              </Badge>
+            </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between text-base">
-            <div className="flex items-center gap-2">
-              {syncStats && getStatusIcon(
-                syncStats.workable.success,
-                syncStats.workable.failed,
-                syncStats.workable.pending
-              )}
-              Workable Integration
-            </div>
-            {getStatusBadge(
-              syncStats?.workable.success || 0,
-              syncStats?.workable.failed || 0,
-              syncStats?.workable.pending || 0,
-              workableEnabled
-            )}
-          </CardTitle>
-          <CardDescription>
-            Workable auto-sync is enabled - syncs every 2 hours
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm space-y-1">
-            {syncStats?.workable.lastSync && (
-              <div>Last sync: {new Date(syncStats.workable.lastSync).toLocaleDateString()}</div>
-            )}
-            <div>Success: {syncStats?.workable.success || 0} | Failed: {syncStats?.workable.failed || 0}</div>
-            <div className="text-xs text-muted-foreground">
-              {getNextSyncInfo(integrationSettings, 'workable')}
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-3">
+                {syncStats && (
+                  syncStats.workable.pending > 0 ? 
+                    <Clock className="h-4 w-4 text-yellow-500 animate-pulse" /> :
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                )}
+                <div>
+                  <div className="font-medium">Workable Integration</div>
+                  <div className="text-sm text-muted-foreground">
+                    {syncStats?.workable.lastSync ? 
+                      `Last sync: ${new Date(syncStats.workable.lastSync).toLocaleDateString()}` :
+                      'No sync data'
+                    } • Syncs every 2 hours
+                  </div>
+                  {syncStats && (
+                    <div className="text-xs text-muted-foreground">
+                      Success: {syncStats.workable.success} | Failed: {syncStats.workable.failed}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Zap className="h-3 w-3 mr-1" />
+                Auto-Enabled
+              </Badge>
             </div>
           </div>
         </CardContent>

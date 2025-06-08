@@ -63,13 +63,14 @@ serve(async (req) => {
           .select()
           .single();
 
-        // Fetch both published and archived jobs to get candidates from all jobs
+        // Fetch BOTH published and archived jobs to get candidates from all jobs
+        console.log('Fetching published and archived jobs to sync candidates...');
         const [publishedResponse, archivedResponse] = await Promise.all([
-          fetch(`${spiBaseUrl}/jobs?state=published&limit=50`, {
+          fetch(`${spiBaseUrl}/jobs?state=published&limit=100`, {
             method: 'GET',
             headers,
           }),
-          fetch(`${spiBaseUrl}/jobs?state=archived&limit=50`, {
+          fetch(`${spiBaseUrl}/jobs?state=archived&limit=200`, {
             method: 'GET',
             headers,
           })
@@ -91,6 +92,8 @@ serve(async (req) => {
           ...(publishedData.jobs || []),
           ...(archivedData.jobs || [])
         ];
+
+        console.log(`Total jobs to process: ${jobs.length} (${publishedData.jobs?.length || 0} published + ${archivedData.jobs?.length || 0} archived)`);
 
         let totalCandidates = 0;
         let syncedCandidates = 0;
@@ -145,7 +148,7 @@ serve(async (req) => {
           }
         }
 
-        // Now sync candidates from all jobs (published and archived)
+        // Now sync candidates from ALL jobs (published and archived)
         for (const job of jobs) {
           try {
             const jobUuid = jobUuidMap.get(job.id);
@@ -155,35 +158,58 @@ serve(async (req) => {
             }
 
             console.log(`Fetching candidates for job: ${job.shortcode} (${job.state})`);
-            const candidatesResponse = await fetch(`${spiBaseUrl}/jobs/${job.shortcode}/candidates`, {
-              method: 'GET',
-              headers,
-            });
+            
+            // Fetch ALL candidates for this job with pagination
+            let page = 1;
+            let hasMoreCandidates = true;
+            
+            while (hasMoreCandidates) {
+              const candidatesResponse = await fetch(`${spiBaseUrl}/jobs/${job.shortcode}/candidates?page=${page}&per_page=50`, {
+                method: 'GET',
+                headers,
+              });
 
-            if (candidatesResponse.ok) {
-              const candidatesData = await candidatesResponse.json();
-              const candidates = candidatesData.candidates || [];
-              totalCandidates += candidates.length;
-              console.log(`Found ${candidates.length} candidates for job ${job.shortcode} (${job.state})`);
-
-              for (const candidate of candidates) {
-                try {
-                  await syncCandidateToSupabase(supabase, candidate, jobUuid);
-                  syncedCandidates++;
-                } catch (error) {
-                  console.error(`Failed to sync candidate ${candidate.id}:`, error);
-                  errors.push(`Candidate ${candidate.id}: ${error.message}`);
+              if (candidatesResponse.ok) {
+                const candidatesData = await candidatesResponse.json();
+                const candidates = candidatesData.candidates || [];
+                
+                if (candidates.length === 0) {
+                  hasMoreCandidates = false;
+                  break;
                 }
+                
+                totalCandidates += candidates.length;
+                console.log(`Found ${candidates.length} candidates on page ${page} for job ${job.shortcode} (${job.state})`);
+
+                for (const candidate of candidates) {
+                  try {
+                    await syncCandidateToSupabase(supabase, candidate, jobUuid);
+                    syncedCandidates++;
+                  } catch (error) {
+                    console.error(`Failed to sync candidate ${candidate.id}:`, error);
+                    errors.push(`Candidate ${candidate.id}: ${error.message}`);
+                  }
+                }
+                
+                // Check if we have more pages
+                if (candidates.length < 50) {
+                  hasMoreCandidates = false;
+                } else {
+                  page++;
+                }
+              } else {
+                console.error(`Failed to fetch candidates for job ${job.shortcode} page ${page}: ${candidatesResponse.status}`);
+                errors.push(`Job ${job.shortcode} page ${page}: HTTP ${candidatesResponse.status}`);
+                hasMoreCandidates = false;
               }
-            } else {
-              console.error(`Failed to fetch candidates for job ${job.shortcode}: ${candidatesResponse.status}`);
-              errors.push(`Job ${job.shortcode}: HTTP ${candidatesResponse.status}`);
             }
           } catch (error) {
             console.error(`Failed to fetch candidates for job ${job.shortcode}:`, error);
             errors.push(`Job ${job.shortcode}: ${error.message}`);
           }
         }
+
+        console.log(`Sync complete: ${syncedCandidates}/${totalCandidates} candidates synced from ${jobs.length} jobs`);
 
         // Update sync log with completion - always mark as success if we processed candidates
         await supabase
