@@ -9,6 +9,87 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      candidate_responses: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          id: string
+          job_id: string
+          message: string | null
+          responded_at: string
+          response_type: string
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          id?: string
+          job_id: string
+          message?: string | null
+          responded_at?: string
+          response_type?: string
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          message?: string | null
+          responded_at?: string
+          response_type?: string
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_responses_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_responses_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "crawled_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crawled_jobs: {
         Row: {
           company: string
