@@ -46,16 +46,16 @@ export const CandidatesList = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("candidate_responses")
-        .select("candidate_id")
-        .then(result => {
-          if (result.error) throw result.error;
-          const counts: Record<string, number> = {};
-          result.data?.forEach(response => {
-            counts[response.candidate_id] = (counts[response.candidate_id] || 0) + 1;
-          });
-          return counts;
-        });
-      return data;
+        .select("candidate_id");
+      
+      if (error) throw error;
+      
+      const counts: Record<string, number> = {};
+      data?.forEach(response => {
+        counts[response.candidate_id] = (counts[response.candidate_id] || 0) + 1;
+      });
+      
+      return counts;
     }
   });
 
@@ -80,7 +80,7 @@ export const CandidatesList = () => {
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
