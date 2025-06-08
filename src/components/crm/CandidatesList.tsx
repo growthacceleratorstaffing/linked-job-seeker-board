@@ -39,9 +39,11 @@ export const CandidatesList = () => {
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const queryClient = useQueryClient();
 
-  const { data: candidates, isLoading } = useQuery({
+  const { data: candidates, isLoading, error } = useQuery({
     queryKey: ["candidates", searchTerm, sourceFilter],
     queryFn: async () => {
+      console.log('Fetching candidates with search:', searchTerm, 'filter:', sourceFilter);
+      
       let query = supabase
         .from("candidates")
         .select("*")
@@ -56,7 +58,12 @@ export const CandidatesList = () => {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching candidates:', error);
+        throw error;
+      }
+      
+      console.log('Fetched candidates:', data?.length);
       return data as Candidate[];
     }
   });
@@ -162,6 +169,11 @@ export const CandidatesList = () => {
     return <div className="flex justify-center p-4">Loading candidates...</div>;
   }
 
+  if (error) {
+    console.error('Candidates query error:', error);
+    return <div className="flex justify-center p-4 text-red-500">Error loading candidates: {(error as any).message}</div>;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -196,107 +208,123 @@ export const CandidatesList = () => {
 
       <IntegrationSyncPanel />
 
-      <div className="rounded-md border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Candidate</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Profile Score</TableHead>
-              <TableHead>Responses</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {candidates?.map((candidate) => (
-              <TableRow key={candidate.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    {candidate.profile_picture_url && (
-                      <img
-                        src={candidate.profile_picture_url}
-                        alt={candidate.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    )}
-                    <div>
-                      <div className="font-medium">{candidate.name}</div>
-                      {candidate.current_position && (
-                        <div className="text-sm text-muted-foreground">
-                          {candidate.current_position}
-                          {candidate.company && ` at ${candidate.company}`}
+      {candidates && candidates.length > 0 ? (
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Candidate</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Profile Score</TableHead>
+                <TableHead>Responses</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {candidates.map((candidate) => (
+                <TableRow key={candidate.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      {candidate.profile_picture_url && (
+                        <img
+                          src={candidate.profile_picture_url}
+                          alt={candidate.name}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      )}
+                      <div>
+                        <div className="font-medium">{candidate.name}</div>
+                        {candidate.current_position && (
+                          <div className="text-sm text-muted-foreground">
+                            {candidate.current_position}
+                            {candidate.company && ` at ${candidate.company}`}
+                          </div>
+                        )}
+                        {candidate.location && (
+                          <div className="text-xs text-muted-foreground">{candidate.location}</div>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-3 w-3" />
+                        {candidate.email}
+                      </div>
+                      {candidate.phone && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Phone className="h-3 w-3" />
+                          {candidate.phone}
                         </div>
                       )}
-                      {candidate.location && (
-                        <div className="text-xs text-muted-foreground">{candidate.location}</div>
-                      )}
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Mail className="h-3 w-3" />
-                      {candidate.email}
-                    </div>
-                    {candidate.phone && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        {candidate.phone}
-                      </div>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant="secondary" 
-                    className={getSourceBadgeColor(candidate.source_platform)}
-                  >
-                    {candidate.source_platform || 'manual'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
-                    {candidate.profile_completeness_score || 0}%
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">
-                    {responseCounts?.[candidate.id] || 0} responses
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedCandidate(candidate)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant="secondary" 
+                      className={getSourceBadgeColor(candidate.source_platform)}
                     >
-                      View
-                    </Button>
-                    {candidate.linkedin_profile_url && (
+                      {candidate.source_platform || 'manual'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
+                      {candidate.profile_completeness_score || 0}%
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {responseCounts?.[candidate.id] || 0} responses
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        asChild
+                        onClick={() => setSelectedCandidate(candidate)}
                       >
-                        <a
-                          href={candidate.linkedin_profile_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                        View
                       </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                      {candidate.linkedin_profile_url && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                        >
+                          <a
+                            href={candidate.linkedin_profile_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="rounded-md border bg-card p-8 text-center">
+          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">No candidates found</h3>
+          <p className="text-muted-foreground mb-4">
+            {searchTerm || sourceFilter !== "all" 
+              ? "Try adjusting your search or filters" 
+              : "Get started by adding your first candidate or enabling automatic sync"}
+          </p>
+          <Button onClick={() => setShowAddDialog(true)}>
+            <Users className="h-4 w-4 mr-2" />
+            Add Candidate
+          </Button>
+        </div>
+      )}
 
       <AddCandidateDialog
         open={showAddDialog}

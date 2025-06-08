@@ -43,12 +43,46 @@ export const IntegrationSyncPanel = () => {
   const { data: integrationSettings } = useQuery({
     queryKey: ["integration-settings"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First try to get existing settings
+      const { data: existingSettings, error } = await supabase
         .from("integration_settings")
         .select("*");
 
       if (error) throw error;
-      return data;
+
+      // Create default settings for LinkedIn and Workable if they don't exist
+      const linkedinSettings = existingSettings?.find(s => s.integration_type === 'linkedin');
+      const workableSettings = existingSettings?.find(s => s.integration_type === 'workable');
+
+      if (!linkedinSettings) {
+        await supabase
+          .from("integration_settings")
+          .insert({
+            integration_type: 'linkedin',
+            is_enabled: true,
+            sync_frequency_hours: 24,
+            settings: { auto_sync_enabled: true }
+          });
+      }
+
+      if (!workableSettings) {
+        await supabase
+          .from("integration_settings")
+          .insert({
+            integration_type: 'workable',
+            is_enabled: true,
+            sync_frequency_hours: 2,
+            settings: { auto_sync_enabled: true, sync_jobs: true, sync_candidates: true }
+          });
+      }
+
+      // Fetch updated settings
+      const { data: updatedSettings, error: updateError } = await supabase
+        .from("integration_settings")
+        .select("*");
+
+      if (updateError) throw updateError;
+      return updatedSettings;
     }
   });
 
@@ -69,13 +103,20 @@ export const IntegrationSyncPanel = () => {
       </Badge>
     );
     if (success > 0) return <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>;
-    return <Badge variant="outline">Inactive</Badge>;
+    return <Badge variant="secondary" className="bg-green-100 text-green-800">
+      <Zap className="h-3 w-3 mr-1" />
+      Auto-Enabled
+    </Badge>;
   };
 
   const getNextSyncInfo = (integrationSettings: any, type: string) => {
     const setting = integrationSettings?.find((s: any) => s.integration_type === type);
-    if (!setting?.is_enabled || !setting?.last_sync_at) {
+    if (!setting?.is_enabled) {
       return 'Auto-sync disabled';
+    }
+
+    if (!setting?.last_sync_at) {
+      return 'First sync scheduled';
     }
 
     const lastSync = new Date(setting.last_sync_at);
@@ -88,6 +129,9 @@ export const IntegrationSyncPanel = () => {
       return 'Sync scheduled soon';
     }
   };
+
+  const linkedinSetting = integrationSettings?.find(s => s.integration_type === 'linkedin');
+  const workableSetting = integrationSettings?.find(s => s.integration_type === 'workable');
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -106,11 +150,11 @@ export const IntegrationSyncPanel = () => {
               syncStats.linkedin.success,
               syncStats.linkedin.failed,
               syncStats.linkedin.pending,
-              integrationSettings?.find(s => s.integration_type === 'linkedin')?.is_enabled || false
+              linkedinSetting?.is_enabled || false
             )}
           </CardTitle>
           <CardDescription>
-            {integrationSettings?.find(s => s.integration_type === 'linkedin')?.is_enabled 
+            {linkedinSetting?.is_enabled 
               ? 'LinkedIn integration is enabled' 
               : 'LinkedIn integration is disabled'
             }
@@ -141,11 +185,11 @@ export const IntegrationSyncPanel = () => {
               syncStats.workable.success,
               syncStats.workable.failed,
               syncStats.workable.pending,
-              integrationSettings?.find(s => s.integration_type === 'workable')?.is_enabled || false
+              workableSetting?.is_enabled || false
             )}
           </CardTitle>
           <CardDescription>
-            {integrationSettings?.find(s => s.integration_type === 'workable')?.is_enabled 
+            {workableSetting?.is_enabled 
               ? 'Workable auto-sync is enabled' 
               : 'Workable integration is disabled'
             }
