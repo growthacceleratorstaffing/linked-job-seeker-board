@@ -29,7 +29,6 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
     
-    // Use the Workable Recruiting API (different from SPI) for job creation
     const cleanSubdomain = workableSubdomain.replace('.workable.com', '');
     
     const headers = {
@@ -45,7 +44,7 @@ serve(async (req) => {
 
     switch (action) {
       case 'sync_candidates': {
-        // Use SPI v3 for reading data
+        // Use the Workable Recruiting API (different from SPI) for job creation
         const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
         
         // Log sync start
@@ -122,7 +121,7 @@ serve(async (req) => {
               totalCandidates, 
               syncedCandidates,
               jobsProcessed: jobs.length,
-              errors: errors.slice(0, 10), // Limit errors to avoid payload size issues
+              errors: errors.slice(0, 10),
               timestamp: new Date().toISOString()
             }
           })
@@ -194,74 +193,98 @@ serve(async (req) => {
           cleanDescription = cleanDescription.substring(0, 5000) + '...';
         }
 
-        // Use the Workable Recruiting API instead of SPI for job creation
-        const recruitingApiUrl = `https://${cleanSubdomain}.workable.com/api/v1/jobs`;
-        
-        // Workable Recruiting API job payload
-        const workableJob = {
-          title: cleanTitle,
-          description: cleanDescription,
-          state: 'draft',
-          employment_type: jobData.employment_type || 'full_time',
-          department: jobData.department || 'General'
-        };
-
-        console.log('Using Recruiting API URL:', recruitingApiUrl);
-        console.log('Job payload for Recruiting API:', JSON.stringify(workableJob, null, 2));
-
-        // Try the Recruiting API first
-        const response = await fetch(recruitingApiUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(workableJob),
-        });
-
-        console.log('Workable Recruiting API response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-        
-        const responseText = await response.text();
-        console.log('Workable API response body:', responseText);
-
-        if (!response.ok) {
-          let errorMessage = `HTTP ${response.status}`;
-          try {
-            const errorData = JSON.parse(responseText);
-            errorMessage = errorData.message || errorData.error || errorMessage;
-            console.error('Workable API error details:', errorData);
-            
-            // Check if it's an authentication issue
-            if (response.status === 401) {
-              errorMessage = 'Authentication failed. Please check your Workable API token.';
-            } else if (response.status === 403) {
-              errorMessage = 'Access forbidden. Please check your Workable API permissions.';
-            } else if (response.status === 404) {
-              errorMessage = 'API endpoint not found. Please verify your Workable account has job creation permissions and try the SPI API instead.';
-            } else if (response.status === 422) {
-              errorMessage = `Validation error: ${errorData.message || 'Invalid job data provided'}`;
+        // Test different API endpoints to find the working one
+        const endpointsToTry = [
+          {
+            name: 'Recruiting API v1',
+            url: `https://${cleanSubdomain}.workable.com/api/v1/jobs`,
+            payload: {
+              title: cleanTitle,
+              description: cleanDescription,
+              state: 'draft',
+              employment_type: jobData.employment_type || 'full_time',
+              department: jobData.department || 'General'
             }
-          } catch (e) {
-            console.error('Could not parse error response:', responseText);
+          },
+          {
+            name: 'SPI v3 Jobs',
+            url: `https://${cleanSubdomain}.workable.com/spi/v3/jobs`,
+            payload: {
+              title: cleanTitle,
+              description: cleanDescription,
+              state: 'draft'
+            }
+          },
+          {
+            name: 'Legacy API',
+            url: `https://${cleanSubdomain}.workable.com/api/jobs`,
+            payload: {
+              title: cleanTitle,
+              description: cleanDescription,
+              state: 'draft'
+            }
           }
-          
-          throw new Error(`Failed to publish job via Recruiting API: ${errorMessage}`);
-        }
+        ];
 
-        let publishedJob;
-        try {
-          publishedJob = JSON.parse(responseText);
-        } catch (e) {
-          console.error('Failed to parse successful response:', responseText);
-          throw new Error('Received invalid response from Workable API');
+        let lastError = null;
+        
+        for (const endpoint of endpointsToTry) {
+          try {
+            console.log(`Trying ${endpoint.name} at ${endpoint.url}`);
+            console.log('Payload:', JSON.stringify(endpoint.payload, null, 2));
+
+            const response = await fetch(endpoint.url, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(endpoint.payload),
+            });
+
+            console.log(`${endpoint.name} response status:`, response.status);
+            const responseText = await response.text();
+            console.log(`${endpoint.name} response:`, responseText);
+
+            if (response.ok) {
+              let publishedJob;
+              try {
+                publishedJob = JSON.parse(responseText);
+              } catch (e) {
+                // Some APIs might return plain text success
+                publishedJob = { success: true, message: responseText };
+              }
+              
+              console.log(`Successfully published job using ${endpoint.name}`);
+              
+              return new Response(
+                JSON.stringify({ 
+                  success: true, 
+                  job: publishedJob,
+                  api_used: endpoint.name,
+                  message: `Job created successfully in Workable using ${endpoint.name}! You can review and publish it manually when ready.`
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            } else {
+              // Log the error but continue to next endpoint
+              let errorMessage = `HTTP ${response.status}`;
+              try {
+                const errorData = JSON.parse(responseText);
+                errorMessage = errorData.message || errorData.error || errorMessage;
+              } catch (e) {
+                // Response is not JSON, use the raw text
+                errorMessage = responseText || errorMessage;
+              }
+              
+              console.log(`${endpoint.name} failed: ${errorMessage}`);
+              lastError = `${endpoint.name}: ${errorMessage}`;
+            }
+          } catch (error) {
+            console.error(`Error with ${endpoint.name}:`, error);
+            lastError = `${endpoint.name}: ${error.message}`;
+          }
         }
         
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            job: publishedJob,
-            message: 'Job created successfully in Workable! You can review and publish it manually when ready.'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // If we get here, all endpoints failed
+        throw new Error(`All API endpoints failed. Last error: ${lastError}. Please check your Workable API permissions and account configuration.`);
       }
 
       case 'sync_jobs': {
@@ -348,7 +371,6 @@ serve(async (req) => {
 });
 
 async function ensureIntegrationSettings(supabase: any) {
-  // Check if settings exist
   const { data: existingSettings } = await supabase
     .from('integration_settings')
     .select('*');
