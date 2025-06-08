@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { AddCandidateDialog } from "./AddCandidateDialog";
 import { CandidateProfileCard } from "./CandidateProfileCard";
 import { IntegrationSyncPanel } from "./IntegrationSyncPanel";
@@ -37,16 +39,18 @@ export const CandidatesList = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const candidatesPerPage = 25;
   const queryClient = useQueryClient();
 
-  const { data: candidates, isLoading, error } = useQuery({
-    queryKey: ["candidates", searchTerm, sourceFilter],
+  const { data: candidatesData, isLoading, error } = useQuery({
+    queryKey: ["candidates", searchTerm, sourceFilter, currentPage],
     queryFn: async () => {
-      console.log('Fetching candidates with search:', searchTerm, 'filter:', sourceFilter);
+      console.log('Fetching candidates with search:', searchTerm, 'filter:', sourceFilter, 'page:', currentPage);
       
       let query = supabase
         .from("candidates")
-        .select("*")
+        .select("*", { count: 'exact' })
         .order("created_at", { ascending: false });
 
       if (searchTerm) {
@@ -57,16 +61,30 @@ export const CandidatesList = () => {
         query = query.eq("source_platform", sourceFilter);
       }
 
-      const { data, error } = await query;
+      // Add pagination
+      const from = (currentPage - 1) * candidatesPerPage;
+      const to = from + candidatesPerPage - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
       if (error) {
         console.error('Error fetching candidates:', error);
         throw error;
       }
       
-      console.log('Fetched candidates:', data?.length, 'candidates');
-      return data as Candidate[];
+      console.log('Fetched candidates:', data?.length, 'candidates, total:', count);
+      return { candidates: data as Candidate[], totalCount: count || 0 };
     }
   });
+
+  const candidates = candidatesData?.candidates || [];
+  const totalCount = candidatesData?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / candidatesPerPage);
+
+  // Reset to first page when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sourceFilter]);
 
   const { data: responseCounts } = useQuery({
     queryKey: ["candidate-response-counts"],
@@ -165,6 +183,36 @@ export const CandidatesList = () => {
     return 'text-red-600';
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const getPaginationRange = () => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, '...');
+    } else {
+      rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push('...', totalPages);
+    } else if (totalPages > 1) {
+      rangeWithDots.push(totalPages);
+    }
+
+    return rangeWithDots.filter((item, index, arr) => arr.indexOf(item) === index);
+  };
+
   if (isLoading) {
     return <div className="flex justify-center p-4">Loading candidates...</div>;
   }
@@ -220,9 +268,10 @@ export const CandidatesList = () => {
         <div className="rounded-md border bg-card">
           <div className="p-4 border-b">
             <p className="text-sm text-muted-foreground">
-              Showing {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+              Showing {candidates.length} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
               {sourceFilter !== "all" && ` from ${sourceFilter}`}
+              {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
             </p>
           </div>
           <Table>
@@ -324,6 +373,44 @@ export const CandidatesList = () => {
               ))}
             </TableBody>
           </Table>
+
+          {totalPages > 1 && (
+            <div className="p-4 border-t">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+
+                  {getPaginationRange().map((page, index) => (
+                    <PaginationItem key={index}>
+                      {page === '...' ? (
+                        <span className="px-3 py-2 text-sm text-muted-foreground">...</span>
+                      ) : (
+                        <PaginationLink
+                          onClick={() => handlePageChange(page as number)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
       ) : (
         <div className="rounded-md border bg-card p-8 text-center">

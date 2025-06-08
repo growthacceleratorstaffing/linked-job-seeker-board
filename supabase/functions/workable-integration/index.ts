@@ -62,18 +62,35 @@ serve(async (req) => {
           .select()
           .single();
 
-        // First get all jobs to then fetch candidates for each
-        const jobsResponse = await fetch(`${spiBaseUrl}/jobs?state=published&limit=50`, {
-          method: 'GET',
-          headers,
-        });
+        // Fetch both published and archived jobs to get candidates from all jobs
+        const [publishedResponse, archivedResponse] = await Promise.all([
+          fetch(`${spiBaseUrl}/jobs?state=published&limit=50`, {
+            method: 'GET',
+            headers,
+          }),
+          fetch(`${spiBaseUrl}/jobs?state=archived&limit=50`, {
+            method: 'GET',
+            headers,
+          })
+        ]);
 
-        if (!jobsResponse.ok) {
-          throw new Error(`Failed to fetch jobs: ${jobsResponse.status}`);
+        if (!publishedResponse.ok) {
+          throw new Error(`Failed to fetch published jobs: ${publishedResponse.status}`);
         }
 
-        const jobsData = await jobsResponse.json();
-        const jobs = jobsData.jobs || [];
+        if (!archivedResponse.ok) {
+          throw new Error(`Failed to fetch archived jobs: ${archivedResponse.status}`);
+        }
+
+        const publishedData = await publishedResponse.json();
+        const archivedData = await archivedResponse.json();
+        
+        // Combine published and archived jobs
+        const jobs = [
+          ...(publishedData.jobs || []),
+          ...(archivedData.jobs || [])
+        ];
+
         let totalCandidates = 0;
         let syncedCandidates = 0;
         let errors: string[] = [];
@@ -120,14 +137,14 @@ serve(async (req) => {
             }
 
             jobUuidMap.set(job.id, jobUuid);
-            console.log(`Mapped job ${job.id} to UUID ${jobUuid}`);
+            console.log(`Mapped job ${job.id} (${job.state}) to UUID ${jobUuid}`);
           } catch (error) {
             console.error(`Failed to process job ${job.id}:`, error);
             errors.push(`Job ${job.shortcode}: ${error.message}`);
           }
         }
 
-        // Now sync candidates
+        // Now sync candidates from all jobs (published and archived)
         for (const job of jobs) {
           try {
             const jobUuid = jobUuidMap.get(job.id);
@@ -136,7 +153,7 @@ serve(async (req) => {
               continue;
             }
 
-            console.log(`Fetching candidates for job: ${job.shortcode}`);
+            console.log(`Fetching candidates for job: ${job.shortcode} (${job.state})`);
             const candidatesResponse = await fetch(`${spiBaseUrl}/jobs/${job.shortcode}/candidates`, {
               method: 'GET',
               headers,
@@ -146,7 +163,7 @@ serve(async (req) => {
               const candidatesData = await candidatesResponse.json();
               const candidates = candidatesData.candidates || [];
               totalCandidates += candidates.length;
-              console.log(`Found ${candidates.length} candidates for job ${job.shortcode}`);
+              console.log(`Found ${candidates.length} candidates for job ${job.shortcode} (${job.state})`);
 
               for (const candidate of candidates) {
                 try {
@@ -177,6 +194,8 @@ serve(async (req) => {
               totalCandidates, 
               syncedCandidates,
               jobsProcessed: jobs.length,
+              publishedJobs: publishedData.jobs?.length || 0,
+              archivedJobs: archivedData.jobs?.length || 0,
               errors: errors.slice(0, 10),
               timestamp: new Date().toISOString()
             }
@@ -197,8 +216,10 @@ serve(async (req) => {
             totalCandidates,
             syncedCandidates,
             jobsProcessed: jobs.length,
+            publishedJobs: publishedData.jobs?.length || 0,
+            archivedJobs: archivedData.jobs?.length || 0,
             errors: errors.length > 0 ? errors : undefined,
-            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from Workable`
+            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from Workable (${publishedData.jobs?.length || 0} published + ${archivedData.jobs?.length || 0} archived jobs)`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
