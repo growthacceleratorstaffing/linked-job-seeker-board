@@ -79,50 +79,61 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
       content: message
     });
 
-    // Azure OpenAI API endpoint format - using gpt-4o-mini deployment
-    const apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-08-01-preview`;
+    // Try common deployment names - first try gpt-4o, then gpt-4, then gpt-35-turbo
+    const deploymentNames = ['gpt-4o', 'gpt-4', 'gpt-35-turbo', 'gpt-4o-mini'];
+    let response;
+    let lastError;
 
-    console.log('Using Azure OpenAI URL:', apiUrl);
-
-    const requestBody = {
-      messages: messages,
-      temperature: 0.7,
-      max_tokens: 1500,
-      top_p: 0.95,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      stream: false
-    };
-
-    console.log('Request body:', JSON.stringify(requestBody, null, 2));
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': azureApiKey,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Azure OpenAI API error:', response.status, errorText);
-      
-      // Try to parse error as JSON for better debugging
+    for (const deploymentName of deploymentNames) {
       try {
-        const errorJson = JSON.parse(errorText);
-        console.error('Parsed error:', errorJson);
-      } catch (e) {
-        console.error('Error text is not JSON:', errorText);
+        const apiUrl = `${azureEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-08-01-preview`;
+        console.log(`Trying deployment: ${deploymentName} at ${apiUrl}`);
+
+        const requestBody = {
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 1500,
+          top_p: 0.95,
+          frequency_penalty: 0,
+          presence_penalty: 0,
+          stream: false
+        };
+
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': azureApiKey,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        console.log(`Response status for ${deploymentName}:`, response.status);
+
+        if (response.ok) {
+          console.log(`Successfully connected with deployment: ${deploymentName}`);
+          break;
+        } else {
+          const errorText = await response.text();
+          console.log(`Failed with ${deploymentName}:`, response.status, errorText);
+          lastError = errorText;
+          response = null;
+        }
+      } catch (error) {
+        console.log(`Error with deployment ${deploymentName}:`, error.message);
+        lastError = error.message;
+        response = null;
       }
-      
+    }
+
+    if (!response || !response.ok) {
+      console.error('All deployment attempts failed. Last error:', lastError);
       return new Response(
-        JSON.stringify({ error: `Azure OpenAI API error: ${response.status} - ${errorText}` }),
+        JSON.stringify({ 
+          error: `Could not find a working Azure OpenAI deployment. Please check your deployment names in Azure. Tried: ${deploymentNames.join(', ')}`,
+          details: lastError 
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
