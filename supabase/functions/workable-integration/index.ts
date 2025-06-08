@@ -172,7 +172,7 @@ serve(async (req) => {
       }
 
       case 'publish_job': {
-        console.log('Publishing job to Workable:', jobData.title);
+        console.log('Publishing job to Workable with full employment details:', jobData.title);
         
         // Clean and validate job title
         const cleanTitle = jobData.title
@@ -180,7 +180,7 @@ serve(async (req) => {
           .replace(/Job Title:\s*/i, '')
           .trim();
         
-        // Convert markdown description to plain text and limit length
+        // Convert markdown description to plain text
         let cleanDescription = jobData.description
           .replace(/#{1,6}\s/g, '')
           .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -188,103 +188,76 @@ serve(async (req) => {
           .replace(/- /g, '• ')
           .trim();
 
-        // Limit description length to prevent API issues
+        // Limit description length
         if (cleanDescription.length > 5000) {
           cleanDescription = cleanDescription.substring(0, 5000) + '...';
         }
 
-        // Test different API endpoints to find the working one
-        const endpointsToTry = [
-          {
-            name: 'Recruiting API v1',
-            url: `https://${cleanSubdomain}.workable.com/api/v1/jobs`,
-            payload: {
-              title: cleanTitle,
-              description: cleanDescription,
-              state: 'draft',
-              employment_type: jobData.employment_type || 'full_time',
-              department: jobData.department || 'General'
-            }
+        // Build comprehensive job payload according to Workable API
+        const jobPayload = {
+          title: cleanTitle,
+          description: cleanDescription,
+          state: 'draft',
+          employment_type: jobData.employment_type || 'full_time',
+          department: jobData.department || 'General',
+          location: {
+            location_str: jobData.location || jobData.officeLocation,
+            country_code: 'US',
+            region_code: 'US',
+            telecommuting: jobData.remote || jobData.workplace === 'remote'
           },
-          {
-            name: 'SPI v3 Jobs',
-            url: `https://${cleanSubdomain}.workable.com/spi/v3/jobs`,
-            payload: {
-              title: cleanTitle,
-              description: cleanDescription,
-              state: 'draft'
-            }
-          },
-          {
-            name: 'Legacy API',
-            url: `https://${cleanSubdomain}.workable.com/api/jobs`,
-            payload: {
-              title: cleanTitle,
-              description: cleanDescription,
-              state: 'draft'
-            }
-          }
-        ];
+          workplace: jobData.workplace || 'on_site',
+          job_code: jobData.job_code || null,
+          requirements: cleanDescription,
+          benefits: cleanDescription
+        };
 
-        let lastError = null;
+        console.log('Full job payload:', JSON.stringify(jobPayload, null, 2));
+
+        // Use the correct Workable Recruiting API endpoint
+        const recruitingApiUrl = `https://${cleanSubdomain}.workable.com/api/v1/jobs`;
         
-        for (const endpoint of endpointsToTry) {
+        console.log('Using Recruiting API endpoint:', recruitingApiUrl);
+
+        const response = await fetch(recruitingApiUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(jobPayload),
+        });
+
+        console.log('API response status:', response.status);
+        const responseText = await response.text();
+        console.log('API response:', responseText);
+
+        if (response.ok) {
+          let publishedJob;
           try {
-            console.log(`Trying ${endpoint.name} at ${endpoint.url}`);
-            console.log('Payload:', JSON.stringify(endpoint.payload, null, 2));
-
-            const response = await fetch(endpoint.url, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify(endpoint.payload),
-            });
-
-            console.log(`${endpoint.name} response status:`, response.status);
-            const responseText = await response.text();
-            console.log(`${endpoint.name} response:`, responseText);
-
-            if (response.ok) {
-              let publishedJob;
-              try {
-                publishedJob = JSON.parse(responseText);
-              } catch (e) {
-                // Some APIs might return plain text success
-                publishedJob = { success: true, message: responseText };
-              }
-              
-              console.log(`Successfully published job using ${endpoint.name}`);
-              
-              return new Response(
-                JSON.stringify({ 
-                  success: true, 
-                  job: publishedJob,
-                  api_used: endpoint.name,
-                  message: `Job created successfully in Workable using ${endpoint.name}! You can review and publish it manually when ready.`
-                }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-              );
-            } else {
-              // Log the error but continue to next endpoint
-              let errorMessage = `HTTP ${response.status}`;
-              try {
-                const errorData = JSON.parse(responseText);
-                errorMessage = errorData.message || errorData.error || errorMessage;
-              } catch (e) {
-                // Response is not JSON, use the raw text
-                errorMessage = responseText || errorMessage;
-              }
-              
-              console.log(`${endpoint.name} failed: ${errorMessage}`);
-              lastError = `${endpoint.name}: ${errorMessage}`;
-            }
-          } catch (error) {
-            console.error(`Error with ${endpoint.name}:`, error);
-            lastError = `${endpoint.name}: ${error.message}`;
+            publishedJob = JSON.parse(responseText);
+          } catch (e) {
+            publishedJob = { success: true, message: responseText };
           }
+          
+          console.log('Successfully published job to Workable');
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              job: publishedJob,
+              message: `Job "${cleanTitle}" created successfully in Workable! You can review and publish it manually when ready.`
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          let errorMessage = `HTTP ${response.status}`;
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || errorData.error || errorData.errors || errorMessage;
+          } catch (e) {
+            errorMessage = responseText || errorMessage;
+          }
+          
+          throw new Error(`Failed to create job in Workable: ${errorMessage}`);
         }
-        
-        // If we get here, all endpoints failed
-        throw new Error(`All API endpoints failed. Last error: ${lastError}. Please check your Workable API permissions and account configuration.`);
       }
 
       case 'sync_jobs': {
