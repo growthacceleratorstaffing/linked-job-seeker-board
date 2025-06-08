@@ -189,27 +189,24 @@ serve(async (req) => {
           .replace(/- /g, '• ') // Convert dashes to bullets
           .trim();
 
+        // Simplified job payload to avoid 404 errors
         const workableJob = {
           title: cleanTitle,
           full_title: cleanTitle,
           description: cleanDescription,
-          requirements: jobData.requirements || '',
-          benefits: jobData.benefits || '',
           employment_type: jobData.employment_type || 'full_time',
-          experience: jobData.experience || 'experienced',
-          education: jobData.education || 'not_specified',
           department: jobData.department || 'Engineering',
-          function: jobData.function || 'Engineering',
           remote: jobData.remote || false,
-          telecommuting: jobData.remote || false,
-          location: {
-            location_str: jobData.location || 'Remote',
-            country: 'NL',
-            region: jobData.location || 'Remote',
-            city: jobData.location || 'Remote'
-          },
-          state: 'draft', // Create as draft instead of published
+          state: 'draft' // Create as draft
         };
+
+        // Only add location if it's provided and not empty
+        if (jobData.location && jobData.location.trim()) {
+          workableJob.location = {
+            location_str: jobData.location,
+            country: 'NL'
+          };
+        }
 
         console.log('Prepared job data:', JSON.stringify(workableJob, null, 2));
 
