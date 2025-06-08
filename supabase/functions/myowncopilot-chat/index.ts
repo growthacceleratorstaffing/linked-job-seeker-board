@@ -26,19 +26,19 @@ serve(async (req) => {
       );
     }
 
-    const copilotApiKey = Deno.env.get('MYOWNCOPILOT_API_KEY');
-    const copilotUrl = Deno.env.get('MYOWNCOPILOT_URL');
+    const azureApiKey = Deno.env.get('AZURE_OPENAI_API_KEY');
+    const azureEndpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT');
 
-    console.log('Environment check:', {
-      hasApiKey: !!copilotApiKey,
-      hasUrl: !!copilotUrl,
-      urlValue: copilotUrl,
-      apiKeyLength: copilotApiKey ? copilotApiKey.length : 0
+    console.log('Azure OpenAI Environment check:', {
+      hasApiKey: !!azureApiKey,
+      hasEndpoint: !!azureEndpoint,
+      endpointValue: azureEndpoint,
+      apiKeyLength: azureApiKey ? azureApiKey.length : 0
     });
 
-    if (!copilotApiKey || !copilotUrl) {
+    if (!azureApiKey || !azureEndpoint) {
       return new Response(
-        JSON.stringify({ error: 'MyOwnCopilot configuration missing' }),
+        JSON.stringify({ error: 'Azure OpenAI configuration missing' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -46,29 +46,13 @@ serve(async (req) => {
       );
     }
 
-    console.log('Sending message to MyOwnCopilot:', message.substring(0, 100) + '...');
+    console.log('Sending message to Azure OpenAI:', message.substring(0, 100) + '...');
 
-    // Format conversation history for MyOwnCopilot
-    const messages = conversationHistory || [];
-    messages.push({
-      role: 'user',
-      content: message
-    });
-
-    // Ensure URL has proper protocol and format
-    const baseUrl = copilotUrl.startsWith('http') ? copilotUrl : `https://${copilotUrl}`;
-    const apiUrl = `${baseUrl}/api/chat`;
-
-    console.log('Using MyOwnCopilot URL:', apiUrl);
-
-    // Try different request formats to see what works
-    const requestBody = {
-      messages: messages,
-      stream: false,
-      model: 'gpt-4o-mini',
-      temperature: 0.7,
-      max_tokens: 1500,
-      system_prompt: `You are an expert HR recruitment assistant specializing in job creation, hiring processes, and talent acquisition. You help users:
+    // Format conversation history for Azure OpenAI
+    const messages = [
+      {
+        role: 'system',
+        content: `You are an expert HR recruitment assistant specializing in job creation, hiring processes, and talent acquisition. You help users:
 
 1. Create compelling job vacancies and descriptions
 2. Improve existing job postings
@@ -78,6 +62,33 @@ serve(async (req) => {
 6. Help with recruitment strategy
 
 Be conversational, helpful, and professional. When creating job vacancies, use a clear structure with sections like job title, about the role, key responsibilities, requirements, and what the company offers. Keep responses concise but informative.`
+      }
+    ];
+
+    // Add conversation history
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+      messages.push(...conversationHistory);
+    }
+
+    // Add current user message
+    messages.push({
+      role: 'user',
+      content: message
+    });
+
+    // Azure OpenAI API endpoint format
+    const apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-15-preview`;
+
+    console.log('Using Azure OpenAI URL:', apiUrl);
+
+    const requestBody = {
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 1500,
+      top_p: 0.95,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+      stream: false
     };
 
     console.log('Request body:', JSON.stringify(requestBody, null, 2));
@@ -86,7 +97,7 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${copilotApiKey}`,
+        'api-key': azureApiKey,
         'Accept': 'application/json'
       },
       body: JSON.stringify(requestBody),
@@ -97,7 +108,7 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('MyOwnCopilot API error:', response.status, errorText);
+      console.error('Azure OpenAI API error:', response.status, errorText);
       
       // Try to parse error as JSON for better debugging
       try {
@@ -108,7 +119,7 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
       }
       
       return new Response(
-        JSON.stringify({ error: `MyOwnCopilot API error: ${response.status} - ${errorText}` }),
+        JSON.stringify({ error: `Azure OpenAI API error: ${response.status} - ${errorText}` }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -125,7 +136,7 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
     } catch (e) {
       console.error('Failed to parse response as JSON:', e);
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON response from MyOwnCopilot' }),
+        JSON.stringify({ error: 'Invalid JSON response from Azure OpenAI' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -136,9 +147,9 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
     console.log('Parsed response data:', JSON.stringify(data, null, 2));
 
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Unexpected response format from MyOwnCopilot:', data);
+      console.error('Unexpected response format from Azure OpenAI:', data);
       return new Response(
-        JSON.stringify({ error: 'Invalid response format from MyOwnCopilot' }),
+        JSON.stringify({ error: 'Invalid response format from Azure OpenAI' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -148,7 +159,7 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
 
     const aiResponse = data.choices[0].message.content;
     
-    console.log('Successfully received response from MyOwnCopilot');
+    console.log('Successfully received response from Azure OpenAI');
 
     return new Response(
       JSON.stringify({ response: aiResponse }),
@@ -158,7 +169,7 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
     );
 
   } catch (error) {
-    console.error('Error in myowncopilot-chat function:', error);
+    console.error('Error in azure-openai-chat function:', error);
     console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message }),
