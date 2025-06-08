@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,11 +38,6 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
 
       setWorkableJobs(data.jobs || []);
       
-      toast({
-        title: "Jobs synced successfully!",
-        description: `Found ${data.published || 0} published and ${data.archived || 0} archived jobs in Workable.`,
-      });
-
     } catch (error) {
       console.error('Error syncing jobs:', error);
       toast({

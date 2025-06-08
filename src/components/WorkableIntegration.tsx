@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -237,7 +236,6 @@ export const WorkableIntegration: React.FC<WorkableIntegrationProps> = ({ genera
           </div>
         </CardTitle>
         
-        {/* Auto-sync status section */}
         <div className="bg-slate-900 rounded-lg p-3 mt-3">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
