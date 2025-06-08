@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageSquare, Sparkles, Send } from "lucide-react";
@@ -12,6 +12,23 @@ interface CopilotTriggerProps {
 export const CopilotTrigger: React.FC<CopilotTriggerProps> = ({ onVacancyGenerated }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [quickQuestion, setQuickQuestion] = useState('');
+  const [showPrompt, setShowPrompt] = useState(false);
+
+  // Show the "ask me anything" prompt after 3 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowPrompt(true);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Hide prompt when user opens the chat
+  useEffect(() => {
+    if (isOpen) {
+      setShowPrompt(false);
+    }
+  }, [isOpen]);
 
   const handleQuickQuestion = () => {
     if (quickQuestion.trim()) {
@@ -75,6 +92,16 @@ export const CopilotTrigger: React.FC<CopilotTriggerProps> = ({ onVacancyGenerat
           Open Chat
           <div className="absolute top-full right-3 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-primary-blue"></div>
         </div>
+
+        {/* "Ask me anything" popup */}
+        {showPrompt && !isOpen && (
+          <div className="absolute bottom-full right-full mb-2 mr-2 animate-fade-in">
+            <div className="bg-gradient-to-r from-secondary-pink to-primary-blue text-white px-3 py-2 rounded-lg shadow-lg text-sm whitespace-nowrap">
+              ask me anything
+              <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-secondary-pink"></div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* AI Copilot Modal */}
