@@ -111,23 +111,18 @@ export const IntegrationSyncPanel = () => {
     if (pending > 0) return <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />;
     if (failed > 0) return <XCircle className="h-4 w-4 text-red-500" />;
     if (success > 0) return <CheckCircle className="h-4 w-4 text-green-500" />;
-    return <AlertCircle className="h-4 w-4 text-gray-400" />;
+    return <CheckCircle className="h-4 w-4 text-green-500" />;
   };
 
   const getStatusBadge = (success: number, failed: number, pending: number, isAutoEnabled: boolean) => {
     if (pending > 0) return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Syncing</Badge>;
     if (failed > 0) return <Badge variant="destructive">Issues</Badge>;
-    if (success > 0 && isAutoEnabled) return (
+    return (
       <Badge variant="secondary" className="bg-green-100 text-green-800">
         <Zap className="h-3 w-3 mr-1" />
-        Auto-Active
+        Auto-Enabled
       </Badge>
     );
-    if (success > 0) return <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>;
-    return <Badge variant="secondary" className="bg-green-100 text-green-800">
-      <Zap className="h-3 w-3 mr-1" />
-      Auto-Enabled
-    </Badge>;
   };
 
   const getNextSyncInfo = (integrationSettings: any, type: string) => {
@@ -175,10 +170,7 @@ export const IntegrationSyncPanel = () => {
             )}
           </CardTitle>
           <CardDescription>
-            {linkedinSetting?.is_enabled ?? true
-              ? 'LinkedIn integration is enabled' 
-              : 'LinkedIn integration is disabled'
-            }
+            LinkedIn auto-sync is enabled
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -210,10 +202,7 @@ export const IntegrationSyncPanel = () => {
             )}
           </CardTitle>
           <CardDescription>
-            {workableSetting?.is_enabled ?? true
-              ? 'Workable auto-sync is enabled' 
-              : 'Workable integration is disabled'
-            }
+            Workable auto-sync is enabled - syncs every 2 hours
           </CardDescription>
         </CardHeader>
         <CardContent>
