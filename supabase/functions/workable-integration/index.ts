@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10";
@@ -29,7 +30,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
     
-    // Fix the base URL construction and use the correct API version
+    // Use the correct Workable API base URL and version
     const cleanSubdomain = workableSubdomain.replace('.workable.com', '');
     const baseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
     
@@ -203,17 +204,21 @@ serve(async (req) => {
           .replace(/- /g, '• ')
           .trim();
 
-        // Use the most basic payload possible according to Workable API docs
+        // Use the correct Workable API format for job creation
         const workableJob = {
           title: cleanTitle,
           full_title: cleanTitle,
           description: cleanDescription,
+          employment_type: jobData.employment_type || 'full_time',
+          department: jobData.department || 'General',
+          location: jobData.location || '',
+          remote: jobData.remote || false,
           state: 'draft'
         };
 
-        console.log('Using ultra-minimal job payload:', JSON.stringify(workableJob, null, 2));
+        console.log('Using job payload:', JSON.stringify(workableJob, null, 2));
 
-        // Try the API call with detailed error logging
+        // Use the correct API endpoint for creating jobs
         const response = await fetch(`${baseUrl}/jobs`, {
           method: 'POST',
           headers,
