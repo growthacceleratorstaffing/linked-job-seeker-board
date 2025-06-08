@@ -27,7 +27,7 @@ serve(async (req) => {
     }
 
     const azureApiKey = Deno.env.get('AZURE_OPENAI_API_KEY');
-    const azureEndpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT');
+    let azureEndpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT');
 
     console.log('Azure OpenAI Environment check:', {
       hasApiKey: !!azureApiKey,
@@ -45,6 +45,9 @@ serve(async (req) => {
         }
       );
     }
+
+    // Clean up the endpoint URL to avoid double slashes
+    azureEndpoint = azureEndpoint.replace(/\/$/, '');
 
     console.log('Sending message to Azure OpenAI:', message.substring(0, 100) + '...');
 
@@ -76,8 +79,8 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
       content: message
     });
 
-    // Azure OpenAI API endpoint format
-    const apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-15-preview`;
+    // Azure OpenAI API endpoint format - using gpt-4o-mini deployment
+    const apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-08-01-preview`;
 
     console.log('Using Azure OpenAI URL:', apiUrl);
 
