@@ -29,7 +29,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
     
-    // Fix the base URL construction - remove any existing .workable.com from subdomain
+    // Fix the base URL construction and use the correct API version
     const cleanSubdomain = workableSubdomain.replace('.workable.com', '');
     const baseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
     
@@ -40,7 +40,21 @@ serve(async (req) => {
 
     console.log('Clean subdomain:', cleanSubdomain);
     console.log('Using Workable API base URL:', baseUrl);
-    console.log('API Token length:', workableApiToken.length);
+    console.log('API Token present:', !!workableApiToken);
+
+    // Test API connection first
+    console.log('Testing API connection...');
+    const testResponse = await fetch(`${baseUrl}/jobs?limit=1`, {
+      method: 'GET',
+      headers,
+    });
+    console.log('Test API response status:', testResponse.status);
+
+    if (!testResponse.ok) {
+      const testError = await testResponse.text();
+      console.error('API connection test failed:', testError);
+      throw new Error(`API connection failed: ${testResponse.status} - ${testError}`);
+    }
 
     // Ensure integration settings exist and are enabled
     await ensureIntegrationSettings(supabase);
@@ -175,31 +189,31 @@ serve(async (req) => {
       case 'publish_job': {
         console.log('Publishing job to Workable:', jobData.title);
         
-        // Clean and validate job title - remove markdown formatting
+        // Clean and validate job title
         const cleanTitle = jobData.title
           .replace(/^#\s*/, '')
           .replace(/Job Title:\s*/i, '')
           .trim();
         
-        // Convert markdown description to plain text for better compatibility
+        // Convert markdown description to plain text
         const cleanDescription = jobData.description
-          .replace(/#{1,6}\s/g, '') // Remove markdown headers
-          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
-          .replace(/\*(.*?)\*/g, '$1') // Remove italic formatting
-          .replace(/- /g, '• ') // Convert dashes to bullets
+          .replace(/#{1,6}\s/g, '')
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/- /g, '• ')
           .trim();
 
-        // Minimal job payload to avoid 404 errors - only include required fields
+        // Use the most basic payload possible according to Workable API docs
         const workableJob = {
           title: cleanTitle,
+          full_title: cleanTitle,
           description: cleanDescription,
-          employment_type: jobData.employment_type || 'full_time',
-          department: jobData.department || 'General',
-          state: 'draft' // Create as draft initially
+          state: 'draft'
         };
 
-        console.log('Prepared minimal job data:', JSON.stringify(workableJob, null, 2));
+        console.log('Using ultra-minimal job payload:', JSON.stringify(workableJob, null, 2));
 
+        // Try the API call with detailed error logging
         const response = await fetch(`${baseUrl}/jobs`, {
           method: 'POST',
           headers,
@@ -207,6 +221,8 @@ serve(async (req) => {
         });
 
         console.log('Workable API response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        
         const responseText = await response.text();
         console.log('Workable API response body:', responseText);
 
@@ -216,6 +232,15 @@ serve(async (req) => {
             const errorData = JSON.parse(responseText);
             errorMessage = errorData.message || errorData.error || errorMessage;
             console.error('Workable API error details:', errorData);
+            
+            // Check if it's an authentication issue
+            if (response.status === 401) {
+              errorMessage = 'Authentication failed. Please check your Workable API token.';
+            } else if (response.status === 403) {
+              errorMessage = 'Access forbidden. Please check your Workable API permissions.';
+            } else if (response.status === 404) {
+              errorMessage = 'API endpoint not found. Please check your Workable subdomain configuration.';
+            }
           } catch (e) {
             console.error('Could not parse error response:', responseText);
           }
