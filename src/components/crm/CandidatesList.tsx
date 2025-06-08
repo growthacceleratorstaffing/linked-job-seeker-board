@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +95,7 @@ export const CandidatesList = () => {
           queryClient.invalidateQueries({ queryKey: ["candidates"] });
           
           if (payload.eventType === 'INSERT') {
-            toast.success(`New candidate added: ${payload.new.name}`);
+            toast.success(`New candidate added: ${(payload.new as any).name}`);
           }
         }
       )
@@ -106,7 +107,8 @@ export const CandidatesList = () => {
           table: 'integration_sync_logs'
         },
         (payload) => {
-          if (payload.new.integration_type === 'workable' && payload.new.status === 'success') {
+          const newData = payload.new as any;
+          if (newData?.integration_type === 'workable' && newData?.status === 'success') {
             console.log('Workable sync completed');
             queryClient.invalidateQueries({ queryKey: ["candidates"] });
             queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
@@ -119,24 +121,6 @@ export const CandidatesList = () => {
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
-
-  const syncWorkableCandidatesMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_candidates' }
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      toast.success(`Synced ${data.syncedCandidates} candidates from Workable`);
-      queryClient.invalidateQueries({ queryKey: ["candidates"] });
-      queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to sync candidates: ${error.message}`);
-    }
-  });
 
   const enrichCandidateMutation = useMutation({
     mutationFn: async (candidateId: string) => {
