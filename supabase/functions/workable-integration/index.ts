@@ -189,26 +189,16 @@ serve(async (req) => {
           .replace(/- /g, '• ') // Convert dashes to bullets
           .trim();
 
-        // Simplified job payload to avoid 404 errors
+        // Minimal job payload to avoid 404 errors - only include required fields
         const workableJob = {
           title: cleanTitle,
-          full_title: cleanTitle,
           description: cleanDescription,
           employment_type: jobData.employment_type || 'full_time',
-          department: jobData.department || 'Engineering',
-          remote: jobData.remote || false,
-          state: 'draft' // Create as draft
+          department: jobData.department || 'General',
+          state: 'draft' // Create as draft initially
         };
 
-        // Only add location if it's provided and not empty
-        if (jobData.location && jobData.location.trim()) {
-          workableJob.location = {
-            location_str: jobData.location,
-            country: 'NL'
-          };
-        }
-
-        console.log('Prepared job data:', JSON.stringify(workableJob, null, 2));
+        console.log('Prepared minimal job data:', JSON.stringify(workableJob, null, 2));
 
         const response = await fetch(`${baseUrl}/jobs`, {
           method: 'POST',
