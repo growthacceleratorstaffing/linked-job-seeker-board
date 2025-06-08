@@ -218,16 +218,16 @@ export const VacancyGenerator = () => {
       </Card>
 
       {/* Job Description Section - Now First */}
-      <Card className="bg-white border-gray-200">
+      <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between text-primary-blue">
+          <CardTitle className="flex items-center justify-between text-white">
             <span>Job Description</span>
             <div className="flex gap-2">
               <Button
                 onClick={publishToWorkable}
                 disabled={isPublishing}
                 size="sm"
-                className="bg-primary-blue hover:bg-primary-blue/80 text-white"
+                className="bg-secondary-pink hover:bg-secondary-pink/80 text-white"
               >
                 {isPublishing ? (
                   <>
@@ -247,7 +247,7 @@ export const VacancyGenerator = () => {
                     onClick={toggleEditMode}
                     size="sm"
                     variant="outline"
-                    className="border-primary-blue text-primary-blue hover:bg-primary-blue hover:text-white"
+                    className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white"
                   >
                     <Edit className="w-4 h-4 mr-1" />
                     {isEditing ? 'View' : 'Edit'}
@@ -256,7 +256,7 @@ export const VacancyGenerator = () => {
                     variant="outline"
                     size="sm"
                     onClick={copyToClipboard}
-                    className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
+                    className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white"
                   >
                     <Copy className="w-4 h-4 mr-1" />
                     Copy
@@ -265,7 +265,7 @@ export const VacancyGenerator = () => {
                     variant="outline"
                     size="sm"
                     onClick={downloadAsText}
-                    className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
+                    className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white"
                   >
                     <Download className="w-4 h-4 mr-1" />
                     Download
@@ -278,20 +278,20 @@ export const VacancyGenerator = () => {
         <CardContent>
           {isEditing || !generatedVacancy ? (
             <div>
-              <Label htmlFor="manual-description" className="text-primary-blue text-sm font-medium mb-2 block">
+              <Label htmlFor="manual-description" className="text-slate-200 text-sm font-medium mb-2 block">
                 Write your job description or use AI to generate one above
               </Label>
               <Textarea
                 id="manual-description"
                 value={generatedVacancy}
                 onChange={(e) => setGeneratedVacancy(e.target.value)}
-                className="bg-white border-gray-300 text-primary-blue placeholder:text-gray-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[400px]"
+                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[400px]"
                 placeholder="Enter your job description here, or use the AI generator above to create one..."
               />
             </div>
           ) : (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-              <div className="whitespace-pre-wrap text-primary-blue text-sm leading-relaxed">
+            <div className="bg-slate-700 border border-slate-600 rounded-lg p-6">
+              <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
                 {generatedVacancy}
               </div>
             </div>
