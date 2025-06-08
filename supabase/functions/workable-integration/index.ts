@@ -199,7 +199,7 @@ serve(async (req) => {
           function: jobData.function || 'Engineering',
           remote: jobData.remote || false,
           telecommuting: jobData.remote || false,
-          state: 'draft', // Start as draft to avoid immediate publication
+          state: 'draft', // Create as draft instead of published
         };
 
         console.log('Prepared job data:', JSON.stringify(workableJob, null, 2));
@@ -239,7 +239,7 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             job: publishedJob,
-            message: 'Job published to Workable successfully!'
+            message: 'Job created as draft in Workable successfully! You can manually publish it when ready.'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
