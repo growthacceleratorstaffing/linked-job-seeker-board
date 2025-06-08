@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -90,7 +89,7 @@ const Auth = () => {
               className="mx-auto h-16 w-16 object-contain"
             />
           </div>
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary-blue to-secondary-pink bg-clip-text text-transparent">
+          <CardTitle className="text-2xl font-bold text-secondary-pink">
             Growth Accelerator Jobs
           </CardTitle>
           <CardDescription>
