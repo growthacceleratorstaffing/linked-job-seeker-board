@@ -29,9 +29,8 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
     
-    // Use the correct Workable API v3 endpoint
+    // Use the Workable Recruiting API (different from SPI) for job creation
     const cleanSubdomain = workableSubdomain.replace('.workable.com', '');
-    const baseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
     
     const headers = {
       'Authorization': `Bearer ${workableApiToken}`,
@@ -39,29 +38,15 @@ serve(async (req) => {
     };
 
     console.log('Clean subdomain:', cleanSubdomain);
-    console.log('Using Workable API base URL:', baseUrl);
     console.log('API Token present:', !!workableApiToken);
-
-    // Test API connection first
-    console.log('Testing API connection...');
-    const testResponse = await fetch(`${baseUrl}/jobs?limit=1`, {
-      method: 'GET',
-      headers,
-    });
-    console.log('Test API response status:', testResponse.status);
-
-    if (!testResponse.ok) {
-      const testError = await testResponse.text();
-      console.error('API connection test failed:', testError);
-      throw new Error(`API connection failed: ${testResponse.status} - ${testError}`);
-    }
 
     // Ensure integration settings exist and are enabled
     await ensureIntegrationSettings(supabase);
 
     switch (action) {
       case 'sync_candidates': {
-        console.log('Syncing candidates from Workable...');
+        // Use SPI v3 for reading data
+        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
         
         // Log sync start
         const { data: syncLog } = await supabase
@@ -79,7 +64,7 @@ serve(async (req) => {
           .single();
 
         // First get all jobs to then fetch candidates for each
-        const jobsResponse = await fetch(`${baseUrl}/jobs?state=published&limit=50`, {
+        const jobsResponse = await fetch(`${spiBaseUrl}/jobs?state=published&limit=50`, {
           method: 'GET',
           headers,
         });
@@ -97,7 +82,7 @@ serve(async (req) => {
         for (const job of jobs) {
           try {
             console.log(`Fetching candidates for job: ${job.shortcode}`);
-            const candidatesResponse = await fetch(`${baseUrl}/jobs/${job.shortcode}/candidates`, {
+            const candidatesResponse = await fetch(`${spiBaseUrl}/jobs/${job.shortcode}/candidates`, {
               method: 'GET',
               headers,
             });
@@ -169,7 +154,8 @@ serve(async (req) => {
           throw new Error('Workable candidate ID is required');
         }
 
-        const response = await fetch(`${baseUrl}/candidates/${candidateData.workableId}`, {
+        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+        const response = await fetch(`${spiBaseUrl}/candidates/${candidateData.workableId}`, {
           method: 'GET',
           headers,
         });
@@ -208,23 +194,29 @@ serve(async (req) => {
           cleanDescription = cleanDescription.substring(0, 5000) + '...';
         }
 
-        // Use minimal required fields for Workable API
+        // Use the Workable Recruiting API instead of SPI for job creation
+        const recruitingApiUrl = `https://${cleanSubdomain}.workable.com/api/v1/jobs`;
+        
+        // Workable Recruiting API job payload
         const workableJob = {
           title: cleanTitle,
           description: cleanDescription,
-          state: 'draft'
+          state: 'draft',
+          employment_type: jobData.employment_type || 'full_time',
+          department: jobData.department || 'General'
         };
 
-        console.log('Using minimal job payload:', JSON.stringify(workableJob, null, 2));
+        console.log('Using Recruiting API URL:', recruitingApiUrl);
+        console.log('Job payload for Recruiting API:', JSON.stringify(workableJob, null, 2));
 
-        // Try creating the job with minimal payload first
-        const response = await fetch(`${baseUrl}/jobs`, {
+        // Try the Recruiting API first
+        const response = await fetch(recruitingApiUrl, {
           method: 'POST',
           headers,
           body: JSON.stringify(workableJob),
         });
 
-        console.log('Workable API response status:', response.status);
+        console.log('Workable Recruiting API response status:', response.status);
         console.log('Response headers:', Object.fromEntries(response.headers.entries()));
         
         const responseText = await response.text();
@@ -243,7 +235,7 @@ serve(async (req) => {
             } else if (response.status === 403) {
               errorMessage = 'Access forbidden. Please check your Workable API permissions.';
             } else if (response.status === 404) {
-              errorMessage = 'API endpoint not found. Please verify your Workable account configuration and API access.';
+              errorMessage = 'API endpoint not found. Please verify your Workable account has job creation permissions and try the SPI API instead.';
             } else if (response.status === 422) {
               errorMessage = `Validation error: ${errorData.message || 'Invalid job data provided'}`;
             }
@@ -251,7 +243,7 @@ serve(async (req) => {
             console.error('Could not parse error response:', responseText);
           }
           
-          throw new Error(`Failed to publish job: ${errorMessage}`);
+          throw new Error(`Failed to publish job via Recruiting API: ${errorMessage}`);
         }
 
         let publishedJob;
@@ -266,7 +258,7 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             job: publishedJob,
-            message: 'Job created as draft in Workable successfully! You can review and publish it manually when ready.'
+            message: 'Job created successfully in Workable! You can review and publish it manually when ready.'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -275,12 +267,13 @@ serve(async (req) => {
       case 'sync_jobs': {
         console.log('Syncing jobs from Workable...');
         
+        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
         const [publishedResponse, archivedResponse] = await Promise.all([
-          fetch(`${baseUrl}/jobs?state=published&limit=50`, {
+          fetch(`${spiBaseUrl}/jobs?state=published&limit=50`, {
             method: 'GET',
             headers,
           }),
-          fetch(`${baseUrl}/jobs?state=archived&limit=50`, {
+          fetch(`${spiBaseUrl}/jobs?state=archived&limit=50`, {
             method: 'GET',
             headers,
           })
