@@ -29,6 +29,13 @@ serve(async (req) => {
     const copilotApiKey = Deno.env.get('MYOWNCOPILOT_API_KEY');
     const copilotUrl = Deno.env.get('MYOWNCOPILOT_URL');
 
+    console.log('Environment check:', {
+      hasApiKey: !!copilotApiKey,
+      hasUrl: !!copilotUrl,
+      urlValue: copilotUrl,
+      apiKeyLength: copilotApiKey ? copilotApiKey.length : 0
+    });
+
     if (!copilotApiKey || !copilotUrl) {
       return new Response(
         JSON.stringify({ error: 'MyOwnCopilot configuration missing' }),
@@ -48,25 +55,20 @@ serve(async (req) => {
       content: message
     });
 
-    // Ensure URL has proper protocol
+    // Ensure URL has proper protocol and format
     const baseUrl = copilotUrl.startsWith('http') ? copilotUrl : `https://${copilotUrl}`;
     const apiUrl = `${baseUrl}/api/chat`;
 
     console.log('Using MyOwnCopilot URL:', apiUrl);
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${copilotApiKey}`,
-      },
-      body: JSON.stringify({
-        messages: messages,
-        stream: false,
-        model: 'gpt-4o-mini',
-        temperature: 0.7,
-        max_tokens: 1500,
-        system_prompt: `You are an expert HR recruitment assistant specializing in job creation, hiring processes, and talent acquisition. You help users:
+    // Try different request formats to see what works
+    const requestBody = {
+      messages: messages,
+      stream: false,
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      max_tokens: 1500,
+      system_prompt: `You are an expert HR recruitment assistant specializing in job creation, hiring processes, and talent acquisition. You help users:
 
 1. Create compelling job vacancies and descriptions
 2. Improve existing job postings
@@ -76,12 +78,35 @@ serve(async (req) => {
 6. Help with recruitment strategy
 
 Be conversational, helpful, and professional. When creating job vacancies, use a clear structure with sections like job title, about the role, key responsibilities, requirements, and what the company offers. Keep responses concise but informative.`
-      }),
+    };
+
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${copilotApiKey}`,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(requestBody),
     });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('MyOwnCopilot API error:', response.status, errorText);
+      
+      // Try to parse error as JSON for better debugging
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('Parsed error:', errorJson);
+      } catch (e) {
+        console.error('Error text is not JSON:', errorText);
+      }
+      
       return new Response(
         JSON.stringify({ error: `MyOwnCopilot API error: ${response.status} - ${errorText}` }),
         { 
@@ -91,12 +116,29 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
       );
     }
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log('Raw response:', responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse response as JSON:', e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON response from MyOwnCopilot' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     
+    console.log('Parsed response data:', JSON.stringify(data, null, 2));
+
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       console.error('Unexpected response format from MyOwnCopilot:', data);
       return new Response(
-        JSON.stringify({ error: 'Invalid response from MyOwnCopilot' }),
+        JSON.stringify({ error: 'Invalid response format from MyOwnCopilot' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -117,8 +159,9 @@ Be conversational, helpful, and professional. When creating job vacancies, use a
 
   } catch (error) {
     console.error('Error in myowncopilot-chat function:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
