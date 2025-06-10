@@ -17,7 +17,7 @@ const Index = () => {
             Growth Accelerator Jobs
           </h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Create compelling job descriptions with the power of AI. Simply enter your requirements and let our generator craft the perfect vacancy text.
+            Publish your jobs to LinkedIn and many other job boards. Create compelling job descriptions with the power of AI.
           </p>
         </header>
         
