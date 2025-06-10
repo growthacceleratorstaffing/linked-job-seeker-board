@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -164,7 +163,7 @@ export const VacancyGenerator = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Sparkles className="w-5 h-5 text-secondary-pink" />
-            Create Your Vacancy with AI
+            Create Your Vacancy with AI, or write it yourself
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -262,29 +261,6 @@ export const VacancyGenerator = () => {
                 </>
               )}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Manual Job Description Section */}
-      <Card className="bg-slate-800 border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white">
-            Or Write Your Job Description Manually
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div>
-            <Label htmlFor="manual-description" className="text-slate-200 text-sm font-medium mb-2 block">
-              Enter your job description
-            </Label>
-            <Textarea
-              id="manual-description"
-              value={generatedVacancy}
-              onChange={(e) => setGeneratedVacancy(e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[300px]"
-              placeholder="Enter your job description here..."
-            />
           </div>
         </CardContent>
       </Card>
