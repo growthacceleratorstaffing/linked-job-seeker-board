@@ -182,52 +182,14 @@ export const VacancyGenerator = () => {
             />
           </div>
           
-          <Button 
-            onClick={generateVacancy}
-            disabled={isGenerating}
-            className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white font-medium py-3"
-          >
-            {isGenerating ? (
-              <>
-                <Wand2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating with AI...
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-4 h-4 mr-2" />
-                Generate Vacancy with AI
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Job Description Section */}
-      <Card className="bg-slate-800 border-slate-700">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-white">
-            <span>Job Description</span>
-            <div className="flex gap-2">
-              <Button
-                onClick={publishToWorkable}
-                disabled={isPublishing}
-                size="sm"
-                className="bg-secondary-pink hover:bg-secondary-pink/80 text-white"
-              >
-                {isPublishing ? (
-                  <>
-                    <Upload className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Create Draft
-                  </>
-                )}
-              </Button>
-              {generatedVacancy && (
-                <>
+          {/* Generated Vacancy Display */}
+          {generatedVacancy && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-slate-200 text-sm font-medium">
+                  Generated Job Description
+                </Label>
+                <div className="flex gap-2">
                   <Button
                     onClick={toggleEditMode}
                     size="sm"
@@ -244,32 +206,86 @@ export const VacancyGenerator = () => {
                     <Copy className="w-4 h-4 mr-1" />
                     Copy
                   </Button>
-                </>
+                </div>
+              </div>
+              
+              {isEditing ? (
+                <Textarea
+                  value={generatedVacancy}
+                  onChange={(e) => setGeneratedVacancy(e.target.value)}
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[300px]"
+                />
+              ) : (
+                <div className="bg-slate-700 border border-slate-600 rounded-lg p-6">
+                  <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
+                    {generatedVacancy}
+                  </div>
+                </div>
               )}
             </div>
+          )}
+          
+          {/* Action Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+            <Button 
+              onClick={generateVacancy}
+              disabled={isGenerating}
+              className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white font-medium py-3"
+            >
+              {isGenerating ? (
+                <>
+                  <Wand2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating with AI...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Generate with AI
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={publishToWorkable}
+              disabled={isPublishing}
+              className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white font-medium py-3"
+            >
+              {isPublishing ? (
+                <>
+                  <Upload className="w-4 h-4 mr-2 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Publish Job
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Manual Job Description Section */}
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white">
+            Or Write Your Job Description Manually
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isEditing || !generatedVacancy ? (
-            <div>
-              <Label htmlFor="manual-description" className="text-slate-200 text-sm font-medium mb-2 block">
-                Write your job description or use AI to generate one above
-              </Label>
-              <Textarea
-                id="manual-description"
-                value={generatedVacancy}
-                onChange={(e) => setGeneratedVacancy(e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[400px]"
-                placeholder="Enter your job description here, or use the AI generator above to create one..."
-              />
-            </div>
-          ) : (
-            <div className="bg-slate-700 border border-slate-600 rounded-lg p-6">
-              <div className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed">
-                {generatedVacancy}
-              </div>
-            </div>
-          )}
+          <div>
+            <Label htmlFor="manual-description" className="text-slate-200 text-sm font-medium mb-2 block">
+              Enter your job description
+            </Label>
+            <Textarea
+              id="manual-description"
+              value={generatedVacancy}
+              onChange={(e) => setGeneratedVacancy(e.target.value)}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 focus:border-secondary-pink focus:ring-secondary-pink min-h-[300px]"
+              placeholder="Enter your job description here..."
+            />
+          </div>
         </CardContent>
       </Card>
 
