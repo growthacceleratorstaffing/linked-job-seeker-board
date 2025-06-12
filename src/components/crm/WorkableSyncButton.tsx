@@ -14,7 +14,7 @@ export const WorkableSyncButton = () => {
   const syncCandidates = async () => {
     setIsSyncing(true);
     try {
-      console.log('Starting Workable candidate sync...');
+      console.log('Starting comprehensive Workable candidate sync (including archived jobs)...');
       
       const { data, error } = await supabase.functions.invoke('workable-integration', {
         body: { action: 'sync_candidates' }
@@ -24,9 +24,13 @@ export const WorkableSyncButton = () => {
 
       console.log('Sync result:', data);
       
+      const message = data.publishedJobs && data.archivedJobs 
+        ? `Synced ${data.syncedCandidates} candidates from ${data.jobsProcessed} jobs (${data.publishedJobs} published + ${data.archivedJobs} archived${data.draftJobs ? ` + ${data.draftJobs} draft` : ''})`
+        : `Synced ${data.syncedCandidates} candidates from ${data.jobsProcessed} jobs`;
+
       toast({
         title: "Sync completed successfully! 🎉",
-        description: `Synced ${data.syncedCandidates} candidates from ${data.jobsProcessed} jobs`,
+        description: message,
       });
 
       // Refresh the candidates list
@@ -56,12 +60,12 @@ export const WorkableSyncButton = () => {
       {isSyncing ? (
         <>
           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-          Syncing...
+          Syncing All Jobs...
         </>
       ) : (
         <>
           <Users className="h-4 w-4 mr-2" />
-          Sync Candidates
+          Sync All Candidates
         </>
       )}
     </Button>
