@@ -44,9 +44,6 @@ serve(async (req) => {
 
     switch (action) {
       case 'sync_candidates': {
-        // Use the Workable Recruiting API for comprehensive candidate access
-        const recruitingApiUrl = `https://${cleanSubdomain}.workable.com/api/v1`;
-        
         // Log sync start
         const { data: syncLog } = await supabase
           .from('integration_sync_logs')
@@ -64,132 +61,123 @@ serve(async (req) => {
 
         console.log('Starting comprehensive candidate sync from Workable...');
         
-        // First, get all jobs using the recruiting API
-        console.log('Fetching all jobs from Workable...');
-        const jobsResponse = await fetch(`${recruitingApiUrl}/jobs`, {
-          method: 'GET',
-          headers,
-        });
+        // Use SPI API for job listing (more reliable)
+        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+        
+        console.log('Fetching all jobs from Workable SPI API...');
+        
+        // Fetch all job states
+        const [publishedResponse, archivedResponse, draftResponse] = await Promise.allSettled([
+          fetch(`${spiBaseUrl}/jobs?state=published&limit=100`, { headers }),
+          fetch(`${spiBaseUrl}/jobs?state=archived&limit=100`, { headers }),
+          fetch(`${spiBaseUrl}/jobs?state=draft&limit=100`, { headers })
+        ]);
 
-        if (!jobsResponse.ok) {
-          const errorText = await jobsResponse.text();
-          throw new Error(`Failed to fetch jobs: ${jobsResponse.status} - ${errorText}`);
+        let allJobs = [];
+        let publishedJobs = 0, archivedJobs = 0, draftJobs = 0;
+
+        // Process published jobs
+        if (publishedResponse.status === 'fulfilled' && publishedResponse.value.ok) {
+          const data = await publishedResponse.value.json();
+          const jobs = data.jobs || [];
+          allJobs.push(...jobs);
+          publishedJobs = jobs.length;
+          console.log(`Found ${jobs.length} published jobs`);
         }
 
-        const jobsData = await jobsResponse.json();
-        const jobs = jobsData.jobs || [];
+        // Process archived jobs
+        if (archivedResponse.status === 'fulfilled' && archivedResponse.value.ok) {
+          const data = await archivedResponse.value.json();
+          const jobs = data.jobs || [];
+          allJobs.push(...jobs);
+          archivedJobs = jobs.length;
+          console.log(`Found ${jobs.length} archived jobs`);
+        }
+
+        // Process draft jobs
+        if (draftResponse.status === 'fulfilled' && draftResponse.value.ok) {
+          const data = await draftResponse.value.json();
+          const jobs = data.jobs || [];
+          allJobs.push(...jobs);
+          draftJobs = jobs.length;
+          console.log(`Found ${jobs.length} draft jobs`);
+        }
         
-        console.log(`Found ${jobs.length} total jobs in Workable`);
+        console.log(`Total jobs found: ${allJobs.length} (${publishedJobs} published, ${archivedJobs} archived, ${draftJobs} draft)`);
 
         let totalCandidates = 0;
         let syncedCandidates = 0;
         let errors: string[] = [];
         let jobsWithCandidates = 0;
 
-        // Create a map to store job UUID mappings
-        const jobUuidMap = new Map();
-
         // Check if we have the jobs table
         const { data: jobsTableExists } = await supabase
-          .from('jobs')
+          .from('candidates')
           .select('id')
           .limit(1);
 
-        // Process each job and sync candidates
-        for (const job of jobs) {
+        // Process each job and sync candidates using SPI API
+        for (const job of allJobs) {
           try {
-            let jobUuid;
+            console.log(`Processing job: ${job.title} (${job.shortcode}) - State: ${job.state}`);
             
-            if (jobsTableExists) {
-              // Normal flow - ensure job exists in our database
-              const { data: existingJob } = await supabase
-                .from('jobs')
-                .select('id')
-                .eq('workable_job_id', job.id)
-                .maybeSingle();
-
-              if (existingJob) {
-                jobUuid = existingJob.id;
-              } else {
-                // Create job in our database
-                const { data: newJob, error: jobError } = await supabase
-                  .from('jobs')
-                  .insert([{
-                    title: job.title,
-                    description: job.description || '',
-                    requirements: job.requirements || '',
-                    workable_job_id: job.id,
-                    status: job.state === 'published' ? 'active' : job.state === 'archived' ? 'closed' : 'draft',
-                    location: job.location?.city || 'Remote',
-                    salary_min: null,
-                    salary_max: null,
-                    employment_type: job.employment_type || 'full_time'
-                  }])
-                  .select('id')
-                  .single();
-
-                if (jobError) {
-                  console.error(`Failed to create job ${job.id}:`, jobError);
-                  errors.push(`Job ${job.shortcode}: Failed to create in database`);
-                  continue;
-                }
-                jobUuid = newJob.id;
-              }
-            } else {
-              // Use fake UUID when jobs table doesn't exist
-              jobUuid = `workable-${job.shortcode}`;
-            }
-
-            jobUuidMap.set(job.id, jobUuid);
-
-            // Now fetch candidates for this job using the recruiting API
-            console.log(`Fetching candidates for job: ${job.title} (ID: ${job.id})`);
+            // Use SPI API to get candidates for this job
+            const candidatesUrl = `${spiBaseUrl}/jobs/${job.shortcode}/candidates`;
+            console.log(`Fetching candidates from: ${candidatesUrl}`);
             
-            // Try different endpoints to get candidates
-            const candidateEndpoints = [
-              `${recruitingApiUrl}/jobs/${job.id}/candidates`,
-              `${recruitingApiUrl}/jobs/${job.shortcode}/candidates`
-            ];
+            const candidatesResponse = await fetch(candidatesUrl, {
+              method: 'GET',
+              headers,
+            });
 
-            let jobCandidates = [];
-            let endpointWorked = false;
-
-            for (const endpoint of candidateEndpoints) {
-              try {
-                console.log(`Trying endpoint: ${endpoint}`);
-                const candidatesResponse = await fetch(endpoint, {
-                  method: 'GET',
-                  headers,
-                });
-
-                if (candidatesResponse.ok) {
-                  const candidatesData = await candidatesResponse.json();
-                  jobCandidates = candidatesData.candidates || candidatesData || [];
-                  endpointWorked = true;
-                  console.log(`Found ${jobCandidates.length} candidates for job ${job.title}`);
-                  break;
-                } else {
-                  console.log(`Endpoint ${endpoint} failed with status ${candidatesResponse.status}`);
-                }
-              } catch (endpointError) {
-                console.log(`Endpoint ${endpoint} failed with error:`, endpointError);
+            if (!candidatesResponse.ok) {
+              console.log(`Failed to fetch candidates for job ${job.shortcode}: ${candidatesResponse.status}`);
+              // Try with job ID instead of shortcode
+              const candidatesUrlById = `${spiBaseUrl}/jobs/${job.id}/candidates`;
+              console.log(`Trying with job ID: ${candidatesUrlById}`);
+              
+              const candidatesResponseById = await fetch(candidatesUrlById, {
+                method: 'GET',
+                headers,
+              });
+              
+              if (!candidatesResponseById.ok) {
+                console.log(`Also failed with job ID for ${job.title}: ${candidatesResponseById.status}`);
+                continue;
               }
-            }
+              
+              const candidatesData = await candidatesResponseById.json();
+              const jobCandidates = candidatesData.candidates || [];
+              
+              if (jobCandidates.length > 0) {
+                totalCandidates += jobCandidates.length;
+                jobsWithCandidates++;
+                console.log(`Found ${jobCandidates.length} candidates for job: ${job.title}`);
 
-            if (!endpointWorked) {
-              console.log(`No candidates endpoint worked for job ${job.title}`);
+                for (const candidate of jobCandidates) {
+                  try {
+                    await syncCandidateToSupabase(supabase, candidate, job);
+                    syncedCandidates++;
+                  } catch (error) {
+                    console.error(`Failed to sync candidate ${candidate.id}:`, error);
+                    errors.push(`Candidate ${candidate.id}: ${error.message}`);
+                  }
+                }
+              }
               continue;
             }
 
+            const candidatesData = await candidatesResponse.json();
+            const jobCandidates = candidatesData.candidates || [];
+            
             if (jobCandidates.length > 0) {
               totalCandidates += jobCandidates.length;
               jobsWithCandidates++;
-              
-              console.log(`Processing ${jobCandidates.length} candidates for job: ${job.title}`);
+              console.log(`Found ${jobCandidates.length} candidates for job: ${job.title}`);
 
               for (const candidate of jobCandidates) {
                 try {
-                  await syncCandidateToSupabase(supabase, candidate, jobUuid, jobsTableExists !== null);
+                  await syncCandidateToSupabase(supabase, candidate, job);
                   syncedCandidates++;
                   
                   if (syncedCandidates % 50 === 0) {
@@ -200,15 +188,17 @@ serve(async (req) => {
                   errors.push(`Candidate ${candidate.id}: ${error.message}`);
                 }
               }
+            } else {
+              console.log(`No candidates found for job: ${job.title}`);
             }
 
           } catch (error) {
-            console.error(`Failed to process job ${job.id}:`, error);
+            console.error(`Failed to process job ${job.shortcode}:`, error);
             errors.push(`Job ${job.shortcode}: ${error.message}`);
           }
         }
 
-        console.log(`Sync complete: ${syncedCandidates}/${totalCandidates} candidates synced from ${jobs.length} jobs (${jobsWithCandidates} jobs had candidates)`);
+        console.log(`Sync complete: ${syncedCandidates}/${totalCandidates} candidates synced from ${allJobs.length} jobs (${jobsWithCandidates} jobs had candidates)`);
 
         // Update sync log with completion
         await supabase
@@ -219,7 +209,10 @@ serve(async (req) => {
             synced_data: { 
               totalCandidates, 
               syncedCandidates,
-              jobsProcessed: jobs.length,
+              jobsProcessed: allJobs.length,
+              publishedJobs,
+              archivedJobs,
+              draftJobs,
               jobsWithCandidates,
               errors: errors.slice(0, 10),
               timestamp: new Date().toISOString()
@@ -240,10 +233,13 @@ serve(async (req) => {
             success: true, 
             totalCandidates,
             syncedCandidates,
-            jobsProcessed: jobs.length,
+            jobsProcessed: allJobs.length,
+            publishedJobs,
+            archivedJobs,
+            draftJobs,
             jobsWithCandidates,
             errors: errors.length > 0 ? errors : undefined,
-            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from ${jobs.length} Workable jobs`
+            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from ${allJobs.length} Workable jobs`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -275,13 +271,11 @@ serve(async (req) => {
       case 'publish_job': {
         console.log('Creating job in Workable as draft with employment details:', jobData.title);
         
-        // Clean and validate job title
         const cleanTitle = jobData.title
           .replace(/^#\s*/, '')
           .replace(/Job Title:\s*/i, '')
           .trim();
         
-        // Convert markdown description to plain text and limit length
         let cleanDescription = jobData.description
           .replace(/#{1,6}\s/g, '')
           .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -293,11 +287,10 @@ serve(async (req) => {
           cleanDescription = cleanDescription.substring(0, 5000) + '...';
         }
 
-        // Build comprehensive job payload with all employment details
         const jobPayload = {
           title: cleanTitle,
           description: cleanDescription,
-          state: 'draft', // Always create as draft first
+          state: 'draft',
           employment_type: jobData.employment_type || 'full_time',
           department: jobData.department || 'General',
           location: {
@@ -316,7 +309,6 @@ serve(async (req) => {
 
         console.log('Job payload:', JSON.stringify(jobPayload, null, 2));
 
-        // Use Workable Recruiting API v1 for job creation
         const recruitingApiUrl = `https://${cleanSubdomain}.workable.com/api/v1/jobs`;
         
         console.log('Creating job at:', recruitingApiUrl);
@@ -352,7 +344,6 @@ serve(async (req) => {
 
         console.log('Job created successfully as draft:', createdJob);
 
-        // Optional: Auto-publish the job if requested
         if (jobData.autoPublish && createdJob.id) {
           try {
             console.log('Auto-publishing job:', createdJob.id);
@@ -509,8 +500,8 @@ async function ensureIntegrationSettings(supabase: any) {
   }
 }
 
-async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jobUuid: string, hasJobsTable: boolean = true) {
-  console.log(`Syncing candidate: ${workableCandidate.name || workableCandidate.email || workableCandidate.id} for job UUID: ${jobUuid}`);
+async function syncCandidateToSupabase(supabase: any, workableCandidate: any, job: any) {
+  console.log(`Syncing candidate: ${workableCandidate.name || workableCandidate.email || workableCandidate.id} for job: ${job.title}`);
   
   const candidateData = {
     name: workableCandidate.name || workableCandidate.email?.split('@')[0] || 'Unknown',
@@ -573,28 +564,6 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
     }
     candidateId = data.id;
     console.log(`Created new candidate: ${candidateData.name}`);
-  }
-
-  // Only create candidate response if we have a proper jobs table
-  if (hasJobsTable) {
-    console.log(`Creating candidate response for candidate ${candidateId} and job ${jobUuid}`);
-    const { error: responseError } = await supabase
-      .from('candidate_responses')
-      .upsert([{
-        candidate_id: candidateId,
-        job_id: jobUuid,
-        response_type: 'application',
-        status: workableCandidate.stage || 'new',
-        source: 'workable',
-        responded_at: workableCandidate.created_at || new Date().toISOString()
-      }], {
-        onConflict: 'candidate_id,job_id'
-      });
-
-    if (responseError) {
-      console.error('Failed to create candidate response:', responseError);
-      // Don't throw error here - we still want to sync the candidate even if response creation fails
-    }
   }
 
   return candidateId;
