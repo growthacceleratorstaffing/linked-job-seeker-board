@@ -44,8 +44,8 @@ serve(async (req) => {
 
     switch (action) {
       case 'sync_candidates': {
-        // Use the Workable Recruiting API (different from SPI) for job creation
-        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+        // Use the Workable Recruiting API for comprehensive candidate access
+        const recruitingApiUrl = `https://${cleanSubdomain}.workable.com/api/v1`;
         
         // Log sync start
         const { data: syncLog } = await supabase
@@ -62,84 +62,52 @@ serve(async (req) => {
           .select()
           .single();
 
-        console.log('Starting candidate sync from both published and archived jobs...');
+        console.log('Starting comprehensive candidate sync from Workable...');
         
-        // Fetch ALL jobs with increased limits to ensure we get everything
-        const [publishedResponse, archivedResponse, draftResponse] = await Promise.all([
-          fetch(`${spiBaseUrl}/jobs?state=published&limit=200`, {
-            method: 'GET',
-            headers,
-          }),
-          fetch(`${spiBaseUrl}/jobs?state=archived&limit=500`, { // Increased limit for archived jobs
-            method: 'GET',
-            headers,
-          }),
-          fetch(`${spiBaseUrl}/jobs?state=draft&limit=100`, {
-            method: 'GET',
-            headers,
-          })
-        ]);
+        // First, get all jobs using the recruiting API
+        console.log('Fetching all jobs from Workable...');
+        const jobsResponse = await fetch(`${recruitingApiUrl}/jobs`, {
+          method: 'GET',
+          headers,
+        });
 
-        if (!publishedResponse.ok) {
-          throw new Error(`Failed to fetch published jobs: ${publishedResponse.status} - ${await publishedResponse.text()}`);
+        if (!jobsResponse.ok) {
+          const errorText = await jobsResponse.text();
+          throw new Error(`Failed to fetch jobs: ${jobsResponse.status} - ${errorText}`);
         }
 
-        if (!archivedResponse.ok) {
-          throw new Error(`Failed to fetch archived jobs: ${archivedResponse.status} - ${await archivedResponse.text()}`);
-        }
-
-        if (!draftResponse.ok) {
-          console.log('Failed to fetch draft jobs, continuing without them');
-        }
-
-        const publishedData = await publishedResponse.json();
-        const archivedData = await archivedResponse.json();
-        const draftData = draftResponse.ok ? await draftResponse.json() : { jobs: [] };
+        const jobsData = await jobsResponse.json();
+        const jobs = jobsData.jobs || [];
         
-        // Combine ALL jobs from all states
-        const jobs = [
-          ...(publishedData.jobs || []),
-          ...(archivedData.jobs || []),
-          ...(draftData.jobs || [])
-        ];
-
-        console.log(`Total jobs to process: ${jobs.length}`);
-        console.log(`Breakdown: ${publishedData.jobs?.length || 0} published, ${archivedData.jobs?.length || 0} archived, ${draftData.jobs?.length || 0} draft`);
+        console.log(`Found ${jobs.length} total jobs in Workable`);
 
         let totalCandidates = 0;
         let syncedCandidates = 0;
         let errors: string[] = [];
         let jobsWithCandidates = 0;
 
-        // Create a map to store job UUID mappings - we'll use job shortcode as the key
+        // Create a map to store job UUID mappings
         const jobUuidMap = new Map();
 
-        // Check if we have the jobs table and create simple mapping if not
+        // Check if we have the jobs table
         const { data: jobsTableExists } = await supabase
           .from('jobs')
           .select('id')
           .limit(1);
 
-        // If jobs table doesn't exist, we'll just use the job shortcode directly for candidate sync
-        if (!jobsTableExists) {
-          console.log('Jobs table does not exist, syncing candidates without job records');
-          // Create fake UUIDs for each job shortcode to maintain functionality
-          for (const job of jobs) {
-            // Use a deterministic UUID based on the job shortcode
-            const fakeUuid = `workable-${job.shortcode}`;
-            jobUuidMap.set(job.id, fakeUuid);
-          }
-        } else {
-          // Normal flow - ensure all jobs exist in our database and get their UUIDs
-          for (const job of jobs) {
-            try {
+        // Process each job and sync candidates
+        for (const job of jobs) {
+          try {
+            let jobUuid;
+            
+            if (jobsTableExists) {
+              // Normal flow - ensure job exists in our database
               const { data: existingJob } = await supabase
                 .from('jobs')
                 .select('id')
                 .eq('workable_job_id', job.id)
                 .maybeSingle();
 
-              let jobUuid;
               if (existingJob) {
                 jobUuid = existingJob.id;
               } else {
@@ -167,112 +135,92 @@ serve(async (req) => {
                 }
                 jobUuid = newJob.id;
               }
-
-              jobUuidMap.set(job.id, jobUuid);
-              console.log(`Mapped job ${job.id} (${job.state}) to UUID ${jobUuid}`);
-            } catch (error) {
-              console.error(`Failed to process job ${job.id}:`, error);
-              errors.push(`Job ${job.shortcode}: ${error.message}`);
+            } else {
+              // Use fake UUID when jobs table doesn't exist
+              jobUuid = `workable-${job.shortcode}`;
             }
-          }
-        }
 
-        // Now sync candidates from ALL jobs with enhanced pagination
-        for (const job of jobs) {
-          try {
-            const jobUuid = jobUuidMap.get(job.id);
-            if (!jobUuid) {
-              console.log(`Skipping candidates for job ${job.shortcode} - no UUID mapping`);
+            jobUuidMap.set(job.id, jobUuid);
+
+            // Now fetch candidates for this job using the recruiting API
+            console.log(`Fetching candidates for job: ${job.title} (ID: ${job.id})`);
+            
+            // Try different endpoints to get candidates
+            const candidateEndpoints = [
+              `${recruitingApiUrl}/jobs/${job.id}/candidates`,
+              `${recruitingApiUrl}/jobs/${job.shortcode}/candidates`
+            ];
+
+            let jobCandidates = [];
+            let endpointWorked = false;
+
+            for (const endpoint of candidateEndpoints) {
+              try {
+                console.log(`Trying endpoint: ${endpoint}`);
+                const candidatesResponse = await fetch(endpoint, {
+                  method: 'GET',
+                  headers,
+                });
+
+                if (candidatesResponse.ok) {
+                  const candidatesData = await candidatesResponse.json();
+                  jobCandidates = candidatesData.candidates || candidatesData || [];
+                  endpointWorked = true;
+                  console.log(`Found ${jobCandidates.length} candidates for job ${job.title}`);
+                  break;
+                } else {
+                  console.log(`Endpoint ${endpoint} failed with status ${candidatesResponse.status}`);
+                }
+              } catch (endpointError) {
+                console.log(`Endpoint ${endpoint} failed with error:`, endpointError);
+              }
+            }
+
+            if (!endpointWorked) {
+              console.log(`No candidates endpoint worked for job ${job.title}`);
               continue;
             }
 
-            console.log(`Fetching candidates for job: ${job.shortcode} (${job.state})`);
-            
-            // Fetch ALL candidates for this job with comprehensive pagination
-            let page = 1;
-            let hasMoreCandidates = true;
-            let jobCandidateCount = 0;
-            
-            while (hasMoreCandidates) {
-              console.log(`Fetching page ${page} for job ${job.shortcode}...`);
+            if (jobCandidates.length > 0) {
+              totalCandidates += jobCandidates.length;
+              jobsWithCandidates++;
               
-              const candidatesResponse = await fetch(`${spiBaseUrl}/jobs/${job.shortcode}/candidates?page=${page}&per_page=100`, {
-                method: 'GET',
-                headers,
-              });
+              console.log(`Processing ${jobCandidates.length} candidates for job: ${job.title}`);
 
-              if (candidatesResponse.ok) {
-                const candidatesData = await candidatesResponse.json();
-                const candidates = candidatesData.candidates || [];
-                
-                if (candidates.length === 0) {
-                  hasMoreCandidates = false;
-                  break;
-                }
-                
-                totalCandidates += candidates.length;
-                jobCandidateCount += candidates.length;
-                console.log(`Found ${candidates.length} candidates on page ${page} for job ${job.shortcode} (${job.state})`);
-
-                for (const candidate of candidates) {
-                  try {
-                    await syncCandidateToSupabase(supabase, candidate, jobUuid, jobsTableExists !== null);
-                    syncedCandidates++;
-                  } catch (error) {
-                    console.error(`Failed to sync candidate ${candidate.id}:`, error);
-                    errors.push(`Candidate ${candidate.id}: ${error.message}`);
+              for (const candidate of jobCandidates) {
+                try {
+                  await syncCandidateToSupabase(supabase, candidate, jobUuid, jobsTableExists !== null);
+                  syncedCandidates++;
+                  
+                  if (syncedCandidates % 50 === 0) {
+                    console.log(`Synced ${syncedCandidates} candidates so far...`);
                   }
-                }
-                
-                // Check if we have more pages - be more aggressive in checking
-                if (candidates.length < 100) {
-                  hasMoreCandidates = false;
-                } else {
-                  page++;
-                  // Add a small delay to avoid rate limiting
-                  await new Promise(resolve => setTimeout(resolve, 100));
-                }
-              } else {
-                const errorText = await candidatesResponse.text();
-                console.error(`Failed to fetch candidates for job ${job.shortcode} page ${page}: ${candidatesResponse.status} - ${errorText}`);
-                
-                // If we get a 404, the job might not have candidates endpoint
-                if (candidatesResponse.status === 404) {
-                  console.log(`Job ${job.shortcode} has no candidates endpoint`);
-                  hasMoreCandidates = false;
-                } else {
-                  errors.push(`Job ${job.shortcode} page ${page}: HTTP ${candidatesResponse.status}`);
-                  hasMoreCandidates = false;
+                } catch (error) {
+                  console.error(`Failed to sync candidate ${candidate.id}:`, error);
+                  errors.push(`Candidate ${candidate.id}: ${error.message}`);
                 }
               }
             }
-            
-            if (jobCandidateCount > 0) {
-              jobsWithCandidates++;
-              console.log(`Total candidates found for job ${job.shortcode}: ${jobCandidateCount}`);
-            }
+
           } catch (error) {
-            console.error(`Failed to fetch candidates for job ${job.shortcode}:`, error);
+            console.error(`Failed to process job ${job.id}:`, error);
             errors.push(`Job ${job.shortcode}: ${error.message}`);
           }
         }
 
         console.log(`Sync complete: ${syncedCandidates}/${totalCandidates} candidates synced from ${jobs.length} jobs (${jobsWithCandidates} jobs had candidates)`);
 
-        // Update sync log with completion - always mark as success if we processed candidates
+        // Update sync log with completion
         await supabase
           .from('integration_sync_logs')
           .update({
-            status: 'success',
+            status: syncedCandidates > 0 ? 'success' : 'completed_with_warnings',
             completed_at: new Date().toISOString(),
             synced_data: { 
               totalCandidates, 
               syncedCandidates,
               jobsProcessed: jobs.length,
               jobsWithCandidates,
-              publishedJobs: publishedData.jobs?.length || 0,
-              archivedJobs: archivedData.jobs?.length || 0,
-              draftJobs: draftData.jobs?.length || 0,
               errors: errors.slice(0, 10),
               timestamp: new Date().toISOString()
             }
@@ -294,11 +242,8 @@ serve(async (req) => {
             syncedCandidates,
             jobsProcessed: jobs.length,
             jobsWithCandidates,
-            publishedJobs: publishedData.jobs?.length || 0,
-            archivedJobs: archivedData.jobs?.length || 0,
-            draftJobs: draftData.jobs?.length || 0,
             errors: errors.length > 0 ? errors : undefined,
-            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from ${jobs.length} Workable jobs (${publishedData.jobs?.length || 0} published + ${archivedData.jobs?.length || 0} archived + ${draftData.jobs?.length || 0} draft)`
+            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from ${jobs.length} Workable jobs`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -565,27 +510,27 @@ async function ensureIntegrationSettings(supabase: any) {
 }
 
 async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jobUuid: string, hasJobsTable: boolean = true) {
-  console.log(`Syncing candidate: ${workableCandidate.name} (${workableCandidate.email}) for job UUID: ${jobUuid}`);
+  console.log(`Syncing candidate: ${workableCandidate.name || workableCandidate.email || workableCandidate.id} for job UUID: ${jobUuid}`);
   
   const candidateData = {
-    name: workableCandidate.name || 'Unknown',
+    name: workableCandidate.name || workableCandidate.email?.split('@')[0] || 'Unknown',
     email: workableCandidate.email || `unknown_${workableCandidate.id}@workable.com`,
     phone: workableCandidate.phone,
     workable_candidate_id: workableCandidate.id,
     source_platform: 'workable',
-    location: workableCandidate.address,
-    current_position: workableCandidate.headline,
+    location: workableCandidate.address || workableCandidate.location,
+    current_position: workableCandidate.headline || workableCandidate.summary,
     company: workableCandidate.company,
     skills: workableCandidate.skills ? [workableCandidate.skills] : [],
     last_synced_at: new Date().toISOString(),
     profile_completeness_score: calculateCompletenessScore(workableCandidate)
   };
 
-  // Check if candidate already exists by email
+  // Check if candidate already exists by email or workable_candidate_id
   const { data: existingCandidate } = await supabase
     .from('candidates')
     .select('*')
-    .eq('email', candidateData.email)
+    .or(`email.eq.${candidateData.email},workable_candidate_id.eq.${candidateData.workable_candidate_id}`)
     .maybeSingle();
 
   let candidateId;
@@ -596,7 +541,7 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
       .from('candidates')
       .update({
         workable_candidate_id: candidateData.workable_candidate_id,
-        source_platform: existingCandidate.source_platform === 'manual' ? 'workable' : existingCandidate.source_platform,
+        source_platform: 'workable',
         location: candidateData.location || existingCandidate.location,
         current_position: candidateData.current_position || existingCandidate.current_position,
         company: candidateData.company || existingCandidate.company,
