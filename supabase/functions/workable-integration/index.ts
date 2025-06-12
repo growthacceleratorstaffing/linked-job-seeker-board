@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10";
@@ -112,52 +111,69 @@ serve(async (req) => {
         let errors: string[] = [];
         let jobsWithCandidates = 0;
 
-        // Create a map to store job UUID mappings
+        // Create a map to store job UUID mappings - we'll use job shortcode as the key
         const jobUuidMap = new Map();
 
-        // First, ensure all jobs exist in our database and get their UUIDs
-        for (const job of jobs) {
-          try {
-            const { data: existingJob } = await supabase
-              .from('jobs')
-              .select('id')
-              .eq('workable_job_id', job.id)
-              .maybeSingle();
+        // Check if we have the jobs table and create simple mapping if not
+        const { data: jobsTableExists } = await supabase
+          .from('jobs')
+          .select('id')
+          .limit(1);
 
-            let jobUuid;
-            if (existingJob) {
-              jobUuid = existingJob.id;
-            } else {
-              // Create job in our database
-              const { data: newJob, error: jobError } = await supabase
+        // If jobs table doesn't exist, we'll just use the job shortcode directly for candidate sync
+        if (!jobsTableExists) {
+          console.log('Jobs table does not exist, syncing candidates without job records');
+          // Create fake UUIDs for each job shortcode to maintain functionality
+          for (const job of jobs) {
+            // Use a deterministic UUID based on the job shortcode
+            const fakeUuid = `workable-${job.shortcode}`;
+            jobUuidMap.set(job.id, fakeUuid);
+          }
+        } else {
+          // Normal flow - ensure all jobs exist in our database and get their UUIDs
+          for (const job of jobs) {
+            try {
+              const { data: existingJob } = await supabase
                 .from('jobs')
-                .insert([{
-                  title: job.title,
-                  description: job.description || '',
-                  requirements: job.requirements || '',
-                  workable_job_id: job.id,
-                  status: job.state === 'published' ? 'active' : job.state === 'archived' ? 'closed' : 'draft',
-                  location: job.location?.city || 'Remote',
-                  salary_min: null,
-                  salary_max: null,
-                  employment_type: job.employment_type || 'full_time'
-                }])
                 .select('id')
-                .single();
+                .eq('workable_job_id', job.id)
+                .maybeSingle();
 
-              if (jobError) {
-                console.error(`Failed to create job ${job.id}:`, jobError);
-                errors.push(`Job ${job.shortcode}: Failed to create in database`);
-                continue;
+              let jobUuid;
+              if (existingJob) {
+                jobUuid = existingJob.id;
+              } else {
+                // Create job in our database
+                const { data: newJob, error: jobError } = await supabase
+                  .from('jobs')
+                  .insert([{
+                    title: job.title,
+                    description: job.description || '',
+                    requirements: job.requirements || '',
+                    workable_job_id: job.id,
+                    status: job.state === 'published' ? 'active' : job.state === 'archived' ? 'closed' : 'draft',
+                    location: job.location?.city || 'Remote',
+                    salary_min: null,
+                    salary_max: null,
+                    employment_type: job.employment_type || 'full_time'
+                  }])
+                  .select('id')
+                  .single();
+
+                if (jobError) {
+                  console.error(`Failed to create job ${job.id}:`, jobError);
+                  errors.push(`Job ${job.shortcode}: Failed to create in database`);
+                  continue;
+                }
+                jobUuid = newJob.id;
               }
-              jobUuid = newJob.id;
-            }
 
-            jobUuidMap.set(job.id, jobUuid);
-            console.log(`Mapped job ${job.id} (${job.state}) to UUID ${jobUuid}`);
-          } catch (error) {
-            console.error(`Failed to process job ${job.id}:`, error);
-            errors.push(`Job ${job.shortcode}: ${error.message}`);
+              jobUuidMap.set(job.id, jobUuid);
+              console.log(`Mapped job ${job.id} (${job.state}) to UUID ${jobUuid}`);
+            } catch (error) {
+              console.error(`Failed to process job ${job.id}:`, error);
+              errors.push(`Job ${job.shortcode}: ${error.message}`);
+            }
           }
         }
 
@@ -200,7 +216,7 @@ serve(async (req) => {
 
                 for (const candidate of candidates) {
                   try {
-                    await syncCandidateToSupabase(supabase, candidate, jobUuid);
+                    await syncCandidateToSupabase(supabase, candidate, jobUuid, jobsTableExists !== null);
                     syncedCandidates++;
                   } catch (error) {
                     console.error(`Failed to sync candidate ${candidate.id}:`, error);
@@ -548,7 +564,7 @@ async function ensureIntegrationSettings(supabase: any) {
   }
 }
 
-async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jobUuid: string) {
+async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jobUuid: string, hasJobsTable: boolean = true) {
   console.log(`Syncing candidate: ${workableCandidate.name} (${workableCandidate.email}) for job UUID: ${jobUuid}`);
   
   const candidateData = {
@@ -614,24 +630,26 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
     console.log(`Created new candidate: ${candidateData.name}`);
   }
 
-  // Create or update candidate response record using proper UUID
-  console.log(`Creating candidate response for candidate ${candidateId} and job ${jobUuid}`);
-  const { error: responseError } = await supabase
-    .from('candidate_responses')
-    .upsert([{
-      candidate_id: candidateId,
-      job_id: jobUuid,
-      response_type: 'application',
-      status: workableCandidate.stage || 'new',
-      source: 'workable',
-      responded_at: workableCandidate.created_at || new Date().toISOString()
-    }], {
-      onConflict: 'candidate_id,job_id'
-    });
+  // Only create candidate response if we have a proper jobs table
+  if (hasJobsTable) {
+    console.log(`Creating candidate response for candidate ${candidateId} and job ${jobUuid}`);
+    const { error: responseError } = await supabase
+      .from('candidate_responses')
+      .upsert([{
+        candidate_id: candidateId,
+        job_id: jobUuid,
+        response_type: 'application',
+        status: workableCandidate.stage || 'new',
+        source: 'workable',
+        responded_at: workableCandidate.created_at || new Date().toISOString()
+      }], {
+        onConflict: 'candidate_id,job_id'
+      });
 
-  if (responseError) {
-    console.error('Failed to create candidate response:', responseError);
-    throw responseError;
+    if (responseError) {
+      console.error('Failed to create candidate response:', responseError);
+      // Don't throw error here - we still want to sync the candidate even if response creation fails
+    }
   }
 
   return candidateId;
