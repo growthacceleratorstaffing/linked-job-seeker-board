@@ -61,68 +61,39 @@ serve(async (req) => {
 
         console.log('Starting comprehensive candidate sync from Workable...');
         
-        // Use SPI API for job listing (more reliable)
-        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+        // Use the recruiting API to get jobs
+        const recruitingBaseUrl = `https://${cleanSubdomain}.workable.com/api/v1`;
         
-        console.log('Fetching all jobs from Workable SPI API...');
+        console.log('Fetching jobs from Workable Recruiting API...');
         
-        // Fetch all job states
-        const [publishedResponse, archivedResponse, draftResponse] = await Promise.allSettled([
-          fetch(`${spiBaseUrl}/jobs?state=published&limit=100`, { headers }),
-          fetch(`${spiBaseUrl}/jobs?state=archived&limit=100`, { headers }),
-          fetch(`${spiBaseUrl}/jobs?state=draft&limit=100`, { headers })
-        ]);
+        // First, get all jobs using the recruiting API
+        const jobsResponse = await fetch(`${recruitingBaseUrl}/jobs`, {
+          method: 'GET',
+          headers,
+        });
 
-        let allJobs = [];
-        let publishedJobs = 0, archivedJobs = 0, draftJobs = 0;
-
-        // Process published jobs
-        if (publishedResponse.status === 'fulfilled' && publishedResponse.value.ok) {
-          const data = await publishedResponse.value.json();
-          const jobs = data.jobs || [];
-          allJobs.push(...jobs);
-          publishedJobs = jobs.length;
-          console.log(`Found ${jobs.length} published jobs`);
+        if (!jobsResponse.ok) {
+          console.error('Failed to fetch jobs:', jobsResponse.status, await jobsResponse.text());
+          throw new Error(`Failed to fetch jobs from Workable: ${jobsResponse.status}`);
         }
 
-        // Process archived jobs
-        if (archivedResponse.status === 'fulfilled' && archivedResponse.value.ok) {
-          const data = await archivedResponse.value.json();
-          const jobs = data.jobs || [];
-          allJobs.push(...jobs);
-          archivedJobs = jobs.length;
-          console.log(`Found ${jobs.length} archived jobs`);
-        }
-
-        // Process draft jobs
-        if (draftResponse.status === 'fulfilled' && draftResponse.value.ok) {
-          const data = await draftResponse.value.json();
-          const jobs = data.jobs || [];
-          allJobs.push(...jobs);
-          draftJobs = jobs.length;
-          console.log(`Found ${jobs.length} draft jobs`);
-        }
+        const jobsData = await jobsResponse.json();
+        const allJobs = jobsData.jobs || [];
         
-        console.log(`Total jobs found: ${allJobs.length} (${publishedJobs} published, ${archivedJobs} archived, ${draftJobs} draft)`);
+        console.log(`Found ${allJobs.length} jobs in Workable`);
 
         let totalCandidates = 0;
         let syncedCandidates = 0;
         let errors: string[] = [];
         let jobsWithCandidates = 0;
 
-        // Check if we have the jobs table
-        const { data: jobsTableExists } = await supabase
-          .from('candidates')
-          .select('id')
-          .limit(1);
-
-        // Process each job and sync candidates using SPI API
+        // Process each job and get its candidates
         for (const job of allJobs) {
           try {
-            console.log(`Processing job: ${job.title} (${job.shortcode}) - State: ${job.state}`);
+            console.log(`Processing job: ${job.title} (ID: ${job.id}) - State: ${job.state}`);
             
-            // Use SPI API to get candidates for this job
-            const candidatesUrl = `${spiBaseUrl}/jobs/${job.shortcode}/candidates`;
+            // Get candidates for this specific job using the recruiting API
+            const candidatesUrl = `${recruitingBaseUrl}/jobs/${job.id}/candidates`;
             console.log(`Fetching candidates from: ${candidatesUrl}`);
             
             const candidatesResponse = await fetch(candidatesUrl, {
@@ -131,47 +102,18 @@ serve(async (req) => {
             });
 
             if (!candidatesResponse.ok) {
-              console.log(`Failed to fetch candidates for job ${job.shortcode}: ${candidatesResponse.status}`);
-              // Try with job ID instead of shortcode
-              const candidatesUrlById = `${spiBaseUrl}/jobs/${job.id}/candidates`;
-              console.log(`Trying with job ID: ${candidatesUrlById}`);
-              
-              const candidatesResponseById = await fetch(candidatesUrlById, {
-                method: 'GET',
-                headers,
-              });
-              
-              if (!candidatesResponseById.ok) {
-                console.log(`Also failed with job ID for ${job.title}: ${candidatesResponseById.status}`);
-                continue;
-              }
-              
-              const candidatesData = await candidatesResponseById.json();
-              const jobCandidates = candidatesData.candidates || [];
-              
-              if (jobCandidates.length > 0) {
-                totalCandidates += jobCandidates.length;
-                jobsWithCandidates++;
-                console.log(`Found ${jobCandidates.length} candidates for job: ${job.title}`);
-
-                for (const candidate of jobCandidates) {
-                  try {
-                    await syncCandidateToSupabase(supabase, candidate, job);
-                    syncedCandidates++;
-                  } catch (error) {
-                    console.error(`Failed to sync candidate ${candidate.id}:`, error);
-                    errors.push(`Candidate ${candidate.id}: ${error.message}`);
-                  }
-                }
-              }
+              const errorText = await candidatesResponse.text();
+              console.log(`Failed to fetch candidates for job ${job.id}: ${candidatesResponse.status} - ${errorText}`);
+              errors.push(`Job ${job.id}: HTTP ${candidatesResponse.status}`);
               continue;
             }
 
             const candidatesData = await candidatesResponse.json();
             const jobCandidates = candidatesData.candidates || [];
             
+            totalCandidates += jobCandidates.length;
+            
             if (jobCandidates.length > 0) {
-              totalCandidates += jobCandidates.length;
               jobsWithCandidates++;
               console.log(`Found ${jobCandidates.length} candidates for job: ${job.title}`);
 
@@ -180,7 +122,7 @@ serve(async (req) => {
                   await syncCandidateToSupabase(supabase, candidate, job);
                   syncedCandidates++;
                   
-                  if (syncedCandidates % 50 === 0) {
+                  if (syncedCandidates % 25 === 0) {
                     console.log(`Synced ${syncedCandidates} candidates so far...`);
                   }
                 } catch (error) {
@@ -193,8 +135,8 @@ serve(async (req) => {
             }
 
           } catch (error) {
-            console.error(`Failed to process job ${job.shortcode}:`, error);
-            errors.push(`Job ${job.shortcode}: ${error.message}`);
+            console.error(`Failed to process job ${job.id}:`, error);
+            errors.push(`Job ${job.id}: ${error.message}`);
           }
         }
 
@@ -210,9 +152,6 @@ serve(async (req) => {
               totalCandidates, 
               syncedCandidates,
               jobsProcessed: allJobs.length,
-              publishedJobs,
-              archivedJobs,
-              draftJobs,
               jobsWithCandidates,
               errors: errors.slice(0, 10),
               timestamp: new Date().toISOString()
@@ -234,9 +173,6 @@ serve(async (req) => {
             totalCandidates,
             syncedCandidates,
             jobsProcessed: allJobs.length,
-            publishedJobs,
-            archivedJobs,
-            draftJobs,
             jobsWithCandidates,
             errors: errors.length > 0 ? errors : undefined,
             message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from ${allJobs.length} Workable jobs`
