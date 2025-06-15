@@ -263,6 +263,197 @@ export type Database = {
           },
         ]
       }
+      linkedin_ad_accounts: {
+        Row: {
+          created_at: string
+          currency: string | null
+          id: string
+          linkedin_account_id: string
+          name: string
+          status: string | null
+          type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          id?: string
+          linkedin_account_id: string
+          name: string
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          id?: string
+          linkedin_account_id?: string
+          name?: string
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      linkedin_campaigns: {
+        Row: {
+          budget_amount: number | null
+          budget_currency: string | null
+          campaign_type: string | null
+          clicks: number | null
+          conversions: number | null
+          created_at: string
+          end_date: string | null
+          id: string
+          impressions: number | null
+          last_synced_at: string | null
+          linkedin_campaign_id: string
+          name: string
+          objective_type: string | null
+          spend: number | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget_amount?: number | null
+          budget_currency?: string | null
+          campaign_type?: string | null
+          clicks?: number | null
+          conversions?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          impressions?: number | null
+          last_synced_at?: string | null
+          linkedin_campaign_id: string
+          name: string
+          objective_type?: string | null
+          spend?: number | null
+          start_date?: string | null
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget_amount?: number | null
+          budget_currency?: string | null
+          campaign_type?: string | null
+          clicks?: number | null
+          conversions?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          impressions?: number | null
+          last_synced_at?: string | null
+          linkedin_campaign_id?: string
+          name?: string
+          objective_type?: string | null
+          spend?: number | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      linkedin_leads: {
+        Row: {
+          campaign_id: string | null
+          company: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          form_name: string | null
+          id: string
+          job_title: string | null
+          last_name: string | null
+          lead_data: Json | null
+          linkedin_campaign_id: string | null
+          linkedin_lead_id: string
+          phone: string | null
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          form_name?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string | null
+          lead_data?: Json | null
+          linkedin_campaign_id?: string | null
+          linkedin_lead_id: string
+          phone?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          form_name?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string | null
+          lead_data?: Json | null
+          linkedin_campaign_id?: string | null
+          linkedin_lead_id?: string
+          phone?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linkedin_leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "linkedin_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           created_at: string | null
@@ -290,18 +481,114 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workable_users: {
+        Row: {
+          assigned_jobs: string[] | null
+          created_at: string | null
+          id: string
+          permissions: Json | null
+          updated_at: string | null
+          user_id: string
+          workable_email: string
+          workable_role: Database["public"]["Enums"]["workable_role"]
+          workable_user_id: string
+        }
+        Insert: {
+          assigned_jobs?: string[] | null
+          created_at?: string | null
+          id?: string
+          permissions?: Json | null
+          updated_at?: string | null
+          user_id: string
+          workable_email: string
+          workable_role?: Database["public"]["Enums"]["workable_role"]
+          workable_user_id: string
+        }
+        Update: {
+          assigned_jobs?: string[] | null
+          created_at?: string | null
+          id?: string
+          permissions?: Json | null
+          updated_at?: string | null
+          user_id?: string
+          workable_email?: string
+          workable_role?: Database["public"]["Enums"]["workable_role"]
+          workable_user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      can_access_job: {
+        Args: { _user_id: string; _job_shortcode: string }
+        Returns: boolean
+      }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_user_assigned_jobs: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
+      has_workable_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["workable_role"]
+        }
+        Returns: boolean
+      }
+      make_first_user_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       trigger_workable_sync: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      workable_role:
+        | "admin"
+        | "hiring_manager"
+        | "recruiter"
+        | "interviewer"
+        | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -416,6 +703,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      workable_role: [
+        "admin",
+        "hiring_manager",
+        "recruiter",
+        "interviewer",
+        "viewer",
+      ],
+    },
   },
 } as const
