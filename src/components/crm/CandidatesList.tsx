@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +11,6 @@ import { CandidateProfileCard } from "./CandidateProfileCard";
 import { IntegrationSyncPanel } from "./IntegrationSyncPanel";
 import { Search, Mail, Phone, ExternalLink, Users } from "lucide-react";
 import { toast } from "sonner";
-import { WorkableSyncButton } from "./WorkableSyncButton";
 
 type Candidate = {
   id: string;
@@ -254,7 +252,6 @@ export const CandidatesList = () => {
           </select>
         </div>
         <div className="flex gap-2">
-          <WorkableSyncButton />
           <Button onClick={() => setShowAddDialog(true)}>
             <Users className="h-4 w-4 mr-2" />
             Add Candidate
@@ -419,10 +416,9 @@ export const CandidatesList = () => {
           <p className="text-muted-foreground mb-4">
             {searchTerm || sourceFilter !== "all" 
               ? "Try adjusting your search or filters" 
-              : "Get started by syncing candidates from Workable or adding them manually"}
+              : "Get started by adding candidates manually"}
           </p>
           <div className="flex gap-2 justify-center">
-            <WorkableSyncButton />
             <Button onClick={() => setShowAddDialog(true)}>
               <Users className="h-4 w-4 mr-2" />
               Add Candidate
