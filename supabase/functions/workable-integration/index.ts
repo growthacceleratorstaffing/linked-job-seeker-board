@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10";
@@ -59,15 +60,14 @@ serve(async (req) => {
           .select()
           .single();
 
-        console.log('Starting comprehensive candidate sync from Workable...');
+        console.log('Starting optimized candidate sync from Workable...');
         
-        // Use the recruiting API to get jobs
         const recruitingBaseUrl = `https://${cleanSubdomain}.workable.com/api/v1`;
         
         console.log('Fetching jobs from Workable Recruiting API...');
         
-        // First, get all jobs using the recruiting API
-        const jobsResponse = await fetch(`${recruitingBaseUrl}/jobs`, {
+        // Fetch only active jobs to reduce API calls
+        const jobsResponse = await fetch(`${recruitingBaseUrl}/jobs?state=published&limit=100`, {
           method: 'GET',
           headers,
         });
@@ -80,63 +80,89 @@ serve(async (req) => {
         const jobsData = await jobsResponse.json();
         const allJobs = jobsData.jobs || [];
         
-        console.log(`Found ${allJobs.length} jobs in Workable`);
+        console.log(`Found ${allJobs.length} active jobs in Workable`);
 
         let totalCandidates = 0;
         let syncedCandidates = 0;
         let errors: string[] = [];
         let jobsWithCandidates = 0;
 
-        // Process each job and get its candidates
-        for (const job of allJobs) {
-          try {
-            console.log(`Processing job: ${job.title} (ID: ${job.id}) - State: ${job.state}`);
-            
-            // Get candidates for this specific job using the recruiting API
-            const candidatesUrl = `${recruitingBaseUrl}/jobs/${job.id}/candidates`;
-            console.log(`Fetching candidates from: ${candidatesUrl}`);
-            
-            const candidatesResponse = await fetch(candidatesUrl, {
-              method: 'GET',
-              headers,
-            });
+        // Process jobs in batches to avoid overwhelming the API
+        const batchSize = 5;
+        for (let i = 0; i < allJobs.length; i += batchSize) {
+          const batch = allJobs.slice(i, i + batchSize);
+          
+          // Process batch jobs concurrently
+          const batchPromises = batch.map(async (job) => {
+            try {
+              console.log(`Processing job: ${job.title} (ID: ${job.id})`);
+              
+              const candidatesUrl = `${recruitingBaseUrl}/jobs/${job.id}/candidates?limit=100`;
+              console.log(`Fetching candidates from: ${candidatesUrl}`);
+              
+              const candidatesResponse = await fetch(candidatesUrl, {
+                method: 'GET',
+                headers,
+              });
 
-            if (!candidatesResponse.ok) {
-              const errorText = await candidatesResponse.text();
-              console.log(`Failed to fetch candidates for job ${job.id}: ${candidatesResponse.status} - ${errorText}`);
-              errors.push(`Job ${job.id}: HTTP ${candidatesResponse.status}`);
-              continue;
-            }
+              if (!candidatesResponse.ok) {
+                const errorText = await candidatesResponse.text();
+                console.log(`Failed to fetch candidates for job ${job.id}: ${candidatesResponse.status} - ${errorText}`);
+                return { error: `Job ${job.id}: HTTP ${candidatesResponse.status}`, candidates: [] };
+              }
 
-            const candidatesData = await candidatesResponse.json();
-            const jobCandidates = candidatesData.candidates || [];
-            
-            totalCandidates += jobCandidates.length;
-            
-            if (jobCandidates.length > 0) {
-              jobsWithCandidates++;
-              console.log(`Found ${jobCandidates.length} candidates for job: ${job.title}`);
-
-              for (const candidate of jobCandidates) {
-                try {
-                  await syncCandidateToSupabase(supabase, candidate, job);
-                  syncedCandidates++;
-                  
-                  if (syncedCandidates % 25 === 0) {
-                    console.log(`Synced ${syncedCandidates} candidates so far...`);
+              const candidatesData = await candidatesResponse.json();
+              const jobCandidates = candidatesData.candidates || [];
+              
+              if (jobCandidates.length > 0) {
+                console.log(`Found ${jobCandidates.length} candidates for job: ${job.title}`);
+                
+                // Process candidates in smaller batches
+                const candidateBatch = [];
+                for (const candidate of jobCandidates) {
+                  try {
+                    await syncCandidateToSupabase(supabase, candidate, job);
+                    candidateBatch.push(candidate);
+                  } catch (error) {
+                    console.error(`Failed to sync candidate ${candidate.id}:`, error);
+                    return { error: `Candidate ${candidate.id}: ${error.message}`, candidates: candidateBatch };
                   }
-                } catch (error) {
-                  console.error(`Failed to sync candidate ${candidate.id}:`, error);
-                  errors.push(`Candidate ${candidate.id}: ${error.message}`);
                 }
+                
+                return { candidates: candidateBatch, hasData: true };
+              } else {
+                console.log(`No candidates found for job: ${job.title}`);
+                return { candidates: [], hasData: false };
+              }
+            } catch (error) {
+              console.error(`Failed to process job ${job.id}:`, error);
+              return { error: `Job ${job.id}: ${error.message}`, candidates: [] };
+            }
+          });
+
+          // Wait for batch to complete
+          const batchResults = await Promise.allSettled(batchPromises);
+          
+          // Process batch results
+          batchResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              const data = result.value;
+              if (data.error) {
+                errors.push(data.error);
+              }
+              totalCandidates += data.candidates.length;
+              syncedCandidates += data.candidates.length;
+              if (data.hasData) {
+                jobsWithCandidates++;
               }
             } else {
-              console.log(`No candidates found for job: ${job.title}`);
+              errors.push(`Batch processing failed: ${result.reason}`);
             }
+          });
 
-          } catch (error) {
-            console.error(`Failed to process job ${job.id}:`, error);
-            errors.push(`Job ${job.id}: ${error.message}`);
+          // Add small delay between batches to avoid rate limiting
+          if (i + batchSize < allJobs.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
 
@@ -153,7 +179,7 @@ serve(async (req) => {
               syncedCandidates,
               jobsProcessed: allJobs.length,
               jobsWithCandidates,
-              errors: errors.slice(0, 10),
+              errors: errors.slice(0, 5), // Limit error logging
               timestamp: new Date().toISOString()
             }
           })
@@ -174,7 +200,7 @@ serve(async (req) => {
             syncedCandidates,
             jobsProcessed: allJobs.length,
             jobsWithCandidates,
-            errors: errors.length > 0 ? errors : undefined,
+            errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
             message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from ${allJobs.length} Workable jobs`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -371,7 +397,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in workable-integration function:', error);
     
-    // Log failed sync attempt
+    // Log failed sync attempt with minimal data
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -384,11 +410,7 @@ serve(async (req) => {
           sync_type: 'error',
           status: 'failed',
           error_message: error.message,
-          completed_at: new Date().toISOString(),
-          synced_data: { 
-            error: error.message,
-            timestamp: new Date().toISOString()
-          }
+          completed_at: new Date().toISOString()
         }]);
     } catch (logError) {
       console.error('Failed to log error:', logError);

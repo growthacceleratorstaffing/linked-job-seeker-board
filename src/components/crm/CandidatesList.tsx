@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { CandidateProfileCard } from "./CandidateProfileCard";
 import { IntegrationSyncPanel } from "./IntegrationSyncPanel";
 import { Search, Mail, Phone, ExternalLink, Users } from "lucide-react";
 import { toast } from "sonner";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type Candidate = {
   id: string;
@@ -41,25 +42,33 @@ export const CandidatesList = () => {
   const candidatesPerPage = 25;
   const queryClient = useQueryClient();
 
+  // Debounce search term to reduce API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Memoize query key to prevent unnecessary re-renders
+  const queryKey = useMemo(() => 
+    ["candidates", debouncedSearchTerm, sourceFilter, currentPage],
+    [debouncedSearchTerm, sourceFilter, currentPage]
+  );
+
   const { data: candidatesData, isLoading, error } = useQuery({
-    queryKey: ["candidates", searchTerm, sourceFilter, currentPage],
+    queryKey,
     queryFn: async () => {
-      console.log('Fetching candidates with search:', searchTerm, 'filter:', sourceFilter, 'page:', currentPage);
+      console.log('Fetching candidates with search:', debouncedSearchTerm, 'filter:', sourceFilter, 'page:', currentPage);
       
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact' })
         .order("created_at", { ascending: false });
 
-      if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,current_position.ilike.%${searchTerm}%`);
+      if (debouncedSearchTerm) {
+        query = query.or(`name.ilike.%${debouncedSearchTerm}%,email.ilike.%${debouncedSearchTerm}%,company.ilike.%${debouncedSearchTerm}%,current_position.ilike.%${debouncedSearchTerm}%`);
       }
 
       if (sourceFilter !== "all") {
         query = query.eq("source_platform", sourceFilter);
       }
 
-      // Add pagination
       const from = (currentPage - 1) * candidatesPerPage;
       const to = from + candidatesPerPage - 1;
       query = query.range(from, to);
@@ -72,7 +81,9 @@ export const CandidatesList = () => {
       
       console.log('Fetched candidates:', data?.length, 'candidates, total:', count);
       return { candidates: data as Candidate[], totalCount: count || 0 };
-    }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const candidates = candidatesData?.candidates || [];
@@ -82,8 +93,9 @@ export const CandidatesList = () => {
   // Reset to first page when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sourceFilter]);
+  }, [debouncedSearchTerm, sourceFilter]);
 
+  // Optimize response counts query with longer cache time
   const { data: responseCounts } = useQuery({
     queryKey: ["candidate-response-counts"],
     queryFn: async () => {
@@ -99,10 +111,12 @@ export const CandidatesList = () => {
       });
       
       return counts;
-    }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 15 * 60 * 1000, // 15 minutes
   });
 
-  // Set up real-time subscription for candidate updates
+  // Optimize real-time subscription with cleanup
   useEffect(() => {
     const channel = supabase
       .channel('candidates-changes')
@@ -165,27 +179,28 @@ export const CandidatesList = () => {
     }
   });
 
-  const getSourceBadgeColor = (source: string | null) => {
+  // Memoize utility functions to prevent re-renders
+  const getSourceBadgeColor = useCallback((source: string | null) => {
     switch (source) {
       case 'linkedin': return 'bg-blue-100 text-blue-800';
       case 'workable': return 'bg-green-100 text-green-800';
       case 'manual': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
-  };
+  }, []);
 
-  const getCompletenessColor = (score: number | null) => {
+  const getCompletenessColor = useCallback((score: number | null) => {
     if (!score) return 'text-gray-400';
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
-  };
+  }, []);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const getPaginationRange = () => {
+  const getPaginationRange = useCallback(() => {
     const delta = 2;
     const range = [];
     const rangeWithDots = [];
@@ -209,7 +224,7 @@ export const CandidatesList = () => {
     }
 
     return rangeWithDots.filter((item, index, arr) => arr.indexOf(item) === index);
-  };
+  }, [currentPage, totalPages]);
 
   if (isLoading) {
     return <div className="flex justify-center p-4">Loading candidates...</div>;
@@ -292,6 +307,7 @@ export const CandidatesList = () => {
                           src={candidate.profile_picture_url}
                           alt={candidate.name}
                           className="w-8 h-8 rounded-full object-cover"
+                          loading="lazy"
                         />
                       )}
                       <div>

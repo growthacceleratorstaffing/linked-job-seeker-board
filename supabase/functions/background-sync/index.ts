@@ -20,116 +20,117 @@ serve(async (req) => {
 
     console.log('Background sync triggered');
 
-    // Check for pending sync logs
+    // Check for pending sync logs with a more efficient query
     const { data: pendingSyncs, error: syncError } = await supabase
       .from('integration_sync_logs')
-      .select('*')
+      .select('id, integration_type, sync_type, status, synced_data')
       .eq('integration_type', 'workable')
       .eq('sync_type', 'auto_sync_jobs_and_candidates')
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
-      .limit(1);
+      .limit(1)
+      .single();
 
     if (syncError) {
+      if (syncError.code === 'PGRST116') {
+        console.log('No pending syncs found');
+        return new Response(
+          JSON.stringify({ message: 'No pending syncs' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       console.error('Error checking sync logs:', syncError);
       throw syncError;
     }
 
-    if (!pendingSyncs || pendingSyncs.length === 0) {
-      console.log('No pending syncs found');
-      return new Response(
-        JSON.stringify({ message: 'No pending syncs' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const syncLog = pendingSyncs[0];
-
-    // Update sync log to in_progress
-    await supabase
+    // Update sync log to in_progress immediately
+    const { error: updateError } = await supabase
       .from('integration_sync_logs')
       .update({ 
         status: 'in_progress',
-        synced_data: { ...syncLog.synced_data, started_at: new Date().toISOString() }
+        synced_data: { ...pendingSyncs.synced_data, started_at: new Date().toISOString() }
       })
-      .eq('id', syncLog.id);
+      .eq('id', pendingSyncs.id);
 
-    try {
-      // Sync jobs first
-      console.log('Starting job sync...');
-      const jobsResponse = await supabase.functions.invoke('workable-integration', {
+    if (updateError) {
+      console.error('Error updating sync status:', updateError);
+      throw updateError;
+    }
+
+    // Use Promise.allSettled for better error handling and faster execution
+    const [jobsResult, candidatesResult] = await Promise.allSettled([
+      supabase.functions.invoke('workable-integration', {
         body: { action: 'sync_jobs' }
-      });
-
-      if (jobsResponse.error) {
-        throw new Error(`Job sync failed: ${jobsResponse.error.message}`);
-      }
-
-      console.log('Job sync completed');
-
-      // Then sync candidates
-      console.log('Starting candidate sync...');
-      const candidatesResponse = await supabase.functions.invoke('workable-integration', {
+      }),
+      supabase.functions.invoke('workable-integration', {
         body: { action: 'sync_candidates' }
-      });
+      })
+    ]);
 
-      if (candidatesResponse.error) {
-        throw new Error(`Candidate sync failed: ${candidatesResponse.error.message}`);
-      }
+    let jobsSynced = 0;
+    let candidatesSynced = 0;
+    let hasErrors = false;
+    let errorMessages: string[] = [];
 
-      console.log('Candidate sync completed');
+    // Process jobs sync result
+    if (jobsResult.status === 'fulfilled' && !jobsResult.value.error) {
+      jobsSynced = jobsResult.value.data?.total || 0;
+      console.log('Job sync completed successfully');
+    } else {
+      hasErrors = true;
+      const error = jobsResult.status === 'rejected' ? jobsResult.reason : jobsResult.value.error;
+      errorMessages.push(`Job sync failed: ${error?.message || 'Unknown error'}`);
+      console.error('Job sync failed:', error);
+    }
 
-      // Update sync log to success
-      await supabase
-        .from('integration_sync_logs')
-        .update({ 
-          status: 'success',
+    // Process candidates sync result
+    if (candidatesResult.status === 'fulfilled' && !candidatesResult.value.error) {
+      candidatesSynced = candidatesResult.value.data?.syncedCandidates || 0;
+      console.log('Candidate sync completed successfully');
+    } else {
+      hasErrors = true;
+      const error = candidatesResult.status === 'rejected' ? candidatesResult.reason : candidatesResult.value.error;
+      errorMessages.push(`Candidate sync failed: ${error?.message || 'Unknown error'}`);
+      console.error('Candidate sync failed:', error);
+    }
+
+    // Update sync log with final status
+    const finalStatus = hasErrors ? (jobsSynced > 0 || candidatesSynced > 0 ? 'completed_with_warnings' : 'failed') : 'success';
+    
+    await supabase
+      .from('integration_sync_logs')
+      .update({ 
+        status: finalStatus,
+        completed_at: new Date().toISOString(),
+        error_message: errorMessages.length > 0 ? errorMessages.join('; ') : null,
+        synced_data: {
+          ...pendingSyncs.synced_data,
           completed_at: new Date().toISOString(),
-          synced_data: {
-            ...syncLog.synced_data,
-            completed_at: new Date().toISOString(),
-            jobs_synced: jobsResponse.data?.total || 0,
-            candidates_synced: candidatesResponse.data?.syncedCandidates || 0
-          }
-        })
-        .eq('id', syncLog.id);
+          jobs_synced: jobsSynced,
+          candidates_synced: candidatesSynced,
+          errors: errorMessages
+        }
+      })
+      .eq('id', pendingSyncs.id);
 
-      // Update integration settings last sync time
+    // Only update integration settings if sync was successful
+    if (!hasErrors) {
       await supabase
         .from('integration_settings')
         .update({ last_sync_at: new Date().toISOString() })
         .eq('integration_type', 'workable');
-
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          message: 'Automatic sync completed successfully',
-          jobsSynced: jobsResponse.data?.total || 0,
-          candidatesSynced: candidatesResponse.data?.syncedCandidates || 0
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-
-    } catch (error) {
-      console.error('Sync failed:', error);
-      
-      // Update sync log to failed
-      await supabase
-        .from('integration_sync_logs')
-        .update({ 
-          status: 'failed',
-          completed_at: new Date().toISOString(),
-          error_message: error.message,
-          synced_data: {
-            ...syncLog.synced_data,
-            failed_at: new Date().toISOString(),
-            error: error.message
-          }
-        })
-        .eq('id', syncLog.id);
-
-      throw error;
     }
+
+    return new Response(
+      JSON.stringify({ 
+        success: !hasErrors,
+        message: hasErrors ? 'Sync completed with errors' : 'Automatic sync completed successfully',
+        jobsSynced,
+        candidatesSynced,
+        errors: errorMessages.length > 0 ? errorMessages : undefined
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('Error in background sync:', error);
