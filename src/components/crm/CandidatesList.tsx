@@ -253,13 +253,13 @@ export const CandidatesList = () => {
               placeholder="Search candidates..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-white"
             />
           </div>
           <select
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm"
+            className="px-3 py-2 border rounded-md text-sm bg-white"
           >
             <option value="all">All Sources</option>
             <option value="manual">Manual</option>
@@ -281,8 +281,8 @@ export const CandidatesList = () => {
       <IntegrationSyncPanel />
 
       {candidates && candidates.length > 0 ? (
-        <div className="rounded-md border bg-card">
-          <div className="p-4 border-b">
+        <div className="rounded-md border bg-white shadow-sm">
+          <div className="p-4 border-b bg-gray-50">
             <p className="text-sm text-muted-foreground">
               Showing {candidates.length} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
@@ -292,18 +292,19 @@ export const CandidatesList = () => {
           </div>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Candidate</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Profile Score</TableHead>
-                <TableHead>Responses</TableHead>
-                <TableHead>Actions</TableHead>
+              <TableRow className="bg-gray-50/50">
+                <TableHead className="font-semibold">Name</TableHead>
+                <TableHead className="font-semibold">Position</TableHead>
+                <TableHead className="font-semibold">Email</TableHead>
+                <TableHead className="font-semibold">Phone</TableHead>
+                <TableHead className="font-semibold">Source</TableHead>
+                <TableHead className="font-semibold">Profile Score</TableHead>
+                <TableHead className="font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {candidates.map((candidate) => (
-                <TableRow key={candidate.id}>
+                <TableRow key={candidate.id} className="hover:bg-gray-50/50">
                   <TableCell>
                     <div className="flex items-center gap-3">
                       {candidate.profile_picture_url && (
@@ -315,32 +316,43 @@ export const CandidatesList = () => {
                         />
                       )}
                       <div>
-                        <div className="font-medium">{candidate.name}</div>
-                        {candidate.current_position && (
-                          <div className="text-sm text-muted-foreground">
-                            {candidate.current_position}
-                            {candidate.company && ` at ${candidate.company}`}
-                          </div>
-                        )}
+                        <div className="font-medium text-gray-900">{candidate.name}</div>
                         {candidate.location && (
-                          <div className="text-xs text-muted-foreground">{candidate.location}</div>
+                          <div className="text-xs text-gray-500">{candidate.location}</div>
                         )}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-3 w-3" />
-                        {candidate.email}
-                      </div>
-                      {candidate.phone && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {candidate.phone}
+                    <div>
+                      {candidate.current_position && (
+                        <div className="font-medium text-gray-900">
+                          {candidate.current_position}
                         </div>
                       )}
+                      {candidate.company && (
+                        <div className="text-sm text-gray-600">{candidate.company}</div>
+                      )}
+                      {candidate.experience_years && (
+                        <div className="text-xs text-gray-500">{candidate.experience_years} years exp.</div>
+                      )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-3 w-3 text-gray-400" />
+                      <span className="text-gray-700">{candidate.email}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {candidate.phone ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="h-3 w-3 text-gray-400" />
+                        <span className="text-gray-700">{candidate.phone}</span>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge 
@@ -351,22 +363,24 @@ export const CandidatesList = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
-                      {candidate.profile_completeness_score || 0}%
+                    <div className="flex items-center gap-2">
+                      <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
+                        {candidate.profile_completeness_score || 0}%
+                      </div>
+                      {(responseCounts?.[candidate.id] || 0) > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {responseCounts[candidate.id]} responses
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
-                      {responseCounts?.[candidate.id] || 0} responses
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedCandidate(candidate)}
-                        className="hover:bg-secondary-pink/10 hover:text-secondary-pink"
+                        className="h-8 px-2 text-xs bg-secondary-pink hover:bg-secondary-pink/90 text-white"
                       >
                         View
                       </Button>
@@ -375,7 +389,7 @@ export const CandidatesList = () => {
                           variant="ghost"
                           size="sm"
                           asChild
-                          className="hover:bg-secondary-pink/10 hover:text-secondary-pink"
+                          className="h-8 px-2 text-xs bg-secondary-pink hover:bg-secondary-pink/90 text-white"
                         >
                           <a
                             href={candidate.linkedin_profile_url}
@@ -394,7 +408,7 @@ export const CandidatesList = () => {
           </Table>
 
           {totalPages > 1 && (
-            <div className="p-4 border-t">
+            <div className="p-4 border-t bg-gray-50">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
@@ -432,7 +446,7 @@ export const CandidatesList = () => {
           )}
         </div>
       ) : (
-        <div className="rounded-md border bg-card p-8 text-center">
+        <div className="rounded-md border bg-white p-8 text-center shadow-sm">
           <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium mb-2">No candidates found</h3>
           <p className="text-muted-foreground mb-4">
