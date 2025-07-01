@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -244,22 +243,22 @@ export const CandidatesList = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex gap-4 items-center">
           <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search candidates..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
+              className="pl-10"
             />
           </div>
           <select
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm bg-slate-800 border-slate-700 text-white"
+            className="px-3 py-2 border rounded-md text-sm"
           >
             <option value="all">All Sources</option>
             <option value="manual">Manual</option>
@@ -268,7 +267,7 @@ export const CandidatesList = () => {
           </select>
         </div>
         <div className="flex gap-2">
-          <Button className="bg-secondary-pink hover:bg-secondary-pink/90 text-white">
+          <Button onClick={() => setShowAddDialog(true)}>
             <Users className="h-4 w-4 mr-2" />
             Add Candidate
           </Button>
@@ -278,9 +277,9 @@ export const CandidatesList = () => {
       <IntegrationSyncPanel />
 
       {candidates && candidates.length > 0 ? (
-        <div className="rounded-lg border border-slate-700 bg-slate-800/50 backdrop-blur">
-          <div className="p-4 border-b border-slate-700">
-            <p className="text-sm text-slate-300">
+        <div className="rounded-md border bg-card">
+          <div className="p-4 border-b">
+            <p className="text-sm text-muted-foreground">
               Showing {candidates.length} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
               {sourceFilter !== "all" && ` from ${sourceFilter}`}
@@ -289,87 +288,80 @@ export const CandidatesList = () => {
           </div>
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-700 hover:bg-slate-700/50">
-                <TableHead className="w-[300px] text-slate-300">Candidate</TableHead>
-                <TableHead className="w-[250px] text-slate-300">Contact</TableHead>
-                <TableHead className="w-[120px] text-slate-300">Source</TableHead>
-                <TableHead className="w-[100px] text-slate-300">Score</TableHead>
-                <TableHead className="w-[120px] text-slate-300">Responses</TableHead>
-                <TableHead className="w-[120px] text-slate-300">Actions</TableHead>
+              <TableRow>
+                <TableHead>Candidate</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Profile Score</TableHead>
+                <TableHead>Responses</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {candidates.map((candidate) => (
-                <TableRow key={candidate.id} className="border-slate-700 hover:bg-slate-700/30">
-                  <TableCell className="w-[300px]">
+                <TableRow key={candidate.id}>
+                  <TableCell>
                     <div className="flex items-center gap-3">
-                      {candidate.profile_picture_url ? (
+                      {candidate.profile_picture_url && (
                         <img
                           src={candidate.profile_picture_url}
                           alt={candidate.name}
-                          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                          className="w-8 h-8 rounded-full object-cover"
                           loading="lazy"
                         />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-medium text-white">
-                            {candidate.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
                       )}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate text-white">{candidate.name}</div>
+                      <div>
+                        <div className="font-medium">{candidate.name}</div>
                         {candidate.current_position && (
-                          <div className="text-sm text-slate-400 truncate">
+                          <div className="text-sm text-muted-foreground">
                             {candidate.current_position}
                             {candidate.company && ` at ${candidate.company}`}
                           </div>
                         )}
                         {candidate.location && (
-                          <div className="text-xs text-slate-500 truncate">{candidate.location}</div>
+                          <div className="text-xs text-muted-foreground">{candidate.location}</div>
                         )}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="w-[250px]">
+                  <TableCell>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-slate-300">
-                        <Mail className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{candidate.email}</span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-3 w-3" />
+                        {candidate.email}
                       </div>
                       {candidate.phone && (
-                        <div className="flex items-center gap-2 text-sm text-slate-400">
-                          <Phone className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{candidate.phone}</span>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Phone className="h-3 w-3" />
+                          {candidate.phone}
                         </div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[120px]">
+                  <TableCell>
                     <Badge 
                       variant="secondary" 
-                      className={`${getSourceBadgeColor(candidate.source_platform)} text-xs`}
+                      className={getSourceBadgeColor(candidate.source_platform)}
                     >
                       {candidate.source_platform || 'manual'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="w-[100px]">
+                  <TableCell>
                     <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
                       {candidate.profile_completeness_score || 0}%
                     </div>
                   </TableCell>
-                  <TableCell className="w-[120px]">
-                    <Badge variant="secondary" className="text-xs bg-slate-700 text-slate-300">
+                  <TableCell>
+                    <Badge variant="secondary">
                       {responseCounts?.[candidate.id] || 0} responses
                     </Badge>
                   </TableCell>
-                  <TableCell className="w-[120px]">
-                    <div className="flex gap-1">
+                  <TableCell>
+                    <div className="flex gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedCandidate(candidate)}
-                        className="text-xs px-2 text-slate-300 hover:text-white hover:bg-slate-700"
                       >
                         View
                       </Button>
@@ -378,7 +370,6 @@ export const CandidatesList = () => {
                           variant="ghost"
                           size="sm"
                           asChild
-                          className="px-2 text-slate-300 hover:text-white hover:bg-slate-700"
                         >
                           <a
                             href={candidate.linkedin_profile_url}
@@ -397,25 +388,25 @@ export const CandidatesList = () => {
           </Table>
 
           {totalPages > 1 && (
-            <div className="p-4 border-t border-slate-700">
+            <div className="p-4 border-t">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious 
                       onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                      className={`${currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-slate-700"} text-slate-300`}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
 
                   {getPaginationRange().map((page, index) => (
                     <PaginationItem key={index}>
                       {page === '...' ? (
-                        <span className="px-3 py-2 text-sm text-slate-400">...</span>
+                        <span className="px-3 py-2 text-sm text-muted-foreground">...</span>
                       ) : (
                         <PaginationLink
                           onClick={() => handlePageChange(page as number)}
                           isActive={currentPage === page}
-                          className={`cursor-pointer ${currentPage === page ? 'bg-secondary-pink text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                          className="cursor-pointer"
                         >
                           {page}
                         </PaginationLink>
@@ -426,7 +417,7 @@ export const CandidatesList = () => {
                   <PaginationItem>
                     <PaginationNext 
                       onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                      className={`${currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-slate-700"} text-slate-300`}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -435,19 +426,16 @@ export const CandidatesList = () => {
           )}
         </div>
       ) : (
-        <div className="rounded-lg border border-slate-700 bg-slate-800/50 backdrop-blur p-8 text-center">
-          <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2 text-white">No candidates found</h3>
-          <p className="text-slate-400 mb-4">
+        <div className="rounded-md border bg-card p-8 text-center">
+          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">No candidates found</h3>
+          <p className="text-muted-foreground mb-4">
             {searchTerm || sourceFilter !== "all" 
               ? "Try adjusting your search or filters" 
               : "Get started by adding candidates manually"}
           </p>
           <div className="flex gap-2 justify-center">
-            <Button 
-              onClick={() => setShowAddDialog(true)}
-              className="bg-secondary-pink hover:bg-secondary-pink/90 text-white"
-            >
+            <Button onClick={() => setShowAddDialog(true)}>
               <Users className="h-4 w-4 mr-2" />
               Add Candidate
             </Button>
