@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -289,79 +290,86 @@ export const CandidatesList = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Candidate</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Profile Score</TableHead>
-                <TableHead>Responses</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="w-[300px]">Candidate</TableHead>
+                <TableHead className="w-[250px]">Contact</TableHead>
+                <TableHead className="w-[120px]">Source</TableHead>
+                <TableHead className="w-[100px]">Score</TableHead>
+                <TableHead className="w-[120px]">Responses</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {candidates.map((candidate) => (
                 <TableRow key={candidate.id}>
-                  <TableCell>
+                  <TableCell className="w-[300px]">
                     <div className="flex items-center gap-3">
-                      {candidate.profile_picture_url && (
+                      {candidate.profile_picture_url ? (
                         <img
                           src={candidate.profile_picture_url}
                           alt={candidate.name}
-                          className="w-8 h-8 rounded-full object-cover"
+                          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                           loading="lazy"
                         />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-gray-600">
+                            {candidate.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
                       )}
-                      <div>
-                        <div className="font-medium">{candidate.name}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">{candidate.name}</div>
                         {candidate.current_position && (
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground truncate">
                             {candidate.current_position}
                             {candidate.company && ` at ${candidate.company}`}
                           </div>
                         )}
                         {candidate.location && (
-                          <div className="text-xs text-muted-foreground">{candidate.location}</div>
+                          <div className="text-xs text-muted-foreground truncate">{candidate.location}</div>
                         )}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[250px]">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-3 w-3" />
-                        {candidate.email}
+                        <Mail className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{candidate.email}</span>
                       </div>
                       {candidate.phone && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {candidate.phone}
+                          <Phone className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{candidate.phone}</span>
                         </div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[120px]">
                     <Badge 
                       variant="secondary" 
-                      className={getSourceBadgeColor(candidate.source_platform)}
+                      className={`${getSourceBadgeColor(candidate.source_platform)} text-xs`}
                     >
                       {candidate.source_platform || 'manual'}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[100px]">
                     <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
                       {candidate.profile_completeness_score || 0}%
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
+                  <TableCell className="w-[120px]">
+                    <Badge variant="secondary" className="text-xs">
                       {responseCounts?.[candidate.id] || 0} responses
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
+                  <TableCell className="w-[120px]">
+                    <div className="flex gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedCandidate(candidate)}
+                        className="text-xs px-2"
                       >
                         View
                       </Button>
@@ -370,6 +378,7 @@ export const CandidatesList = () => {
                           variant="ghost"
                           size="sm"
                           asChild
+                          className="px-2"
                         >
                           <a
                             href={candidate.linkedin_profile_url}
