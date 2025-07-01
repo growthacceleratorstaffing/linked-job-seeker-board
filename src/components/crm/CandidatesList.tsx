@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -264,9 +265,9 @@ export const CandidatesList = () => {
       </div>
 
       {candidates && candidates.length > 0 ? (
-        <div className="rounded-md border bg-white shadow-sm">
-          <div className="p-4 border-b bg-gray-50">
-            <p className="text-sm text-muted-foreground">
+        <div className="rounded-md border bg-primary-blue border-slate-700 shadow-sm">
+          <div className="p-4 border-b border-slate-600 bg-primary-blue">
+            <p className="text-sm text-slate-300">
               Showing {candidates.length} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
               {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
@@ -274,20 +275,20 @@ export const CandidatesList = () => {
           </div>
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50/50">
-                <TableHead className="font-semibold w-[220px]">Name</TableHead>
-                <TableHead className="font-semibold w-[80px]">Position</TableHead>
-                <TableHead className="font-semibold w-[200px]">Email</TableHead>
-                <TableHead className="font-semibold w-[130px]">Phone</TableHead>
-                <TableHead className="font-semibold w-[120px]">Location</TableHead>
-                <TableHead className="font-semibold w-[80px]">Source</TableHead>
-                <TableHead className="font-semibold w-[80px]">Score</TableHead>
-                <TableHead className="font-semibold w-[100px]">Actions</TableHead>
+              <TableRow className="border-slate-600">
+                <TableHead className="font-semibold w-[220px] text-slate-300">Name</TableHead>
+                <TableHead className="font-semibold w-[80px] text-slate-300">Position</TableHead>
+                <TableHead className="font-semibold w-[200px] text-slate-300">Email</TableHead>
+                <TableHead className="font-semibold w-[130px] text-slate-300">Phone</TableHead>
+                <TableHead className="font-semibold w-[120px] text-slate-300">Location</TableHead>
+                <TableHead className="font-semibold w-[80px] text-slate-300">Source</TableHead>
+                <TableHead className="font-semibold w-[80px] text-slate-300">Score</TableHead>
+                <TableHead className="font-semibold w-[100px] text-slate-300">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {candidates.map((candidate) => (
-                <TableRow key={candidate.id} className="hover:bg-gray-50/50">
+                <TableRow key={candidate.id} className="hover:bg-slate-700 border-slate-600">
                   <TableCell className="w-[220px]">
                     <div className="flex items-center gap-3">
                       {candidate.profile_picture_url && (
@@ -299,11 +300,11 @@ export const CandidatesList = () => {
                         />
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium text-gray-900 text-base leading-tight">
+                        <div className="font-medium text-white text-base leading-tight">
                           {candidate.name}
                         </div>
                         {candidate.location && (
-                          <div className="text-xs text-gray-500 truncate flex items-center gap-1 mt-1">
+                          <div className="text-xs text-slate-400 truncate flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3" />
                             {candidate.location}
                           </div>
@@ -314,12 +315,12 @@ export const CandidatesList = () => {
                   <TableCell className="w-[80px]">
                     <div className="space-y-1">
                       {candidate.current_position && (
-                        <div className="font-medium text-gray-900 text-xs truncate">
+                        <div className="font-medium text-white text-xs truncate">
                           {candidate.current_position}
                         </div>
                       )}
                       {candidate.company && (
-                        <div className="text-xs text-gray-600 truncate flex items-center gap-1">
+                        <div className="text-xs text-slate-400 truncate flex items-center gap-1">
                           <Building className="h-3 w-3" />
                           {candidate.company}
                         </div>
@@ -328,25 +329,25 @@ export const CandidatesList = () => {
                   </TableCell>
                   <TableCell className="w-[200px]">
                     <div className="flex items-center gap-2 text-sm">
-                      <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                      <span className="text-gray-700 truncate">{candidate.email}</span>
+                      <Mail className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                      <span className="text-white truncate">{candidate.email}</span>
                     </div>
                   </TableCell>
                   <TableCell className="w-[130px]">
                     {candidate.phone ? (
                       <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                        <span className="text-gray-700 truncate">{candidate.phone}</span>
+                        <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                        <span className="text-white truncate">{candidate.phone}</span>
                       </div>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-slate-400">-</span>
                     )}
                   </TableCell>
                   <TableCell className="w-[120px]">
                     {candidate.location ? (
-                      <span className="text-sm text-gray-700 truncate block">{candidate.location}</span>
+                      <span className="text-sm text-white truncate block">{candidate.location}</span>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-slate-400">-</span>
                     )}
                   </TableCell>
                   <TableCell className="w-[80px]">
@@ -403,25 +404,25 @@ export const CandidatesList = () => {
           </Table>
 
           {totalPages > 1 && (
-            <div className="p-4 border-t bg-gray-50">
+            <div className="p-4 border-t border-slate-600 bg-primary-blue">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious 
                       onClick={() => handlePageChange(currentPage - 1)}
-                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink"}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink text-white"}
                     />
                   </PaginationItem>
 
                   {getPaginationRange().map((page, index) => (
                     <PaginationItem key={index}>
                       {page === '...' ? (
-                        <span className="px-3 py-2 text-sm text-muted-foreground">...</span>
+                        <span className="px-3 py-2 text-sm text-slate-400">...</span>
                       ) : (
                         <PaginationLink
                           onClick={() => handlePageChange(page as number)}
                           isActive={currentPage === page}
-                          className="cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink data-[selected=true]:bg-secondary-pink data-[selected=true]:text-white"
+                          className="cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink data-[selected=true]:bg-secondary-pink data-[selected=true]:text-white text-white"
                         >
                           {page}
                         </PaginationLink>
@@ -432,7 +433,7 @@ export const CandidatesList = () => {
                   <PaginationItem>
                     <PaginationNext 
                       onClick={() => handlePageChange(currentPage + 1)}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink"}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink text-white"}
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -441,10 +442,10 @@ export const CandidatesList = () => {
           )}
         </div>
       ) : (
-        <div className="rounded-md border bg-white p-8 text-center shadow-sm">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No candidates found</h3>
-          <p className="text-muted-foreground mb-4">
+        <div className="rounded-md border bg-primary-blue border-slate-700 p-8 text-center shadow-sm">
+          <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2 text-white">No candidates found</h3>
+          <p className="text-slate-400 mb-4">
             {searchTerm ? "Try adjusting your search" : "Get started by adding candidates manually"}
           </p>
           <div className="flex gap-2 justify-center">
@@ -480,3 +481,4 @@ export const CandidatesList = () => {
     </div>
   );
 };
+
