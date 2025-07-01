@@ -83,7 +83,7 @@ export const CandidatesList = () => {
       return { candidates: data as Candidate[], totalCount: count || 0 };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const candidates = candidatesData?.candidates || [];
@@ -113,7 +113,7 @@ export const CandidatesList = () => {
       return counts;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes
   });
 
   // Optimize real-time subscription with cleanup
