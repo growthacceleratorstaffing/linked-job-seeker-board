@@ -244,22 +244,22 @@ export const CandidatesList = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex gap-4 items-center">
           <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
             <Input
               placeholder="Search candidates..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
             />
           </div>
           <select
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm"
+            className="px-3 py-2 border rounded-md text-sm bg-slate-800 border-slate-700 text-white"
           >
             <option value="all">All Sources</option>
             <option value="manual">Manual</option>
@@ -268,7 +268,7 @@ export const CandidatesList = () => {
           </select>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setShowAddDialog(true)}>
+          <Button className="bg-secondary-pink hover:bg-secondary-pink/90 text-white">
             <Users className="h-4 w-4 mr-2" />
             Add Candidate
           </Button>
@@ -278,9 +278,9 @@ export const CandidatesList = () => {
       <IntegrationSyncPanel />
 
       {candidates && candidates.length > 0 ? (
-        <div className="rounded-md border bg-card">
-          <div className="p-4 border-b">
-            <p className="text-sm text-muted-foreground">
+        <div className="rounded-lg border border-slate-700 bg-slate-800/50 backdrop-blur">
+          <div className="p-4 border-b border-slate-700">
+            <p className="text-sm text-slate-300">
               Showing {candidates.length} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
               {sourceFilter !== "all" && ` from ${sourceFilter}`}
@@ -289,18 +289,18 @@ export const CandidatesList = () => {
           </div>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-[300px]">Candidate</TableHead>
-                <TableHead className="w-[250px]">Contact</TableHead>
-                <TableHead className="w-[120px]">Source</TableHead>
-                <TableHead className="w-[100px]">Score</TableHead>
-                <TableHead className="w-[120px]">Responses</TableHead>
-                <TableHead className="w-[120px]">Actions</TableHead>
+              <TableRow className="border-slate-700 hover:bg-slate-700/50">
+                <TableHead className="w-[300px] text-slate-300">Candidate</TableHead>
+                <TableHead className="w-[250px] text-slate-300">Contact</TableHead>
+                <TableHead className="w-[120px] text-slate-300">Source</TableHead>
+                <TableHead className="w-[100px] text-slate-300">Score</TableHead>
+                <TableHead className="w-[120px] text-slate-300">Responses</TableHead>
+                <TableHead className="w-[120px] text-slate-300">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {candidates.map((candidate) => (
-                <TableRow key={candidate.id}>
+                <TableRow key={candidate.id} className="border-slate-700 hover:bg-slate-700/30">
                   <TableCell className="w-[300px]">
                     <div className="flex items-center gap-3">
                       {candidate.profile_picture_url ? (
@@ -311,34 +311,34 @@ export const CandidatesList = () => {
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-medium text-gray-600">
+                        <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-white">
                             {candidate.name.charAt(0).toUpperCase()}
                           </span>
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate">{candidate.name}</div>
+                        <div className="font-medium truncate text-white">{candidate.name}</div>
                         {candidate.current_position && (
-                          <div className="text-sm text-muted-foreground truncate">
+                          <div className="text-sm text-slate-400 truncate">
                             {candidate.current_position}
                             {candidate.company && ` at ${candidate.company}`}
                           </div>
                         )}
                         {candidate.location && (
-                          <div className="text-xs text-muted-foreground truncate">{candidate.location}</div>
+                          <div className="text-xs text-slate-500 truncate">{candidate.location}</div>
                         )}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="w-[250px]">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2 text-sm text-slate-300">
                         <Mail className="h-3 w-3 flex-shrink-0" />
                         <span className="truncate">{candidate.email}</span>
                       </div>
                       {candidate.phone && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
                           <Phone className="h-3 w-3 flex-shrink-0" />
                           <span className="truncate">{candidate.phone}</span>
                         </div>
@@ -359,7 +359,7 @@ export const CandidatesList = () => {
                     </div>
                   </TableCell>
                   <TableCell className="w-[120px]">
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-xs bg-slate-700 text-slate-300">
                       {responseCounts?.[candidate.id] || 0} responses
                     </Badge>
                   </TableCell>
@@ -369,7 +369,7 @@ export const CandidatesList = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedCandidate(candidate)}
-                        className="text-xs px-2"
+                        className="text-xs px-2 text-slate-300 hover:text-white hover:bg-slate-700"
                       >
                         View
                       </Button>
@@ -378,7 +378,7 @@ export const CandidatesList = () => {
                           variant="ghost"
                           size="sm"
                           asChild
-                          className="px-2"
+                          className="px-2 text-slate-300 hover:text-white hover:bg-slate-700"
                         >
                           <a
                             href={candidate.linkedin_profile_url}
@@ -397,25 +397,25 @@ export const CandidatesList = () => {
           </Table>
 
           {totalPages > 1 && (
-            <div className="p-4 border-t">
+            <div className="p-4 border-t border-slate-700">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious 
                       onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      className={`${currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-slate-700"} text-slate-300`}
                     />
                   </PaginationItem>
 
                   {getPaginationRange().map((page, index) => (
                     <PaginationItem key={index}>
                       {page === '...' ? (
-                        <span className="px-3 py-2 text-sm text-muted-foreground">...</span>
+                        <span className="px-3 py-2 text-sm text-slate-400">...</span>
                       ) : (
                         <PaginationLink
                           onClick={() => handlePageChange(page as number)}
                           isActive={currentPage === page}
-                          className="cursor-pointer"
+                          className={`cursor-pointer ${currentPage === page ? 'bg-secondary-pink text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
                         >
                           {page}
                         </PaginationLink>
@@ -426,7 +426,7 @@ export const CandidatesList = () => {
                   <PaginationItem>
                     <PaginationNext 
                       onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      className={`${currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-slate-700"} text-slate-300`}
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -435,16 +435,19 @@ export const CandidatesList = () => {
           )}
         </div>
       ) : (
-        <div className="rounded-md border bg-card p-8 text-center">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No candidates found</h3>
-          <p className="text-muted-foreground mb-4">
+        <div className="rounded-lg border border-slate-700 bg-slate-800/50 backdrop-blur p-8 text-center">
+          <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2 text-white">No candidates found</h3>
+          <p className="text-slate-400 mb-4">
             {searchTerm || sourceFilter !== "all" 
               ? "Try adjusting your search or filters" 
               : "Get started by adding candidates manually"}
           </p>
           <div className="flex gap-2 justify-center">
-            <Button onClick={() => setShowAddDialog(true)}>
+            <Button 
+              onClick={() => setShowAddDialog(true)}
+              className="bg-secondary-pink hover:bg-secondary-pink/90 text-white"
+            >
               <Users className="h-4 w-4 mr-2" />
               Add Candidate
             </Button>
