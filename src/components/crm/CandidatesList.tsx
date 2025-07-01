@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -267,7 +268,10 @@ export const CandidatesList = () => {
           </select>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setShowAddDialog(true)}>
+          <Button 
+            onClick={() => setShowAddDialog(true)}
+            className="bg-secondary-pink hover:bg-secondary-pink/90 text-white"
+          >
             <Users className="h-4 w-4 mr-2" />
             Add Candidate
           </Button>
@@ -362,6 +366,7 @@ export const CandidatesList = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedCandidate(candidate)}
+                        className="hover:bg-secondary-pink/10 hover:text-secondary-pink"
                       >
                         View
                       </Button>
@@ -370,6 +375,7 @@ export const CandidatesList = () => {
                           variant="ghost"
                           size="sm"
                           asChild
+                          className="hover:bg-secondary-pink/10 hover:text-secondary-pink"
                         >
                           <a
                             href={candidate.linkedin_profile_url}
@@ -394,7 +400,7 @@ export const CandidatesList = () => {
                   <PaginationItem>
                     <PaginationPrevious 
                       onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink"}
                     />
                   </PaginationItem>
 
@@ -406,7 +412,7 @@ export const CandidatesList = () => {
                         <PaginationLink
                           onClick={() => handlePageChange(page as number)}
                           isActive={currentPage === page}
-                          className="cursor-pointer"
+                          className="cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink data-[selected=true]:bg-secondary-pink data-[selected=true]:text-white"
                         >
                           {page}
                         </PaginationLink>
@@ -417,7 +423,7 @@ export const CandidatesList = () => {
                   <PaginationItem>
                     <PaginationNext 
                       onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink"}
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -435,7 +441,10 @@ export const CandidatesList = () => {
               : "Get started by adding candidates manually"}
           </p>
           <div className="flex gap-2 justify-center">
-            <Button onClick={() => setShowAddDialog(true)}>
+            <Button 
+              onClick={() => setShowAddDialog(true)}
+              className="bg-secondary-pink hover:bg-secondary-pink/90 text-white"
+            >
               <Users className="h-4 w-4 mr-2" />
               Add Candidate
             </Button>
