@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { AddCandidateDialog } from "./AddCandidateDialog";
 import { CandidateProfileCard } from "./CandidateProfileCard";
-import { IntegrationSyncPanel } from "./IntegrationSyncPanel";
 import { Search, Mail, Phone, ExternalLink, Users, MapPin, Building, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -37,9 +36,8 @@ export const CandidatesList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const candidatesPerPage = 10; // Reduced for better pagination
+  const candidatesPerPage = 10;
   const queryClient = useQueryClient();
 
   // Debounce search term to reduce API calls
@@ -47,14 +45,14 @@ export const CandidatesList = () => {
 
   // Memoize query key to prevent unnecessary re-renders
   const queryKey = useMemo(() => 
-    ["candidates", debouncedSearchTerm, sourceFilter, currentPage],
-    [debouncedSearchTerm, sourceFilter, currentPage]
+    ["candidates", debouncedSearchTerm, currentPage],
+    [debouncedSearchTerm, currentPage]
   );
 
   const { data: candidatesData, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      console.log('Fetching candidates with search:', debouncedSearchTerm, 'filter:', sourceFilter, 'page:', currentPage);
+      console.log('Fetching candidates with search:', debouncedSearchTerm, 'page:', currentPage);
       
       let query = supabase
         .from("candidates")
@@ -63,10 +61,6 @@ export const CandidatesList = () => {
 
       if (debouncedSearchTerm) {
         query = query.or(`name.ilike.%${debouncedSearchTerm}%,email.ilike.%${debouncedSearchTerm}%,company.ilike.%${debouncedSearchTerm}%,current_position.ilike.%${debouncedSearchTerm}%`);
-      }
-
-      if (sourceFilter !== "all") {
-        query = query.eq("source_platform", sourceFilter);
       }
 
       const from = (currentPage - 1) * candidatesPerPage;
@@ -90,10 +84,10 @@ export const CandidatesList = () => {
   const totalCount = candidatesData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / candidatesPerPage);
 
-  // Reset to first page when search or filter changes
+  // Reset to first page when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, sourceFilter]);
+  }, [debouncedSearchTerm]);
 
   const { data: responseCounts } = useQuery({
     queryKey: ["candidate-response-counts"],
@@ -256,16 +250,6 @@ export const CandidatesList = () => {
               className="pl-10 bg-white"
             />
           </div>
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm bg-white"
-          >
-            <option value="all">All Sources</option>
-            <option value="manual">Manual</option>
-            <option value="linkedin">LinkedIn</option>
-            <option value="workable">Workable</option>
-          </select>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -278,26 +262,23 @@ export const CandidatesList = () => {
         </div>
       </div>
 
-      <IntegrationSyncPanel />
-
       {candidates && candidates.length > 0 ? (
         <div className="rounded-md border bg-white shadow-sm">
           <div className="p-4 border-b bg-gray-50">
             <p className="text-sm text-muted-foreground">
               Showing {candidates.length} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
-              {sourceFilter !== "all" && ` from ${sourceFilter}`}
               {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
             </p>
           </div>
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/50">
-                <TableHead className="font-semibold w-[200px]">Name</TableHead>
-                <TableHead className="font-semibold w-[120px]">Position</TableHead>
-                <TableHead className="font-semibold w-[200px]">Email</TableHead>
-                <TableHead className="font-semibold w-[120px]">Phone</TableHead>
-                <TableHead className="font-semibold w-[100px]">Location</TableHead>
+                <TableHead className="font-semibold w-[250px]">Name</TableHead>
+                <TableHead className="font-semibold w-[100px]">Position</TableHead>
+                <TableHead className="font-semibold w-[220px]">Email</TableHead>
+                <TableHead className="font-semibold w-[140px]">Phone</TableHead>
+                <TableHead className="font-semibold w-[120px]">Location</TableHead>
                 <TableHead className="font-semibold w-[80px]">Source</TableHead>
                 <TableHead className="font-semibold w-[100px]">Score</TableHead>
                 <TableHead className="font-semibold w-[100px]">Actions</TableHead>
@@ -306,7 +287,7 @@ export const CandidatesList = () => {
             <TableBody>
               {candidates.map((candidate) => (
                 <TableRow key={candidate.id} className="hover:bg-gray-50/50">
-                  <TableCell className="w-[200px]">
+                  <TableCell className="w-[250px]">
                     <div className="flex items-center gap-3">
                       {candidate.profile_picture_url && (
                         <img
@@ -317,9 +298,11 @@ export const CandidatesList = () => {
                         />
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium text-gray-900 truncate">{candidate.name}</div>
+                        <div className="font-medium text-gray-900 text-base leading-tight">
+                          {candidate.name}
+                        </div>
                         {candidate.location && (
-                          <div className="text-xs text-gray-500 truncate flex items-center gap-1">
+                          <div className="text-xs text-gray-500 truncate flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3" />
                             {candidate.location}
                           </div>
@@ -327,10 +310,10 @@ export const CandidatesList = () => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="w-[120px]">
+                  <TableCell className="w-[100px]">
                     <div className="space-y-1">
                       {candidate.current_position && (
-                        <div className="font-medium text-gray-900 text-sm truncate">
+                        <div className="font-medium text-gray-900 text-xs truncate">
                           {candidate.current_position}
                         </div>
                       )}
@@ -340,21 +323,15 @@ export const CandidatesList = () => {
                           {candidate.company}
                         </div>
                       )}
-                      {candidate.experience_years && (
-                        <div className="text-xs text-gray-500 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {candidate.experience_years}y
-                        </div>
-                      )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[200px]">
+                  <TableCell className="w-[220px]">
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
                       <span className="text-gray-700 truncate">{candidate.email}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="w-[120px]">
+                  <TableCell className="w-[140px]">
                     {candidate.phone ? (
                       <div className="flex items-center gap-2 text-sm">
                         <Phone className="h-3 w-3 text-gray-400 flex-shrink-0" />
@@ -364,7 +341,7 @@ export const CandidatesList = () => {
                       <span className="text-gray-400">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="w-[100px]">
+                  <TableCell className="w-[120px]">
                     {candidate.location ? (
                       <span className="text-sm text-gray-700 truncate block">{candidate.location}</span>
                     ) : (
@@ -467,9 +444,7 @@ export const CandidatesList = () => {
           <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium mb-2">No candidates found</h3>
           <p className="text-muted-foreground mb-4">
-            {searchTerm || sourceFilter !== "all" 
-              ? "Try adjusting your search or filters" 
-              : "Get started by adding candidates manually"}
+            {searchTerm ? "Try adjusting your search" : "Get started by adding candidates manually"}
           </p>
           <div className="flex gap-2 justify-center">
             <Button 
