@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -274,20 +275,20 @@ export const CandidatesList = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/50">
-                <TableHead className="font-semibold w-[250px]">Name</TableHead>
-                <TableHead className="font-semibold w-[100px]">Position</TableHead>
-                <TableHead className="font-semibold w-[220px]">Email</TableHead>
-                <TableHead className="font-semibold w-[140px]">Phone</TableHead>
+                <TableHead className="font-semibold w-[220px]">Name</TableHead>
+                <TableHead className="font-semibold w-[80px]">Position</TableHead>
+                <TableHead className="font-semibold w-[200px]">Email</TableHead>
+                <TableHead className="font-semibold w-[130px]">Phone</TableHead>
                 <TableHead className="font-semibold w-[120px]">Location</TableHead>
                 <TableHead className="font-semibold w-[80px]">Source</TableHead>
-                <TableHead className="font-semibold w-[100px]">Score</TableHead>
+                <TableHead className="font-semibold w-[80px]">Score</TableHead>
                 <TableHead className="font-semibold w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {candidates.map((candidate) => (
                 <TableRow key={candidate.id} className="hover:bg-gray-50/50">
-                  <TableCell className="w-[250px]">
+                  <TableCell className="w-[220px]">
                     <div className="flex items-center gap-3">
                       {candidate.profile_picture_url && (
                         <img
@@ -310,7 +311,7 @@ export const CandidatesList = () => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="w-[100px]">
+                  <TableCell className="w-[80px]">
                     <div className="space-y-1">
                       {candidate.current_position && (
                         <div className="font-medium text-gray-900 text-xs truncate">
@@ -325,13 +326,13 @@ export const CandidatesList = () => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[220px]">
+                  <TableCell className="w-[200px]">
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
                       <span className="text-gray-700 truncate">{candidate.email}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="w-[140px]">
+                  <TableCell className="w-[130px]">
                     {candidate.phone ? (
                       <div className="flex items-center gap-2 text-sm">
                         <Phone className="h-3 w-3 text-gray-400 flex-shrink-0" />
@@ -356,7 +357,7 @@ export const CandidatesList = () => {
                       {candidate.source_platform || 'manual'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="w-[100px]">
+                  <TableCell className="w-[80px]">
                     <div className="flex items-center gap-2">
                       <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
                         {candidate.profile_completeness_score || 0}%
