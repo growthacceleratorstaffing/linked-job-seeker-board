@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +9,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { AddCandidateDialog } from "./AddCandidateDialog";
 import { CandidateProfileCard } from "./CandidateProfileCard";
 import { IntegrationSyncPanel } from "./IntegrationSyncPanel";
-import { Search, Mail, Phone, ExternalLink, Users } from "lucide-react";
+import { Search, Mail, Phone, ExternalLink, Users, MapPin, Building, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 
@@ -40,7 +39,7 @@ export const CandidatesList = () => {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const candidatesPerPage = 25;
+  const candidatesPerPage = 10; // Reduced for better pagination
   const queryClient = useQueryClient();
 
   // Debounce search term to reduce API calls
@@ -96,7 +95,6 @@ export const CandidatesList = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, sourceFilter]);
 
-  // Optimize response counts query with longer cache time
   const { data: responseCounts } = useQuery({
     queryKey: ["candidate-response-counts"],
     queryFn: async () => {
@@ -198,8 +196,10 @@ export const CandidatesList = () => {
   }, []);
 
   const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-  }, []);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  }, [totalPages]);
 
   const getPaginationRange = useCallback(() => {
     const delta = 2;
@@ -228,7 +228,7 @@ export const CandidatesList = () => {
   }, [currentPage, totalPages]);
 
   if (isLoading) {
-    return <div className="flex justify-center p-4">Loading candidates...</div>;
+    return <div className="flex justify-center p-4 text-white">Loading candidates...</div>;
   }
 
   if (error) {
@@ -293,88 +293,105 @@ export const CandidatesList = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/50">
-                <TableHead className="font-semibold">Name</TableHead>
-                <TableHead className="font-semibold">Position</TableHead>
-                <TableHead className="font-semibold">Email</TableHead>
-                <TableHead className="font-semibold">Phone</TableHead>
-                <TableHead className="font-semibold">Source</TableHead>
-                <TableHead className="font-semibold">Profile Score</TableHead>
-                <TableHead className="font-semibold">Actions</TableHead>
+                <TableHead className="font-semibold w-[200px]">Name</TableHead>
+                <TableHead className="font-semibold w-[120px]">Position</TableHead>
+                <TableHead className="font-semibold w-[200px]">Email</TableHead>
+                <TableHead className="font-semibold w-[120px]">Phone</TableHead>
+                <TableHead className="font-semibold w-[100px]">Location</TableHead>
+                <TableHead className="font-semibold w-[80px]">Source</TableHead>
+                <TableHead className="font-semibold w-[100px]">Score</TableHead>
+                <TableHead className="font-semibold w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {candidates.map((candidate) => (
                 <TableRow key={candidate.id} className="hover:bg-gray-50/50">
-                  <TableCell>
+                  <TableCell className="w-[200px]">
                     <div className="flex items-center gap-3">
                       {candidate.profile_picture_url && (
                         <img
                           src={candidate.profile_picture_url}
                           alt={candidate.name}
-                          className="w-8 h-8 rounded-full object-cover"
+                          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                           loading="lazy"
                         />
                       )}
-                      <div>
-                        <div className="font-medium text-gray-900">{candidate.name}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-gray-900 truncate">{candidate.name}</div>
                         {candidate.location && (
-                          <div className="text-xs text-gray-500">{candidate.location}</div>
+                          <div className="text-xs text-gray-500 truncate flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {candidate.location}
+                          </div>
                         )}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div>
+                  <TableCell className="w-[120px]">
+                    <div className="space-y-1">
                       {candidate.current_position && (
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-gray-900 text-sm truncate">
                           {candidate.current_position}
                         </div>
                       )}
                       {candidate.company && (
-                        <div className="text-sm text-gray-600">{candidate.company}</div>
+                        <div className="text-xs text-gray-600 truncate flex items-center gap-1">
+                          <Building className="h-3 w-3" />
+                          {candidate.company}
+                        </div>
                       )}
                       {candidate.experience_years && (
-                        <div className="text-xs text-gray-500">{candidate.experience_years} years exp.</div>
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {candidate.experience_years}y
+                        </div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[200px]">
                     <div className="flex items-center gap-2 text-sm">
-                      <Mail className="h-3 w-3 text-gray-400" />
-                      <span className="text-gray-700">{candidate.email}</span>
+                      <Mail className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                      <span className="text-gray-700 truncate">{candidate.email}</span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[120px]">
                     {candidate.phone ? (
                       <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-3 w-3 text-gray-400" />
-                        <span className="text-gray-700">{candidate.phone}</span>
+                        <Phone className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                        <span className="text-gray-700 truncate">{candidate.phone}</span>
                       </div>
                     ) : (
                       <span className="text-gray-400">-</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[100px]">
+                    {candidate.location ? (
+                      <span className="text-sm text-gray-700 truncate block">{candidate.location}</span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="w-[80px]">
                     <Badge 
                       variant="secondary" 
-                      className={getSourceBadgeColor(candidate.source_platform)}
+                      className={`${getSourceBadgeColor(candidate.source_platform)} text-xs`}
                     >
                       {candidate.source_platform || 'manual'}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[100px]">
                     <div className="flex items-center gap-2">
                       <div className={`text-sm font-medium ${getCompletenessColor(candidate.profile_completeness_score)}`}>
                         {candidate.profile_completeness_score || 0}%
                       </div>
                       {(responseCounts?.[candidate.id] || 0) > 0 && (
                         <Badge variant="secondary" className="text-xs">
-                          {responseCounts[candidate.id]} responses
+                          {responseCounts[candidate.id]}
                         </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[100px]">
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
@@ -413,7 +430,7 @@ export const CandidatesList = () => {
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious 
-                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                      onClick={() => handlePageChange(currentPage - 1)}
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink"}
                     />
                   </PaginationItem>
@@ -436,7 +453,7 @@ export const CandidatesList = () => {
 
                   <PaginationItem>
                     <PaginationNext 
-                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                      onClick={() => handlePageChange(currentPage + 1)}
                       className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-secondary-pink/10 hover:text-secondary-pink"}
                     />
                   </PaginationItem>
