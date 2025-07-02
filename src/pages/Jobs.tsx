@@ -93,13 +93,8 @@ const Jobs = () => {
   const archivedJobs = jobs.filter(job => job.state === 'archived').length;
 
   return (
-    <Layout>
+    <div className="min-h-screen bg-primary-blue text-white">
       <div className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Jobs & Vacancy Generator</h1>
-          <p className="text-gray-600">Create compelling job descriptions with AI and manage job postings</p>
-        </div>
-
         <VacancyGenerator />
 
 
@@ -185,15 +180,12 @@ const Jobs = () => {
           </Card>
         </div>
 
-        <Card>
+        <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-white">
               <Briefcase className="mr-2 h-5 w-5 text-secondary-pink" />
-              Job Listings
+              Jobs
             </CardTitle>
-            <CardDescription>
-              {filteredJobs.length} of {jobs.length} jobs from growthacceleratorstaffing.workable.com
-            </CardDescription>
           </CardHeader>
           <CardContent>
             {filteredJobs.length > 0 ? (
@@ -255,7 +247,7 @@ const Jobs = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </div>
   );
 };
 
