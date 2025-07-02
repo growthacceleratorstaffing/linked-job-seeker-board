@@ -9,7 +9,7 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="flex-1 flex flex-col items-center justify-center text-white">
+      <div className="flex-1 flex items-center justify-center text-white">
         <div className="text-center">
           <div className="mb-8">
             <img 
