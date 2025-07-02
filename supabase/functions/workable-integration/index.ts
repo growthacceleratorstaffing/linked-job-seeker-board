@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10";
@@ -21,14 +20,38 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!workableApiToken || !workableSubdomain) {
+    console.log('Environment check:', {
+      hasApiToken: !!workableApiToken,
+      hasSubdomain: !!workableSubdomain,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey
+    });
+
+    if (!workableApiToken) {
+      console.error('WORKABLE_API_TOKEN not found in environment');
       return new Response(
-        JSON.stringify({ error: 'Workable credentials not configured' }),
+        JSON.stringify({ error: 'Workable API token not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+    if (!workableSubdomain) {
+      console.error('WORKABLE_SUBDOMAIN not found in environment');
+      return new Response(
+        JSON.stringify({ error: 'Workable subdomain not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase configuration missing');
+      return new Response(
+        JSON.stringify({ error: 'Supabase configuration missing' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const cleanSubdomain = workableSubdomain.replace('.workable.com', '');
     
@@ -37,16 +60,21 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    console.log('Clean subdomain:', cleanSubdomain);
-    console.log('API Token present:', !!workableApiToken);
+    console.log('Configuration:', {
+      cleanSubdomain,
+      action,
+      timestamp: new Date().toISOString()
+    });
 
     // Ensure integration settings exist and are enabled
     await ensureIntegrationSettings(supabase);
 
     switch (action) {
       case 'sync_candidates': {
+        console.log('Starting candidate sync from Workable...');
+        
         // Log sync start
-        const { data: syncLog } = await supabase
+        const { data: syncLog, error: syncLogError } = await supabase
           .from('integration_sync_logs')
           .insert([{
             integration_type: 'workable',
@@ -60,21 +88,58 @@ serve(async (req) => {
           .select()
           .single();
 
-        console.log('Starting optimized candidate sync from Workable...');
-        
+        if (syncLogError) {
+          console.warn('Failed to create sync log:', syncLogError);
+        }
+
         const recruitingBaseUrl = `https://${cleanSubdomain}.workable.com/api/v1`;
+        console.log('Recruiting API URL:', recruitingBaseUrl);
         
-        console.log('Fetching jobs from Workable Recruiting API...');
+        // Test API connectivity first
+        try {
+          console.log('Testing API connectivity...');
+          const testResponse = await fetch(`${recruitingBaseUrl}/jobs?limit=1`, {
+            method: 'GET',
+            headers,
+          });
+
+          console.log('API test response status:', testResponse.status);
+          
+          if (!testResponse.ok) {
+            const errorText = await testResponse.text();
+            console.error('API test failed:', {
+              status: testResponse.status,
+              statusText: testResponse.statusText,
+              body: errorText
+            });
+            throw new Error(`Workable API test failed: ${testResponse.status} - ${errorText}`);
+          }
+
+          const testData = await testResponse.json();
+          console.log('API test successful, sample data:', testData);
+        } catch (apiError) {
+          console.error('API connectivity test failed:', apiError);
+          throw new Error(`Cannot connect to Workable API: ${apiError.message}`);
+        }
         
-        // Fetch only active jobs to reduce API calls
+        console.log('Fetching jobs from Workable...');
+        
+        // Fetch jobs with better error handling
         const jobsResponse = await fetch(`${recruitingBaseUrl}/jobs?state=published&limit=100`, {
           method: 'GET',
           headers,
         });
 
+        console.log('Jobs response status:', jobsResponse.status);
+
         if (!jobsResponse.ok) {
-          console.error('Failed to fetch jobs:', jobsResponse.status, await jobsResponse.text());
-          throw new Error(`Failed to fetch jobs from Workable: ${jobsResponse.status}`);
+          const errorText = await jobsResponse.text();
+          console.error('Failed to fetch jobs:', {
+            status: jobsResponse.status,
+            statusText: jobsResponse.statusText,
+            body: errorText
+          });
+          throw new Error(`Failed to fetch jobs: ${jobsResponse.status} - ${errorText}`);
         }
 
         const jobsData = await jobsResponse.json();
@@ -82,18 +147,51 @@ serve(async (req) => {
         
         console.log(`Found ${allJobs.length} active jobs in Workable`);
 
+        if (allJobs.length === 0) {
+          console.log('No jobs found, completing sync');
+          
+          // Update sync log
+          if (syncLog?.id) {
+            await supabase
+              .from('integration_sync_logs')
+              .update({
+                status: 'completed_with_warnings',
+                completed_at: new Date().toISOString(),
+                synced_data: { 
+                  totalCandidates: 0, 
+                  syncedCandidates: 0,
+                  jobsProcessed: 0,
+                  message: 'No jobs found to sync candidates from'
+                }
+              })
+              .eq('id', syncLog.id);
+          }
+
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              totalCandidates: 0,
+              syncedCandidates: 0,
+              jobsProcessed: 0,
+              message: 'No jobs found to sync candidates from'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         let totalCandidates = 0;
         let syncedCandidates = 0;
         let errors: string[] = [];
         let jobsWithCandidates = 0;
 
-        // Process jobs in batches to avoid overwhelming the API
-        const batchSize = 5;
+        // Process jobs in smaller batches to avoid overwhelming the API
+        const batchSize = 3;
         for (let i = 0; i < allJobs.length; i += batchSize) {
           const batch = allJobs.slice(i, i + batchSize);
+          console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allJobs.length/batchSize)}`);
           
-          // Process batch jobs concurrently
-          const batchPromises = batch.map(async (job) => {
+          // Process batch jobs with proper error handling
+          for (const job of batch) {
             try {
               console.log(`Processing job: ${job.title} (ID: ${job.id})`);
               
@@ -108,7 +206,8 @@ serve(async (req) => {
               if (!candidatesResponse.ok) {
                 const errorText = await candidatesResponse.text();
                 console.log(`Failed to fetch candidates for job ${job.id}: ${candidatesResponse.status} - ${errorText}`);
-                return { error: `Job ${job.id}: HTTP ${candidatesResponse.status}`, candidates: [] };
+                errors.push(`Job ${job.title}: HTTP ${candidatesResponse.status}`);
+                continue;
               }
 
               const candidatesData = await candidatesResponse.json();
@@ -116,74 +215,56 @@ serve(async (req) => {
               
               if (jobCandidates.length > 0) {
                 console.log(`Found ${jobCandidates.length} candidates for job: ${job.title}`);
+                jobsWithCandidates++;
                 
-                // Process candidates in smaller batches
-                const candidateBatch = [];
+                // Process candidates with better error handling
                 for (const candidate of jobCandidates) {
                   try {
                     await syncCandidateToSupabase(supabase, candidate, job);
-                    candidateBatch.push(candidate);
-                  } catch (error) {
-                    console.error(`Failed to sync candidate ${candidate.id}:`, error);
-                    return { error: `Candidate ${candidate.id}: ${error.message}`, candidates: candidateBatch };
+                    syncedCandidates++;
+                  } catch (candidateError) {
+                    console.error(`Failed to sync candidate ${candidate.id}:`, candidateError);
+                    errors.push(`Candidate sync error: ${candidateError.message}`);
                   }
                 }
                 
-                return { candidates: candidateBatch, hasData: true };
+                totalCandidates += jobCandidates.length;
               } else {
                 console.log(`No candidates found for job: ${job.title}`);
-                return { candidates: [], hasData: false };
               }
-            } catch (error) {
-              console.error(`Failed to process job ${job.id}:`, error);
-              return { error: `Job ${job.id}: ${error.message}`, candidates: [] };
+            } catch (jobError) {
+              console.error(`Failed to process job ${job.id}:`, jobError);
+              errors.push(`Job processing error: ${jobError.message}`);
             }
-          });
+          }
 
-          // Wait for batch to complete
-          const batchResults = await Promise.allSettled(batchPromises);
-          
-          // Process batch results
-          batchResults.forEach((result, index) => {
-            if (result.status === 'fulfilled') {
-              const data = result.value;
-              if (data.error) {
-                errors.push(data.error);
-              }
-              totalCandidates += data.candidates.length;
-              syncedCandidates += data.candidates.length;
-              if (data.hasData) {
-                jobsWithCandidates++;
-              }
-            } else {
-              errors.push(`Batch processing failed: ${result.reason}`);
-            }
-          });
-
-          // Add small delay between batches to avoid rate limiting
+          // Add delay between batches to avoid rate limiting
           if (i + batchSize < allJobs.length) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            console.log('Waiting before next batch...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
 
         console.log(`Sync complete: ${syncedCandidates}/${totalCandidates} candidates synced from ${allJobs.length} jobs (${jobsWithCandidates} jobs had candidates)`);
 
         // Update sync log with completion
-        await supabase
-          .from('integration_sync_logs')
-          .update({
-            status: syncedCandidates > 0 ? 'success' : 'completed_with_warnings',
-            completed_at: new Date().toISOString(),
-            synced_data: { 
-              totalCandidates, 
-              syncedCandidates,
-              jobsProcessed: allJobs.length,
-              jobsWithCandidates,
-              errors: errors.slice(0, 5), // Limit error logging
-              timestamp: new Date().toISOString()
-            }
-          })
-          .eq('id', syncLog?.id);
+        if (syncLog?.id) {
+          await supabase
+            .from('integration_sync_logs')
+            .update({
+              status: syncedCandidates > 0 ? 'success' : 'completed_with_warnings',
+              completed_at: new Date().toISOString(),
+              synced_data: { 
+                totalCandidates, 
+                syncedCandidates,
+                jobsProcessed: allJobs.length,
+                jobsWithCandidates,
+                errors: errors.slice(0, 10), // Limit error logging
+                timestamp: new Date().toISOString()
+              }
+            })
+            .eq('id', syncLog.id);
+        }
 
         // Update integration settings last sync
         await supabase
@@ -201,7 +282,7 @@ serve(async (req) => {
             jobsProcessed: allJobs.length,
             jobsWithCandidates,
             errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
-            message: `Synced ${syncedCandidates} out of ${totalCandidates} candidates from ${allJobs.length} Workable jobs`
+            message: `Successfully synced ${syncedCandidates} out of ${totalCandidates} candidates from ${allJobs.length} Workable jobs`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -397,21 +478,24 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in workable-integration function:', error);
     
-    // Log failed sync attempt with minimal data
+    // Log failed sync attempt
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
       
-      await supabase
-        .from('integration_sync_logs')
-        .insert([{
-          integration_type: 'workable',
-          sync_type: 'error',
-          status: 'failed',
-          error_message: error.message,
-          completed_at: new Date().toISOString()
-        }]);
+      if (supabaseUrl && supabaseServiceKey) {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        await supabase
+          .from('integration_sync_logs')
+          .insert([{
+            integration_type: 'workable',
+            sync_type: 'error',
+            status: 'failed',
+            error_message: error.message,
+            completed_at: new Date().toISOString()
+          }]);
+      }
     } catch (logError) {
       console.error('Failed to log error:', logError);
     }
