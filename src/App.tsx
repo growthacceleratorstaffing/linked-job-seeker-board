@@ -11,7 +11,7 @@ import Candidates from "./pages/Candidates";
 import Jobs from "./pages/Jobs";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
-import Backoffice from "./pages/Backoffice";
+
 import LeadSync from "./pages/LeadSync";
 import NotFound from "./pages/NotFound";
 
@@ -31,7 +31,7 @@ const App = () => (
           <Route path="/candidates" element={<Candidates />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/backoffice" element={<Backoffice />} />
+          
           <Route path="/lead-sync" element={<LeadSync />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

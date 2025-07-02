@@ -28,22 +28,31 @@ const AppSidebar = () => {
   ];
 
   const contractingItems = [
-    { path: '/backoffice', label: 'Backoffice', icon: FileText },
+    { path: 'https://mijn.cootje.com', label: 'Backoffice', icon: FileText, external: true },
   ];
 
   const isActivePath = (path: string) => {
     return location.pathname === path;
   };
 
-  const NavItem = ({ path, label, icon: Icon }: { path: string; label: string; icon: React.ElementType }) => (
-    <NavLink to={path} className="block">
-      <div className={`flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors ${
-        isActivePath(path) ? 'bg-white/20 border-r-2 border-secondary-pink' : ''
-      }`}>
-        <Icon size={20} />
-        <span className="font-medium">{label}</span>
-      </div>
-    </NavLink>
+  const NavItem = ({ path, label, icon: Icon, external }: { path: string; label: string; icon: React.ElementType; external?: boolean }) => (
+    external ? (
+      <a href={path} target="_blank" rel="noopener noreferrer" className="block">
+        <div className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors">
+          <Icon size={20} />
+          <span className="font-medium">{label}</span>
+        </div>
+      </a>
+    ) : (
+      <NavLink to={path} className="block">
+        <div className={`flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors ${
+          isActivePath(path) ? 'bg-white/20 border-r-2 border-secondary-pink' : ''
+        }`}>
+          <Icon size={20} />
+          <span className="font-medium">{label}</span>
+        </div>
+      </NavLink>
+    )
   );
 
   return (
