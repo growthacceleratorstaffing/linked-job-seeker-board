@@ -1,0 +1,114 @@
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { 
+  BarChart3, 
+  Briefcase, 
+  Users, 
+  ArrowRightLeft, 
+  CheckSquare, 
+  FileText 
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const WorkflowHeader = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const workflowSteps = [
+    { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { path: '/jobs', label: 'Jobs', icon: Briefcase },
+    { path: '/candidates', label: 'Candidates', icon: Users },
+    { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
+    { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
+    { path: '/backoffice', label: 'Back Office', icon: FileText },
+  ];
+
+  const getCurrentStepIndex = () => {
+    return workflowSteps.findIndex(step => step.path === location.pathname);
+  };
+
+  const getNextStep = () => {
+    const currentIndex = getCurrentStepIndex();
+    if (currentIndex >= 0 && currentIndex < workflowSteps.length - 1) {
+      return workflowSteps[currentIndex + 1];
+    }
+    return null;
+  };
+
+  const handleStepClick = (path: string) => {
+    navigate(path);
+  };
+
+  const WorkflowStep = ({ step, index, isActive }: { 
+    step: typeof workflowSteps[0]; 
+    index: number; 
+    isActive: boolean;
+  }) => {
+    const Icon = step.icon;
+    
+    return (
+      <div className="flex flex-col items-center">
+        <Button
+          onClick={() => handleStepClick(step.path)}
+          variant="ghost"
+          className={`rounded-full w-16 h-16 p-0 border-2 transition-all ${
+            isActive 
+              ? 'border-secondary-pink bg-secondary-pink/10 text-secondary-pink' 
+              : 'border-white/30 text-white hover:border-white/50 hover:bg-white/10'
+          }`}
+        >
+          <Icon size={24} />
+        </Button>
+        
+        <div className="mt-3 text-center">
+          <h3 className="text-white font-medium text-sm">{step.label}</h3>
+          <Button
+            onClick={() => handleStepClick(step.path)}
+            variant="ghost"
+            size="sm"
+            className={`mt-1 text-xs h-6 px-3 ${
+              isActive 
+                ? 'bg-secondary-pink text-white' 
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {isActive ? 'Current' : 'Go to'}
+          </Button>
+        </div>
+        
+        {index < workflowSteps.length - 1 && (
+          <div className="absolute top-8 left-full w-24 h-0.5 bg-white/20 transform -translate-y-1/2" />
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-primary-blue border-b border-white/10">
+      <div className="container mx-auto px-6 py-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Growth Accelerator Workflow
+          </h1>
+          <p className="text-secondary-pink text-lg font-medium">
+            Match. Onboard. Hire.
+          </p>
+        </div>
+        
+        <div className="flex justify-center items-center space-x-24 relative">
+          {workflowSteps.map((step, index) => (
+            <div key={step.path} className="relative">
+              <WorkflowStep 
+                step={step} 
+                index={index}
+                isActive={location.pathname === step.path}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default WorkflowHeader;

@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Briefcase, Search, Filter, Plus, RefreshCw, ExternalLink, CheckCircle, Archive } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import Layout from "@/components/Layout";
 
 interface WorkableJob {
   id: string;
@@ -91,23 +92,13 @@ const Jobs = () => {
   const archivedJobs = jobs.filter(job => job.state === 'archived').length;
 
   return (
-    <div className="min-h-screen bg-primary-blue text-white">
-      <div className="container mx-auto px-4 py-8">
-        <header className="text-center mb-12">
-          <div className="mb-6">
-            <img 
-              src="/lovable-uploads/b75d59b1-dda0-4ae9-aa70-24966bdd42d5.png" 
-              alt="Growth Accelerator Logo" 
-              className="mx-auto h-16 w-16 object-contain"
-            />
+    <Layout>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-6 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Jobs</h1>
+            <p className="text-gray-600">Manage job postings and requirements</p>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 text-secondary-pink">
-            Jobs
-          </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Manage job postings and requirements
-          </p>
-        </header>
 
         <div className="flex items-center justify-between mb-6">
           <div></div>
@@ -121,9 +112,9 @@ const Jobs = () => {
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <Input 
+               <Input 
                 placeholder="Search jobs..." 
-                className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
+                className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -148,56 +139,56 @@ const Jobs = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card className="bg-slate-800 border-slate-700">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">Total Jobs</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{jobs.length}</div>
-              <p className="text-xs text-slate-400">All time</p>
+              <div className="text-2xl font-bold">{jobs.length}</div>
+              <p className="text-xs text-muted-foreground">All time</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">Active</CardTitle>
+              <CardTitle className="text-sm font-medium">Active</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{activeJobs}</div>
-              <p className="text-xs text-slate-400">Currently open</p>
+              <div className="text-2xl font-bold">{activeJobs}</div>
+              <p className="text-xs text-muted-foreground">Currently open</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">Archived</CardTitle>
+              <CardTitle className="text-sm font-medium">Archived</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{archivedJobs}</div>
-              <p className="text-xs text-slate-400">Closed positions</p>
+              <div className="text-2xl font-bold">{archivedJobs}</div>
+              <p className="text-xs text-muted-foreground">Closed positions</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">Remote</CardTitle>
+              <CardTitle className="text-sm font-medium">Remote</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-2xl font-bold">
                 {jobs.filter(job => job.location.workplace_type === 'remote').length}
               </div>
-              <p className="text-xs text-slate-400">Remote positions</p>
+              <p className="text-xs text-muted-foreground">Remote positions</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="bg-slate-800 border-slate-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center text-white">
+            <CardTitle className="flex items-center">
               <Briefcase className="mr-2 h-5 w-5 text-secondary-pink" />
               Job Listings
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription>
               {filteredJobs.length} of {jobs.length} jobs from growthacceleratorstaffing.workable.com
             </CardDescription>
           </CardHeader>
@@ -260,8 +251,9 @@ const Jobs = () => {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
