@@ -94,13 +94,14 @@ const Jobs = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Jobs & Vacancy Generator</h1>
-          <p className="text-gray-600">Create compelling job descriptions with AI and manage job postings</p>
-        </div>
+      <div className="min-h-screen bg-primary-blue text-white">
+        <div className="container mx-auto px-6 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Jobs & Vacancy Generator</h1>
+            <p className="text-slate-300">Create compelling job descriptions with AI and manage job postings</p>
+          </div>
 
-        <VacancyGenerator />
+          <VacancyGenerator />
 
 
         <div className="flex items-center justify-between mb-6">
@@ -142,52 +143,52 @@ const Jobs = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card>
+          <Card className="bg-slate-800 border-slate-700">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Total Jobs</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{jobs.length}</div>
-              <p className="text-xs text-muted-foreground">All time</p>
+              <div className="text-2xl font-bold text-white">{jobs.length}</div>
+              <p className="text-xs text-slate-400">All time</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-slate-800 border-slate-700">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Active</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Active</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeJobs}</div>
-              <p className="text-xs text-muted-foreground">Currently open</p>
+              <div className="text-2xl font-bold text-white">{activeJobs}</div>
+              <p className="text-xs text-slate-400">Currently open</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-slate-800 border-slate-700">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Archived</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Archived</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{archivedJobs}</div>
-              <p className="text-xs text-muted-foreground">Closed positions</p>
+              <div className="text-2xl font-bold text-white">{archivedJobs}</div>
+              <p className="text-xs text-slate-400">Closed positions</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-slate-800 border-slate-700">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Remote</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Remote</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-white">
                 {jobs.filter(job => job.location.workplace_type === 'remote').length}
               </div>
-              <p className="text-xs text-muted-foreground">Remote positions</p>
+              <p className="text-xs text-slate-400">Remote positions</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
+        <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-white">
               <Briefcase className="mr-2 h-5 w-5 text-secondary-pink" />
               Jobs
             </CardTitle>
@@ -251,6 +252,7 @@ const Jobs = () => {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
     </Layout>
   );
