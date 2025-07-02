@@ -7,12 +7,11 @@ import Layout from "@/components/Layout";
 const Onboarding = () => {
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-6 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Employee Onboarding</h1>
-            <p className="text-gray-600">Streamline new employee onboarding workflow</p>
-          </div>
+      <div className="container mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Employee Onboarding</h1>
+          <p className="text-gray-600">Streamline new employee onboarding workflow</p>
+        </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card className="bg-slate-800 border-slate-700">
