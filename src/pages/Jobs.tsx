@@ -102,9 +102,6 @@ const Jobs = () => {
 
         <VacancyGenerator />
 
-        <div className="mt-12 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Listings</h2>
-        </div>
 
         <div className="flex items-center justify-between mb-6">
           <div></div>
