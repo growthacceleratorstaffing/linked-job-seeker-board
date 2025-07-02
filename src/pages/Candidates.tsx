@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone } from "lucide-react";
+import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,6 +27,8 @@ const Candidates = () => {
   const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [candidatesPerPage] = useState(50);
   const { toast } = useToast();
 
   const fetchCandidates = async () => {
@@ -116,7 +118,18 @@ const Candidates = () => {
       (candidate.company && candidate.company.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredCandidates(filtered);
+    setCurrentPage(1); // Reset to first page when filtering
   }, [searchTerm, candidates]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredCandidates.length / candidatesPerPage);
+  const startIndex = (currentPage - 1) * candidatesPerPage;
+  const endIndex = startIndex + candidatesPerPage;
+  const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
 
   const getSourceBadge = (source: string | null) => {
     if (source === 'workable') {
@@ -247,19 +260,48 @@ const Candidates = () => {
           </CardHeader>
           <CardContent>
             {filteredCandidates.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-600">
-                    <TableHead className="text-slate-300">Name</TableHead>
-                    <TableHead className="text-slate-300">Contact</TableHead>
-                    <TableHead className="text-slate-300">Position</TableHead>
-                    <TableHead className="text-slate-300">Source</TableHead>
-                    <TableHead className="text-slate-300">Score</TableHead>
-                    <TableHead className="text-slate-300">Added</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCandidates.map((candidate) => (
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="text-sm text-slate-400">
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredCandidates.length)} of {filteredCandidates.length} candidates
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-slate-400">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-600">
+                      <TableHead className="text-slate-300">Name</TableHead>
+                      <TableHead className="text-slate-300">Contact</TableHead>
+                      <TableHead className="text-slate-300">Position</TableHead>
+                      <TableHead className="text-slate-300">Source</TableHead>
+                      <TableHead className="text-slate-300">Score</TableHead>
+                      <TableHead className="text-slate-300">Added</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedCandidates.map((candidate) => (
                     <TableRow key={candidate.id} className="border-slate-600 hover:bg-slate-700">
                       <TableCell className="text-white font-medium">
                         <div>
@@ -298,7 +340,8 @@ const Candidates = () => {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </>
             ) : (
               <div className="text-center py-12 text-slate-400">
                 <Users className="mx-auto h-12 w-12 mb-4 text-secondary-pink" />
