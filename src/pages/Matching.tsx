@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bot, Users, Briefcase, TrendingUp } from "lucide-react";
+import { Bot, Users, Briefcase, TrendingUp, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
+import OnboardMatchDialog from "@/components/matching/OnboardMatchDialog";
 
 const Matching = () => {
   const [stats, setStats] = useState({
@@ -13,6 +14,7 @@ const Matching = () => {
     matches: 0
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showMatchDialog, setShowMatchDialog] = useState(false);
   const { toast } = useToast();
 
   const fetchMatchingData = async () => {
@@ -75,14 +77,20 @@ const Matching = () => {
         </div>
 
         <div className="flex items-center justify-between mb-6">
-          <div></div>
+          <Button 
+            onClick={() => setShowMatchDialog(true)}
+            className="bg-secondary-pink hover:bg-secondary-pink/80"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Manual Match
+          </Button>
           <Button 
             onClick={generateMatches}
             disabled={isLoading}
             className="bg-secondary-pink hover:bg-secondary-pink/80"
           >
             <Bot className="mr-2 h-4 w-4" />
-            Generate Matches
+            Generate AI Matches
           </Button>
         </div>
 
@@ -163,6 +171,11 @@ const Matching = () => {
           </CardContent>
         </Card>
       </div>
+
+      <OnboardMatchDialog
+        open={showMatchDialog}
+        onOpenChange={setShowMatchDialog}
+      />
     </Layout>
   );
 };
