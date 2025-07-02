@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Wand2, Copy, Download, Sparkles, Upload, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CopilotTrigger } from './CopilotTrigger';
 import { JobsOverview } from './JobsOverview';
 import { EmploymentDetailsForm, EmploymentDetails } from './EmploymentDetailsForm';
 
@@ -146,10 +145,6 @@ export const VacancyGenerator = () => {
     });
   };
 
-  const handleCopilotVacancy = (vacancy: string) => {
-    setGeneratedVacancy(vacancy);
-  };
-
   const toggleEditMode = () => {
     setIsEditing(!isEditing);
   };
@@ -271,8 +266,6 @@ export const VacancyGenerator = () => {
         onChange={setEmploymentDetails} 
       />
 
-      {/* AI Copilot Trigger */}
-      <CopilotTrigger onVacancyGenerated={handleCopilotVacancy} />
     </div>
   );
 };
