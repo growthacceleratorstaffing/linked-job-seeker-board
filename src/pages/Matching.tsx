@@ -77,20 +77,13 @@ const Matching = () => {
         </div>
 
         <div className="flex items-center justify-between mb-6">
+          <div></div>
           <Button 
             onClick={() => setShowMatchDialog(true)}
             className="bg-secondary-pink hover:bg-secondary-pink/80"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Create Manual Match
-          </Button>
-          <Button 
-            onClick={generateMatches}
-            disabled={isLoading}
-            className="bg-secondary-pink hover:bg-secondary-pink/80"
-          >
-            <Bot className="mr-2 h-4 w-4" />
-            Generate AI Matches
+            Create Match
           </Button>
         </div>
 
@@ -138,38 +131,6 @@ const Matching = () => {
           </Card>
         </div>
 
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">AI Matching Interface</CardTitle>
-            <CardDescription className="text-slate-400">
-              AI-powered candidate-job matching using data from growthacceleratorstaffing.workable.com
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-12 text-slate-400">
-              <Bot className="mx-auto h-12 w-12 mb-4 text-secondary-pink" />
-              <h3 className="text-lg font-semibold mb-2 text-white">AI Matching Engine</h3>
-              <p className="mb-4">Ready to match {stats.candidates} candidates to {stats.openPositions} open positions</p>
-              <div className="flex justify-center gap-4">
-                <Button 
-                  onClick={generateMatches}
-                  disabled={isLoading}
-                  className="bg-secondary-pink hover:bg-secondary-pink/80"
-                >
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  Start AI Matching
-                </Button>
-                <Button 
-                  variant="outline"
-                  className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
-                >
-                  <Bot className="mr-2 h-4 w-4" />
-                  Configure AI
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <OnboardMatchDialog
