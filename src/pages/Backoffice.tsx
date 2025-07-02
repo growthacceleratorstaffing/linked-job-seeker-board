@@ -8,11 +8,11 @@ const Backoffice = () => {
   return (
     <Layout>
       <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Admin Backoffice</h1>
-          <p className="text-muted-foreground">System administration and configuration</p>
-        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Admin Backoffice</h1>
+            <p className="text-slate-300">System administration and configuration</p>
+          </div>
         <Button variant="outline">
           <Activity className="mr-2 h-4 w-4" />
           System Status

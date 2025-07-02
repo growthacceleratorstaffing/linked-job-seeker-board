@@ -9,11 +9,11 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, showWorkflow = true }) => {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-primary-blue">
       <AppSidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-primary-blue text-white">
         {showWorkflow && <WorkflowHeader />}
-        <main className="flex-1">
+        <main className="flex-1 bg-primary-blue">
           {children}
         </main>
       </div>

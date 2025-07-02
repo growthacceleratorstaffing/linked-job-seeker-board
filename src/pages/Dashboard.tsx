@@ -95,17 +95,16 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Dashboard Overview
-              </h1>
-              <p className="text-gray-600">
-                Track your recruitment pipeline and key metrics
-              </p>
-            </div>
+      <div className="container mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Dashboard Overview
+            </h1>
+            <p className="text-slate-300">
+              Track your recruitment pipeline and key metrics
+            </p>
+          </div>
             <Button 
               onClick={fetchDashboardData}
               disabled={isLoading}
@@ -239,7 +238,6 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
-          </div>
         </div>
       </div>
     </Layout>
