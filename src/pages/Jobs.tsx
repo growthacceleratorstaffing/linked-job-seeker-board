@@ -8,6 +8,7 @@ import { Briefcase, Search, Filter, Plus, RefreshCw, ExternalLink, CheckCircle, 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
+import { VacancyGenerator } from "@/components/VacancyGenerator";
 
 interface WorkableJob {
   id: string;
@@ -95,8 +96,14 @@ const Jobs = () => {
     <Layout>
       <div className="container mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Jobs</h1>
-          <p className="text-gray-600">Manage job postings and requirements</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Jobs & Vacancy Generator</h1>
+          <p className="text-gray-600">Create compelling job descriptions with AI and manage job postings</p>
+        </div>
+
+        <VacancyGenerator />
+
+        <div className="mt-12 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Listings</h2>
         </div>
 
         <div className="flex items-center justify-between mb-6">
@@ -250,7 +257,6 @@ const Jobs = () => {
             )}
           </CardContent>
         </Card>
-        </div>
       </div>
     </Layout>
   );
