@@ -82,24 +82,43 @@ const Candidates = () => {
   const syncWorkableCandidates = async () => {
     setIsLoading(true);
     try {
+      console.log('Starting Workable candidate sync...');
+      
       const { data, error } = await supabase.functions.invoke('workable-integration', {
         body: { action: 'sync_candidates' }
       });
 
-      if (error) throw error;
+      console.log('Sync response:', { data, error });
 
+      if (error) {
+        console.error('Sync error details:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('Sync completed successfully:', data);
+      
       toast({
         title: "Sync completed",
-        description: data.message || "Candidates synced successfully",
+        description: data?.message || `Synced ${data?.syncedCandidates || 0} candidates from Workable`,
       });
 
       // Refresh the local candidates list
-      fetchCandidates();
+      await fetchCandidates();
     } catch (error) {
       console.error('Error syncing candidates:', error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to sync candidates from Workable';
+        
       toast({
         title: "Sync failed",
-        description: "Failed to sync candidates from Workable",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
