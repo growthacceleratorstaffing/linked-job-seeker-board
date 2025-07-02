@@ -93,8 +93,13 @@ const Jobs = () => {
   const archivedJobs = jobs.filter(job => job.state === 'archived').length;
 
   return (
-    <div className="min-h-screen bg-primary-blue text-white">
+    <Layout>
       <div className="container mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Jobs & Vacancy Generator</h1>
+          <p className="text-gray-600">Create compelling job descriptions with AI and manage job postings</p>
+        </div>
+
         <VacancyGenerator />
 
 
@@ -180,9 +185,9 @@ const Jobs = () => {
           </Card>
         </div>
 
-        <Card className="bg-slate-800 border-slate-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center text-white">
+            <CardTitle className="flex items-center">
               <Briefcase className="mr-2 h-5 w-5 text-secondary-pink" />
               Jobs
             </CardTitle>
@@ -247,7 +252,7 @@ const Jobs = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </Layout>
   );
 };
 
