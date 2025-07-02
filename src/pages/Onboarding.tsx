@@ -47,7 +47,6 @@ const Onboarding = () => {
             </div>
           </CardContent>
         </Card>
-        </div>
       </div>
     </Layout>
   );

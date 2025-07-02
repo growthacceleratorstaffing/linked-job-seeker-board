@@ -162,7 +162,6 @@ const Matching = () => {
             </div>
           </CardContent>
         </Card>
-        </div>
       </div>
     </Layout>
   );
