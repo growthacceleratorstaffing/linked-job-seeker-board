@@ -32,15 +32,39 @@ const Candidates = () => {
   const fetchCandidates = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch all candidates without pagination limits
+      let allCandidates: Candidate[] = [];
+      let from = 0;
+      const batchSize = 1000; // Fetch in batches to handle large datasets
 
-      if (error) throw error;
+      while (true) {
+        const { data, error, count } = await supabase
+          .from('candidates')
+          .select('*', { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .range(from, from + batchSize - 1);
 
-      setCandidates(data || []);
-      setFilteredCandidates(data || []);
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allCandidates = [...allCandidates, ...data];
+          from += batchSize;
+          
+          // If we got less than the batch size, we've reached the end
+          if (data.length < batchSize) break;
+        } else {
+          break;
+        }
+      }
+
+      console.log(`Loaded ${allCandidates.length} candidates from database`);
+      setCandidates(allCandidates);
+      setFilteredCandidates(allCandidates);
+      
+      toast({
+        title: "Candidates loaded",
+        description: `Successfully loaded ${allCandidates.length} candidates`,
+      });
     } catch (error) {
       console.error('Error fetching candidates:', error);
       toast({
