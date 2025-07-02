@@ -20,7 +20,7 @@ const WorkflowHeader = () => {
     { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
     { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
-    { path: '/backoffice', label: 'Back Office', icon: FileText },
+    { path: 'https://mijn.cootje.com', label: 'Back Office', icon: FileText, external: true },
   ];
 
   const getCurrentStepIndex = () => {
@@ -35,12 +35,16 @@ const WorkflowHeader = () => {
     return null;
   };
 
-  const handleStepClick = (path: string) => {
-    navigate(path);
+  const handleStepClick = (path: string, external?: boolean) => {
+    if (external) {
+      window.open(path, '_blank');
+    } else {
+      navigate(path);
+    }
   };
 
   const WorkflowStep = ({ step, index, isActive }: { 
-    step: typeof workflowSteps[0]; 
+    step: any; 
     index: number; 
     isActive: boolean;
   }) => {
@@ -49,7 +53,7 @@ const WorkflowHeader = () => {
     return (
       <div className="flex flex-col items-center">
         <Button
-          onClick={() => handleStepClick(step.path)}
+          onClick={() => handleStepClick(step.path, step.external)}
           variant="ghost"
           className={`rounded-full w-16 h-16 p-0 border-2 transition-all ${
             isActive 
@@ -63,7 +67,7 @@ const WorkflowHeader = () => {
         <div className="mt-3 text-center">
           <h3 className="text-white font-medium text-sm">{step.label}</h3>
           <Button
-            onClick={() => handleStepClick(step.path)}
+            onClick={() => handleStepClick(step.path, step.external)}
             variant="ghost"
             size="sm"
             className={`mt-1 text-xs h-6 px-3 ${

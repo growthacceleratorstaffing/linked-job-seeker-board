@@ -4,15 +4,14 @@ import WorkflowHeader from './WorkflowHeader';
 
 interface LayoutProps {
   children: React.ReactNode;
-  showWorkflow?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, showWorkflow = true }) => {
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex min-h-screen bg-primary-blue">
       <AppSidebar />
       <div className="flex-1 flex flex-col bg-primary-blue text-white">
-        {showWorkflow && <WorkflowHeader />}
+        <WorkflowHeader />
         <main className="flex-1 bg-primary-blue">
           {children}
         </main>
