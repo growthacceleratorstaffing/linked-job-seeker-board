@@ -52,7 +52,7 @@ const AppSidebar = () => {
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
           <img 
-            src="/lovable-uploads/b75d59b1-dda0-4ae9-aa70-24966bdd42d5.png" 
+            src="/lovable-uploads/76da95f6-805f-4f3e-91e8-f4ddc51657ad.png" 
             alt="Growth Accelerator Logo" 
             className="h-10 w-10 object-contain"
           />
