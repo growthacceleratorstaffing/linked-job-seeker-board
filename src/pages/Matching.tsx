@@ -132,8 +132,8 @@ const Matching = () => {
     <Layout>
       <div className="container mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">AI-Powered Matching</h1>
-          <p className="text-slate-300">Match candidates to jobs using artificial intelligence</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Matching Module</h1>
+          <p className="text-slate-300">Match candidates to jobs</p>
         </div>
 
         <div className="flex items-center justify-between mb-6">
