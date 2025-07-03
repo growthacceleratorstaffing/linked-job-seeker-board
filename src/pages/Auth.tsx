@@ -1,0 +1,274 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Building, Users, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+const Auth = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/');
+      }
+    };
+    checkUser();
+  }, [navigate]);
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Account created successfully! 🎉",
+        description: "Please check your email to confirm your account, then you can sign in.",
+      });
+
+      // Clear the form
+      setEmail('');
+      setPassword('');
+      setFullName('');
+      
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Welcome back! 🎉",
+        description: "You have been signed in successfully.",
+      });
+
+      navigate('/');
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-primary-blue flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md space-y-6">
+        {/* Logo and Header */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center mb-6">
+            <img 
+              src="/lovable-uploads/76da95f6-805f-4f3e-91e8-f4ddc51657ad.png" 
+              alt="Growth Accelerator Logo" 
+              className="h-16 w-16 object-contain"
+            />
+          </div>
+          <h1 className="text-3xl font-bold text-white">Growth Accelerator</h1>
+          <p className="text-slate-300">Access your recruitment platform</p>
+        </div>
+
+        <Card className="bg-slate-800 border-slate-600">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center text-white">Welcome</CardTitle>
+            <CardDescription className="text-center text-slate-300">
+              Sign in to your account or create a new one
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="signin" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2 bg-slate-700">
+                <TabsTrigger value="signin" className="text-slate-300 data-[state=active]:text-white data-[state=active]:bg-slate-600">
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="text-slate-300 data-[state=active]:text-white data-[state=active]:bg-slate-600">
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
+
+              {error && (
+                <Alert className="bg-red-900/20 border-red-500 text-red-400">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <TabsContent value="signin" className="space-y-4">
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-email" className="text-slate-300">Email</Label>
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-password" className="text-slate-300">Password</Label>
+                    <Input
+                      id="signin-password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-secondary-pink to-primary-blue hover:from-secondary-pink/80 hover:to-primary-blue/80"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Signing in...</span>
+                      </div>
+                    ) : (
+                      'Sign In'
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup" className="space-y-4">
+                <div className="bg-gradient-to-r from-secondary-pink/20 to-primary-blue/20 p-4 rounded-lg border border-slate-600">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-gradient-to-r from-secondary-pink to-primary-blue rounded-full flex items-center justify-center">
+                        <Users className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-white font-medium">Employee Access</h3>
+                      <p className="text-slate-300 text-sm">
+                        New accounts are automatically set up as general employees with access to jobs assigned through Workable.
+                      </p>
+                      <div className="flex items-center space-x-2 text-xs text-slate-400">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>Job viewing permissions</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-xs text-slate-400">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>Candidate management</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name" className="text-slate-300">Full Name</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="Enter your full name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email" className="text-slate-300">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password" className="text-slate-300">Password</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="Create a password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                    />
+                    <p className="text-xs text-slate-400">Must be at least 6 characters</p>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-secondary-pink to-primary-blue hover:from-secondary-pink/80 hover:to-primary-blue/80"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Creating account...</span>
+                      </div>
+                    ) : (
+                      'Create Account'
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        <div className="text-center">
+          <p className="text-xs text-slate-400">
+            By signing up, you agree to our terms of service and privacy policy.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Auth;
