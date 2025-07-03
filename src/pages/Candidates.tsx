@@ -212,58 +212,58 @@ const Candidates = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card className="bg-white border-border">
+          <Card className="bg-primary-blue border-primary-blue">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-foreground">Total Candidates</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Total Candidates</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{candidates.length}</div>
-              <p className="text-xs text-muted-foreground">All time</p>
+              <div className="text-2xl font-bold text-white">{candidates.length}</div>
+              <p className="text-xs text-slate-400">All time</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-border">
+          <Card className="bg-primary-blue border-primary-blue">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-foreground">Active</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Active</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{activeCandidates}</div>
-              <p className="text-xs text-muted-foreground">In process</p>
+              <div className="text-2xl font-bold text-white">{activeCandidates}</div>
+              <p className="text-xs text-slate-400">In process</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-border">
+          <Card className="bg-primary-blue border-primary-blue">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-foreground">From Workable</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">From Workable</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{workableCandidates}</div>
-              <p className="text-xs text-muted-foreground">Synced</p>
+              <div className="text-2xl font-bold text-white">{workableCandidates}</div>
+              <p className="text-xs text-slate-400">Synced</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-border">
+          <Card className="bg-primary-blue border-primary-blue">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-foreground">This Month</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">This Month</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">
+              <div className="text-2xl font-bold text-white">
                 {candidates.filter(c => 
                   new Date(c.created_at).getMonth() === new Date().getMonth()
                 ).length}
               </div>
-              <p className="text-xs text-muted-foreground">New candidates</p>
+              <p className="text-xs text-slate-400">New candidates</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="bg-white border-border">
+        <Card className="bg-primary-blue border-primary-blue">
           <CardHeader>
-            <CardTitle className="flex items-center text-foreground">
+            <CardTitle className="flex items-center text-white">
               <Users className="mr-2 h-5 w-5 text-secondary-pink" />
               Candidate List
             </CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardDescription className="text-slate-400">
               {filteredCandidates.length} of {candidates.length} candidates from growthacceleratorstaffing.workable.com
             </CardDescription>
           </CardHeader>

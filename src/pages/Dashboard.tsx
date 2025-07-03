@@ -117,79 +117,79 @@ const Dashboard = () => {
 
           {/* Key Metrics */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-            <Card>
+            <Card className="bg-primary-blue border-primary-blue">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Candidates</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white">Total Candidates</CardTitle>
+                <Users className="h-4 w-4 text-secondary-pink" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalCandidates}</div>
-                <p className="text-xs text-muted-foreground">In your database</p>
+                <div className="text-2xl font-bold text-white">{stats.totalCandidates}</div>
+                <p className="text-xs text-slate-400">In your database</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-primary-blue border-primary-blue">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white">Active Jobs</CardTitle>
+                <Briefcase className="h-4 w-4 text-secondary-pink" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.activeJobs}</div>
-                <p className="text-xs text-muted-foreground">Currently open positions</p>
+                <div className="text-2xl font-bold text-white">{stats.activeJobs}</div>
+                <p className="text-xs text-slate-400">Currently open positions</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-primary-blue border-primary-blue">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">New Applications</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white">New Applications</CardTitle>
+                <TrendingUp className="h-4 w-4 text-secondary-pink" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.newApplications}</div>
-                <p className="text-xs text-muted-foreground">Candidate responses</p>
+                <div className="text-2xl font-bold text-white">{stats.newApplications}</div>
+                <p className="text-xs text-slate-400">Candidate responses</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-primary-blue border-primary-blue">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Interviews</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white">Active Interviews</CardTitle>
+                <Clock className="h-4 w-4 text-secondary-pink" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.activeInterviews}</div>
-                <p className="text-xs text-muted-foreground">In progress</p>
+                <div className="text-2xl font-bold text-white">{stats.activeInterviews}</div>
+                <p className="text-xs text-slate-400">In progress</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-primary-blue border-primary-blue">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Matches</CardTitle>
-                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white">Pending Matches</CardTitle>
+                <UserCheck className="h-4 w-4 text-secondary-pink" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.pendingMatches}</div>
-                <p className="text-xs text-muted-foreground">Awaiting review</p>
+                <div className="text-2xl font-bold text-white">{stats.pendingMatches}</div>
+                <p className="text-xs text-slate-400">Awaiting review</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-primary-blue border-primary-blue">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed Onboarding</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white">Completed Onboarding</CardTitle>
+                <CheckCircle className="h-4 w-4 text-secondary-pink" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.completedOnboarding}</div>
-                <p className="text-xs text-muted-foreground">Ready to hire</p>
+                <div className="text-2xl font-bold text-white">{stats.completedOnboarding}</div>
+                <p className="text-xs text-slate-400">Ready to hire</p>
               </CardContent>
             </Card>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
             {/* Recent Activity */}
-            <Card>
+            <Card className="bg-primary-blue border-primary-blue">
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest candidate additions and updates</CardDescription>
+                <CardTitle className="text-white">Recent Activity</CardTitle>
+                <CardDescription className="text-slate-400">Latest candidate additions and updates</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -198,15 +198,15 @@ const Dashboard = () => {
                       <div key={index} className="flex items-center space-x-3">
                         <div className="w-2 h-2 bg-secondary-pink rounded-full"></div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium">{activity.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm font-medium text-white">{activity.name}</p>
+                          <p className="text-xs text-slate-400">
                             Added from {activity.source_platform || 'manual'} • {new Date(activity.created_at).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-4 text-muted-foreground">
+                    <div className="text-center py-4 text-slate-400">
                       <BarChart3 className="mx-auto h-8 w-8 mb-2" />
                       <p>No recent activity</p>
                     </div>
@@ -216,10 +216,10 @@ const Dashboard = () => {
             </Card>
 
             {/* Pipeline Overview */}
-            <Card>
+            <Card className="bg-primary-blue border-primary-blue">
               <CardHeader>
-                <CardTitle>Pipeline Overview</CardTitle>
-                <CardDescription>Candidates by interview stage</CardDescription>
+                <CardTitle className="text-white">Pipeline Overview</CardTitle>
+                <CardDescription className="text-slate-400">Candidates by interview stage</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -227,11 +227,11 @@ const Dashboard = () => {
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className={`w-3 h-3 rounded-full ${stage.color}`}></div>
-                        <span className="text-sm font-medium">{stage.stage}</span>
+                        <span className="text-sm font-medium text-white">{stage.stage}</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm font-bold">{stage.count}</span>
-                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm font-bold text-white">{stage.count}</span>
+                        <ArrowRight className="h-3 w-3 text-slate-400" />
                       </div>
                     </div>
                   ))}
