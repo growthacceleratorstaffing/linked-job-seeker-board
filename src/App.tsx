@@ -14,7 +14,7 @@ import Candidates from "./pages/Candidates";
 import Jobs from "./pages/Jobs";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
-import LeadSync from "./pages/LeadSync";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,11 +61,6 @@ const App = () => (
             <Route path="/onboarding" element={
               <ProtectedRoute>
                 <Onboarding />
-              </ProtectedRoute>
-            } />
-            <Route path="/lead-sync" element={
-              <ProtectedRoute>
-                <LeadSync />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
