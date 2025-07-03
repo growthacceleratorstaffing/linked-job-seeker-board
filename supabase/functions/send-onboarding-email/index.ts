@@ -42,8 +42,7 @@ const handler = async (req: Request): Promise<Response> => {
         email: candidateEmail,
         firstName: candidateName.split(' ')[0],
         lastName: candidateName.split(' ').slice(1).join(' ') || '',
-        // Note: You need to replace this with your actual audience ID from Resend dashboard
-        // audienceId: 'your-actual-audience-uuid-here'
+        audienceId: Deno.env.get("RESEND_AUDIENCE_ID")
       });
       
       console.log("Contact added to audience:", audienceResponse);
