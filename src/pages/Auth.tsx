@@ -140,7 +140,7 @@ const Auth = () => {
             />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Growth Accelerator</h1>
-          <p className="text-sm sm:text-base text-slate-300">Access your recruitment platform</p>
+          <p className="text-sm sm:text-base text-slate-300">Access your staffing platform</p>
         </div>
 
         <Card className="bg-slate-800 border-slate-600">
