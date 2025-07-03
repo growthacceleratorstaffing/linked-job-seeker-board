@@ -122,28 +122,49 @@ serve(async (req) => {
           throw new Error(`Cannot connect to Workable API: ${apiError.message}`);
         }
         
-        console.log('Fetching jobs from Workable...');
+        console.log('Fetching jobs from Workable (including archived)...');
         
-        // Fetch jobs with better error handling
-        const jobsResponse = await fetch(`${recruitingBaseUrl}/jobs?state=published&limit=100`, {
-          method: 'GET',
-          headers,
-        });
+        // Fetch both published and archived jobs to get all candidates
+        const [publishedResponse, archivedResponse] = await Promise.all([
+          fetch(`${recruitingBaseUrl}/jobs?state=published&limit=100`, {
+            method: 'GET',
+            headers,
+          }),
+          fetch(`${recruitingBaseUrl}/jobs?state=archived&limit=100`, {
+            method: 'GET',
+            headers,
+          })
+        ]);
 
-        console.log('Jobs response status:', jobsResponse.status);
+        console.log('Jobs response status - Published:', publishedResponse.status, 'Archived:', archivedResponse.status);
 
-        if (!jobsResponse.ok) {
-          const errorText = await jobsResponse.text();
-          console.error('Failed to fetch jobs:', {
-            status: jobsResponse.status,
-            statusText: jobsResponse.statusText,
+        if (!publishedResponse.ok) {
+          const errorText = await publishedResponse.text();
+          console.error('Failed to fetch published jobs:', {
+            status: publishedResponse.status,
+            statusText: publishedResponse.statusText,
             body: errorText
           });
-          throw new Error(`Failed to fetch jobs: ${jobsResponse.status} - ${errorText}`);
+          throw new Error(`Failed to fetch published jobs: ${publishedResponse.status} - ${errorText}`);
         }
 
-        const jobsData = await jobsResponse.json();
-        const allJobs = jobsData.jobs || [];
+        if (!archivedResponse.ok) {
+          const errorText = await archivedResponse.text();
+          console.error('Failed to fetch archived jobs:', {
+            status: archivedResponse.status,
+            statusText: archivedResponse.statusText,
+            body: errorText
+          });
+          throw new Error(`Failed to fetch archived jobs: ${archivedResponse.status} - ${errorText}`);
+        }
+
+        const publishedData = await publishedResponse.json();
+        const archivedData = await archivedResponse.json();
+        
+        const allJobs = [
+          ...(publishedData.jobs || []),
+          ...(archivedData.jobs || [])
+        ];
         
         console.log(`Found ${allJobs.length} active jobs in Workable`);
 
