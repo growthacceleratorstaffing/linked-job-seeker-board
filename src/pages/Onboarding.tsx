@@ -57,17 +57,17 @@ const Onboarding = () => {
   const fetchEmailCampaigns = async () => {
     try {
       const { data, error } = await supabase
-        .from('email_campaigns')
+        .from('email_campaigns' as any)
         .select('id, name, subject, description')
         .eq('is_active', true)
         .order('name');
       
       if (error) throw error;
-      setEmailCampaigns(data || []);
+      setEmailCampaigns((data as unknown as EmailCampaign[]) || []);
       
       // Auto-select the first campaign if available
       if (data && data.length > 0 && !selectedCampaignId) {
-        setSelectedCampaignId(data[0].id);
+        setSelectedCampaignId((data as unknown as EmailCampaign[])[0].id);
       }
     } catch (error) {
       console.error('Error fetching email campaigns:', error);
