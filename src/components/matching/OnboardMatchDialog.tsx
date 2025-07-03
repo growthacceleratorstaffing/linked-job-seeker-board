@@ -12,6 +12,7 @@ import { X } from "lucide-react";
 interface OnboardMatchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onMatchCreated?: () => void;
 }
 
 interface Job {
@@ -29,7 +30,7 @@ interface Candidate {
   company?: string;
 }
 
-const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenChange }) => {
+const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenChange, onMatchCreated }) => {
   const [jobOption, setJobOption] = useState<'existing' | 'new'>('existing');
   const [candidateOption, setCandidateOption] = useState<'existing' | 'new'>('existing');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
@@ -215,6 +216,11 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
           title: "Success",
           description: "Successfully matched candidate to job",
         });
+
+        // Call the callback to refresh matches
+        if (onMatchCreated) {
+          onMatchCreated();
+        }
 
         // Reset form and close dialog
         resetForm();

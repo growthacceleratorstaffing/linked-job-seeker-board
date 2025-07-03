@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bot, Users, Briefcase, TrendingUp, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Bot, Users, Briefcase, TrendingUp, Plus, User, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
 import OnboardMatchDialog from "@/components/matching/OnboardMatchDialog";
+
+interface Match {
+  id: string;
+  candidate_name: string;
+  candidate_email: string;
+  job_title: string;
+  company: string;
+  status: string;
+  response_type: string;
+  created_at: string;
+}
 
 const Matching = () => {
   const [stats, setStats] = useState({
@@ -13,9 +25,49 @@ const Matching = () => {
     openPositions: 0,
     matches: 0
   });
+  const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const { toast } = useToast();
+
+  const fetchMatches = async () => {
+    try {
+      const { data: matchesData, error } = await supabase
+        .from('candidate_responses')
+        .select(`
+          id,
+          status,
+          response_type,
+          created_at,
+          candidates (
+            name,
+            email
+          ),
+          crawled_jobs (
+            title,
+            company
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedMatches = matchesData?.map((match: any) => ({
+        id: match.id,
+        candidate_name: match.candidates?.name || 'Unknown',
+        candidate_email: match.candidates?.email || 'Unknown',
+        job_title: match.crawled_jobs?.title || 'Unknown',
+        company: match.crawled_jobs?.company || 'Unknown',
+        status: match.status,
+        response_type: match.response_type,
+        created_at: match.created_at
+      })) || [];
+
+      setMatches(formattedMatches);
+    } catch (error) {
+      console.error('Error fetching matches:', error);
+    }
+  };
 
   const fetchMatchingData = async () => {
     setIsLoading(true);
@@ -23,6 +75,11 @@ const Matching = () => {
       // Fetch candidates count
       const { count: candidatesCount } = await supabase
         .from('candidates')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch matches count
+      const { count: matchesCount } = await supabase
+        .from('candidate_responses')
         .select('*', { count: 'exact', head: true });
 
       // Fetch jobs data
@@ -35,8 +92,11 @@ const Matching = () => {
       setStats({
         candidates: candidatesCount || 0,
         openPositions,
-        matches: 0 // AI matches would be calculated based on actual matching algorithm
+        matches: matchesCount || 0
       });
+
+      // Fetch matches for display
+      await fetchMatches();
     } catch (error) {
       console.error('Error fetching matching data:', error);
       toast({
@@ -131,11 +191,63 @@ const Matching = () => {
           </Card>
         </div>
 
+        {/* Recent Matches Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Recent Matches</h2>
+          {matches.length === 0 ? (
+            <Card className="bg-primary-blue border border-white/20">
+              <CardContent className="p-6 text-center">
+                <p className="text-slate-400">No matches created yet. Create your first match above!</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {matches.map((match) => (
+                <Card key={match.id} className="bg-primary-blue border border-white/20">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <User className="h-4 w-4 text-secondary-pink" />
+                          <div>
+                            <p className="font-medium text-white">{match.candidate_name}</p>
+                            <p className="text-sm text-slate-400">{match.candidate_email}</p>
+                          </div>
+                        </div>
+                        <div className="text-slate-400">→</div>
+                        <div className="flex items-center space-x-2">
+                          <Building2 className="h-4 w-4 text-secondary-pink" />
+                          <div>
+                            <p className="font-medium text-white">{match.job_title}</p>
+                            <p className="text-sm text-slate-400">{match.company}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Badge 
+                          variant={match.status === 'matched' ? 'default' : 'secondary'}
+                          className={match.status === 'matched' ? 'bg-secondary-pink' : ''}
+                        >
+                          {match.status}
+                        </Badge>
+                        <p className="text-xs text-slate-400">
+                          {new Date(match.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
 
       <OnboardMatchDialog
         open={showMatchDialog}
         onOpenChange={setShowMatchDialog}
+        onMatchCreated={fetchMatches}
       />
     </Layout>
   );
