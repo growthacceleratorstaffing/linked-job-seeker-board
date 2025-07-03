@@ -16,9 +16,18 @@ interface Candidate {
   company?: string;
 }
 
+interface EmailCampaign {
+  id: string;
+  name: string;
+  subject: string;
+  description?: string;
+}
+
 const Onboarding = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>('');
+  const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const { toast } = useToast();
@@ -42,6 +51,31 @@ const Onboarding = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchEmailCampaigns = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('email_campaigns')
+        .select('id, name, subject, description')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setEmailCampaigns(data || []);
+      
+      // Auto-select the first campaign if available
+      if (data && data.length > 0 && !selectedCampaignId) {
+        setSelectedCampaignId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching email campaigns:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch email campaigns",
+        variant: "destructive",
+      });
     }
   };
 
