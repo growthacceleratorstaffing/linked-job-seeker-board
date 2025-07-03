@@ -117,7 +117,7 @@ const Onboarding = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card className="bg-primary-blue border-primary-blue">
+          <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-white">Total Candidates</CardTitle>
             </CardHeader>
@@ -129,7 +129,7 @@ const Onboarding = () => {
         </div>
 
         {/* Candidate Selection Card */}
-        <Card className="bg-primary-blue border-primary-blue mb-6">
+        <Card className="bg-primary-blue border border-white/20 mb-6">
           <CardHeader>
             <CardTitle className="flex items-center text-white">
               <Mail className="mr-2 h-5 w-5 text-secondary-pink" />
@@ -199,7 +199,7 @@ const Onboarding = () => {
         </Card>
 
         {/* Onboarding Pipeline Card */}
-        <Card className="bg-primary-blue border-primary-blue">
+        <Card className="bg-primary-blue border border-white/20">
           <CardHeader>
             <CardTitle className="flex items-center text-white">
               <Users className="mr-2 h-5 w-5 text-secondary-pink" />

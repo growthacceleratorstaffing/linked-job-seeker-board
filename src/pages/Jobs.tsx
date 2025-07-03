@@ -143,7 +143,7 @@ const Jobs = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-white">Total Jobs</CardTitle>
             </CardHeader>
@@ -153,7 +153,7 @@ const Jobs = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-white">Active</CardTitle>
             </CardHeader>
@@ -163,7 +163,7 @@ const Jobs = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-white">Archived</CardTitle>
             </CardHeader>
@@ -173,7 +173,7 @@ const Jobs = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-white">Remote</CardTitle>
             </CardHeader>
