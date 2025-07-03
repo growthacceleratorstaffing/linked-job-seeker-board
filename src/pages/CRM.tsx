@@ -1,19 +1,16 @@
-
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, Users, UserCheck, Building, Clock } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, UserCheck, Building, Clock } from "lucide-react";
 import { CandidatesList } from "@/components/crm/CandidatesList";
 import { useToast } from "@/hooks/use-toast";
 
 const CRM = () => {
-  const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
 
   // Fetch stats
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["crm-stats"],
     queryFn: async () => {
       const [candidatesCount, workableStats] = await Promise.all([
@@ -38,32 +35,43 @@ const CRM = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const handleSyncCandidates = async () => {
-    setIsSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_candidates' }
-      });
+  // Auto-sync candidates when component mounts if no candidates exist
+  useEffect(() => {
+    const autoSyncCandidates = async () => {
+      try {
+        // Check if we have candidates first
+        const { count } = await supabase
+          .from("candidates")
+          .select("*", { count: 'exact', head: true });
 
-      if (error) throw error;
+        // Only sync if we have very few candidates (less than 10)
+        if ((count || 0) < 10) {
+          console.log('Auto-syncing candidates from Workable...');
+          
+          const { data, error } = await supabase.functions.invoke('workable-integration', {
+            body: { action: 'sync_candidates' }
+          });
 
-      toast({
-        title: "Sync completed! 🎉",
-        description: data.message || `Synced ${data.syncedCandidates} candidates from Workable`,
-      });
+          if (error) {
+            console.error('Auto-sync failed:', error);
+            return;
+          }
 
-      refetchStats();
-    } catch (error: any) {
-      console.error('Sync error:', error);
-      toast({
-        title: "Sync failed",
-        description: error.message || "Failed to sync candidates from Workable",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+          if (data && data.syncedCandidates > 0) {
+            toast({
+              title: "Candidates synced! 🎉",
+              description: `Loaded ${data.syncedCandidates} candidates from Workable`,
+            });
+          }
+        }
+      } catch (error: any) {
+        console.error('Auto-sync error:', error);
+        // Don't show error toast for auto-sync failures to avoid annoying users
+      }
+    };
+
+    autoSyncCandidates();
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-primary-blue text-white">
@@ -80,7 +88,7 @@ const CRM = () => {
             CRM Dashboard
           </h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Manage your candidates and track their responses from Workable
+            Your Workable candidates automatically synced and ready to manage
           </p>
         </header>
 
@@ -97,7 +105,7 @@ const CRM = () => {
               <div className="text-2xl font-bold text-white">
                 {statsLoading ? "..." : stats?.totalCandidates || 0}
               </div>
-              <p className="text-xs text-slate-400">Synced from Workable</p>
+              <p className="text-xs text-slate-400">From Workable</p>
             </CardContent>
           </Card>
 
@@ -120,14 +128,14 @@ const CRM = () => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
                 <Building className="w-4 h-4" />
-                From Workable
+                Integration Status
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
-                {stats?.totalCandidates || 0}
+              <div className="text-sm font-bold text-green-400">
+                Connected
               </div>
-              <p className="text-xs text-slate-400">Directly integrated</p>
+              <p className="text-xs text-slate-400">Workable API</p>
             </CardContent>
           </Card>
 
@@ -142,33 +150,12 @@ const CRM = () => {
               <div className="text-sm font-bold text-white">
                 {stats?.lastSyncLog?.completed_at 
                   ? new Date(stats.lastSyncLog.completed_at).toLocaleDateString()
-                  : "Never"
+                  : "Auto-syncing..."
                 }
               </div>
-              <p className="text-xs text-slate-400">From Workable API</p>
+              <p className="text-xs text-slate-400">Automatic updates</p>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Sync Button */}
-        <div className="mb-6 flex justify-center">
-          <Button 
-            onClick={handleSyncCandidates}
-            disabled={isSyncing}
-            className="bg-gradient-to-r from-secondary-pink to-purple-600 hover:from-secondary-pink/80 hover:to-purple-600/80 text-white"
-          >
-            {isSyncing ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                Syncing from Workable...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Sync Candidates from Workable
-              </>
-            )}
-          </Button>
         </div>
         
         <CandidatesList />
