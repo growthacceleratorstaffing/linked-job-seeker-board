@@ -56,27 +56,19 @@ const Onboarding = () => {
 
   const fetchEmailCampaigns = async () => {
     try {
-      // Temporarily disabled until email_campaigns table is created
-      // const { data, error } = await supabase
-      //   .from('email_campaigns')
-      //   .select('id, name, subject, description')
-      //   .eq('is_active', true)
-      //   .order('name');
+      const { data, error } = await supabase
+        .from('email_campaigns')
+        .select('id, name, subject, description')
+        .eq('is_active', true)
+        .order('name');
       
-      // if (error) throw error;
-      // setEmailCampaigns(data || []);
+      if (error) throw error;
+      setEmailCampaigns(data || []);
       
       // Auto-select the first campaign if available
-      // if (data && data.length > 0 && !selectedCampaignId) {
-      //   setSelectedCampaignId(data[0].id);
-      // }
-      
-      // Temporary default campaigns until table is created
-      const defaultCampaigns = [
-        { id: 'standard', name: 'Standard Welcome', subject: 'Welcome to Growth Accelerator - Let\'s Get Started!', description: 'Standard onboarding email with company welcome' }
-      ];
-      setEmailCampaigns(defaultCampaigns);
-      setSelectedCampaignId('standard');
+      if (data && data.length > 0 && !selectedCampaignId) {
+        setSelectedCampaignId(data[0].id);
+      }
     } catch (error) {
       console.error('Error fetching email campaigns:', error);
       toast({
@@ -102,6 +94,15 @@ const Onboarding = () => {
       return;
     }
 
+    if (!selectedCampaignId) {
+      toast({
+        title: "Please select an email campaign",
+        description: "You must select an email campaign before sending",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const selectedCandidate = candidates.find(c => c.id === selectedCandidateId);
     if (!selectedCandidate) {
       toast({
@@ -120,7 +121,8 @@ const Onboarding = () => {
           candidateName: selectedCandidate.name,
           candidateEmail: selectedCandidate.email,
           jobTitle: selectedCandidate.current_position,
-          companyName: 'Growth Accelerator'
+          companyName: 'Growth Accelerator',
+          campaignId: selectedCampaignId
         }
       });
 
@@ -132,8 +134,9 @@ const Onboarding = () => {
           description: `Welcome email sent successfully to ${selectedCandidate.name}`,
         });
         
-        // Reset selection after successful send
+        // Reset selections after successful send
         setSelectedCandidateId('');
+        setSelectedCampaignId('');
       } else {
         throw new Error(data?.error || 'Failed to send email');
       }
@@ -227,25 +230,21 @@ const Onboarding = () => {
               </Select>
             </div>
 
-            {selectedCandidate && (
+
+            {selectedCandidate && selectedCampaignId && (
               <div className="bg-slate-700 p-4 rounded-lg">
-                <h4 className="text-white font-medium mb-2">Selected Candidate:</h4>
+                <h4 className="text-white font-medium mb-2">Email Preview:</h4>
                 <div className="space-y-1 text-sm">
-                  <p className="text-white"><strong>Name:</strong> {selectedCandidate.name}</p>
-                  <p className="text-slate-300"><strong>Email:</strong> {selectedCandidate.email}</p>
-                  {selectedCandidate.current_position && (
-                    <p className="text-slate-300"><strong>Position:</strong> {selectedCandidate.current_position}</p>
-                  )}
-                  {selectedCandidate.company && (
-                    <p className="text-slate-300"><strong>Current Company:</strong> {selectedCandidate.company}</p>
-                  )}
+                  <p className="text-white"><strong>To:</strong> {selectedCandidate.name} ({selectedCandidate.email})</p>
+                  <p className="text-slate-300"><strong>Campaign:</strong> {emailCampaigns.find(c => c.id === selectedCampaignId)?.name}</p>
+                  <p className="text-slate-300"><strong>Subject:</strong> {emailCampaigns.find(c => c.id === selectedCampaignId)?.subject}</p>
                 </div>
               </div>
             )}
 
             <Button 
               onClick={handleBeginOnboarding}
-              disabled={!selectedCandidateId || isSendingEmail || isLoading}
+              disabled={!selectedCandidateId || !selectedCampaignId || isSendingEmail || isLoading}
               className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white"
             >
               {isSendingEmail ? (
