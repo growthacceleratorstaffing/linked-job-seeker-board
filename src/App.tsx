@@ -14,6 +14,8 @@ import Candidates from "./pages/Candidates";
 import Jobs from "./pages/Jobs";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 import NotFound from "./pages/NotFound";
 
@@ -63,6 +65,8 @@ const App = () => (
                 <Onboarding />
               </ProtectedRoute>
             } />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

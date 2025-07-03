@@ -294,10 +294,24 @@ const Auth = () => {
           </CardContent>
         </Card>
 
-        <div className="text-center">
+        <div className="text-center space-y-2">
           <p className="text-xs text-slate-400">
             By signing up, you agree to our terms of service and privacy policy.
           </p>
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={() => navigate('/terms-of-service')}
+              className="text-xs text-slate-400 hover:text-white underline"
+            >
+              Terms of Service
+            </button>
+            <button
+              onClick={() => navigate('/privacy-policy')}
+              className="text-xs text-slate-400 hover:text-white underline"
+            >
+              Privacy Policy
+            </button>
+          </div>
         </div>
       </div>
     </div>

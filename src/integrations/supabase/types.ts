@@ -356,6 +356,48 @@ export type Database = {
           },
         ]
       }
+      jobadder_user_permissions: {
+        Row: {
+          created_at: string | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          scope: Database["public"]["Enums"]["jobadder_scope"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          scope: Database["public"]["Enums"]["jobadder_scope"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          scope?: Database["public"]["Enums"]["jobadder_scope"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobadder_user_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobadder_user_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       linkedin_ad_accounts: {
         Row: {
           created_at: string
@@ -526,6 +568,9 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          jobadder_scopes:
+            | Database["public"]["Enums"]["jobadder_scope"][]
+            | null
           role: string | null
           updated_at: string | null
         }
@@ -534,6 +579,9 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          jobadder_scopes?:
+            | Database["public"]["Enums"]["jobadder_scope"][]
+            | null
           role?: string | null
           updated_at?: string | null
         }
@@ -542,6 +590,9 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          jobadder_scopes?:
+            | Database["public"]["Enums"]["jobadder_scope"][]
+            | null
           role?: string | null
           updated_at?: string | null
         }
@@ -651,6 +702,13 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
+      has_jobadder_scope: {
+        Args: {
+          _user_id: string
+          _scope: Database["public"]["Enums"]["jobadder_scope"]
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _user_id: string
@@ -686,6 +744,26 @@ export type Database = {
         | "completed"
         | "passed"
         | "failed"
+      jobadder_scope:
+        | "read"
+        | "write"
+        | "read_candidate"
+        | "write_candidate"
+        | "read_company"
+        | "write_company"
+        | "read_contact"
+        | "write_contact"
+        | "read_jobad"
+        | "write_jobad"
+        | "read_jobapplication"
+        | "write_jobapplication"
+        | "read_job"
+        | "write_job"
+        | "read_placement"
+        | "write_placement"
+        | "read_user"
+        | "partner_jobboard"
+        | "offline_access"
       workable_role:
         | "admin"
         | "hiring_manager"
@@ -814,6 +892,27 @@ export const Constants = {
         "completed",
         "passed",
         "failed",
+      ],
+      jobadder_scope: [
+        "read",
+        "write",
+        "read_candidate",
+        "write_candidate",
+        "read_company",
+        "write_company",
+        "read_contact",
+        "write_contact",
+        "read_jobad",
+        "write_jobad",
+        "read_jobapplication",
+        "write_jobapplication",
+        "read_job",
+        "write_job",
+        "read_placement",
+        "write_placement",
+        "read_user",
+        "partner_jobboard",
+        "offline_access",
       ],
       workable_role: [
         "admin",
