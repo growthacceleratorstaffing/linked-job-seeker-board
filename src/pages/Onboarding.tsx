@@ -117,43 +117,43 @@ const Onboarding = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card className="bg-white border-border">
+          <Card className="bg-slate-800 border-slate-700">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-foreground">Total Candidates</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Total Candidates</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{candidates.length}</div>
-              <p className="text-xs text-muted-foreground">Available for onboarding</p>
+              <div className="text-2xl font-bold text-white">{candidates.length}</div>
+              <p className="text-xs text-slate-400">Available for onboarding</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Candidate Selection Card */}
-        <Card className="bg-white border-border mb-6">
+        <Card className="bg-slate-800 border-slate-700 mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center text-foreground">
+            <CardTitle className="flex items-center text-white">
               <Mail className="mr-2 h-5 w-5 text-secondary-pink" />
               Send Onboarding Email
             </CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardDescription className="text-slate-400">
               Select a candidate to send them a welcome email and begin the onboarding process
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="candidate-select" className="text-foreground">Choose Candidate</Label>
+              <Label htmlFor="candidate-select" className="text-white">Choose Candidate</Label>
               <Select value={selectedCandidateId} onValueChange={setSelectedCandidateId}>
-                <SelectTrigger className="bg-background border-border text-foreground">
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                   <SelectValue placeholder={isLoading ? "Loading candidates..." : "Select a candidate for onboarding"} />
                 </SelectTrigger>
-                <SelectContent className="bg-background border-border">
+                <SelectContent className="bg-slate-700 border-slate-600">
                   {candidates.map((candidate) => (
-                    <SelectItem key={candidate.id} value={candidate.id} className="text-foreground hover:bg-accent">
+                    <SelectItem key={candidate.id} value={candidate.id} className="text-white hover:bg-slate-600">
                       <div className="flex flex-col">
                         <span className="font-medium">{candidate.name}</span>
-                        <span className="text-sm text-muted-foreground">{candidate.email}</span>
+                        <span className="text-sm text-slate-400">{candidate.email}</span>
                         {candidate.current_position && (
-                          <span className="text-xs text-muted-foreground">{candidate.current_position}</span>
+                          <span className="text-xs text-slate-500">{candidate.current_position}</span>
                         )}
                       </div>
                     </SelectItem>
@@ -163,16 +163,16 @@ const Onboarding = () => {
             </div>
 
             {selectedCandidate && (
-              <div className="bg-accent p-4 rounded-lg">
-                <h4 className="text-foreground font-medium mb-2">Selected Candidate:</h4>
+              <div className="bg-slate-700 p-4 rounded-lg">
+                <h4 className="text-white font-medium mb-2">Selected Candidate:</h4>
                 <div className="space-y-1 text-sm">
-                  <p className="text-foreground"><strong>Name:</strong> {selectedCandidate.name}</p>
-                  <p className="text-muted-foreground"><strong>Email:</strong> {selectedCandidate.email}</p>
+                  <p className="text-white"><strong>Name:</strong> {selectedCandidate.name}</p>
+                  <p className="text-slate-300"><strong>Email:</strong> {selectedCandidate.email}</p>
                   {selectedCandidate.current_position && (
-                    <p className="text-muted-foreground"><strong>Position:</strong> {selectedCandidate.current_position}</p>
+                    <p className="text-slate-300"><strong>Position:</strong> {selectedCandidate.current_position}</p>
                   )}
                   {selectedCandidate.company && (
-                    <p className="text-muted-foreground"><strong>Current Company:</strong> {selectedCandidate.company}</p>
+                    <p className="text-slate-300"><strong>Current Company:</strong> {selectedCandidate.company}</p>
                   )}
                 </div>
               </div>
@@ -199,41 +199,41 @@ const Onboarding = () => {
         </Card>
 
         {/* Onboarding Pipeline Card */}
-        <Card className="bg-white border-border">
+        <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
-            <CardTitle className="flex items-center text-foreground">
+            <CardTitle className="flex items-center text-white">
               <Users className="mr-2 h-5 w-5 text-secondary-pink" />
               Onboarding Pipeline
             </CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardDescription className="text-slate-400">
               Track and manage the onboarding process for new employees
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center py-12 text-slate-400">
               <Calendar className="mx-auto h-12 w-12 mb-4 text-secondary-pink" />
-              <h3 className="text-lg font-semibold mb-2 text-foreground">Onboarding Process Ready</h3>
+              <h3 className="text-lg font-semibold mb-2 text-white">Onboarding Process Ready</h3>
               <p className="mb-4">Select a candidate above to send them a welcome email and start their onboarding journey</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                <div className="bg-accent p-4 rounded-lg">
+                <div className="bg-slate-700 p-4 rounded-lg">
                   <CheckCircle className="w-6 h-6 text-green-400 mb-2" />
-                  <h4 className="text-foreground text-sm font-medium">Welcome Email</h4>
-                  <p className="text-xs text-muted-foreground">Automated welcome message</p>
+                  <h4 className="text-white text-sm font-medium">Welcome Email</h4>
+                  <p className="text-xs text-slate-400">Automated welcome message</p>
                 </div>
-                <div className="bg-accent p-4 rounded-lg">
+                <div className="bg-slate-700 p-4 rounded-lg">
                   <Users className="w-6 h-6 text-blue-400 mb-2" />
-                  <h4 className="text-foreground text-sm font-medium">Team Introduction</h4>
-                  <p className="text-xs text-muted-foreground">Meet the team</p>
+                  <h4 className="text-white text-sm font-medium">Team Introduction</h4>
+                  <p className="text-xs text-slate-400">Meet the team</p>
                 </div>
-                <div className="bg-accent p-4 rounded-lg">
+                <div className="bg-slate-700 p-4 rounded-lg">
                   <Calendar className="w-6 h-6 text-purple-400 mb-2" />
-                  <h4 className="text-foreground text-sm font-medium">Schedule Setup</h4>
-                  <p className="text-xs text-muted-foreground">First day planning</p>
+                  <h4 className="text-white text-sm font-medium">Schedule Setup</h4>
+                  <p className="text-xs text-slate-400">First day planning</p>
                 </div>
-                <div className="bg-accent p-4 rounded-lg">
+                <div className="bg-slate-700 p-4 rounded-lg">
                   <CheckCircle className="w-6 h-6 text-secondary-pink mb-2" />
-                  <h4 className="text-foreground text-sm font-medium">Documentation</h4>
-                  <p className="text-xs text-muted-foreground">Complete paperwork</p>
+                  <h4 className="text-white text-sm font-medium">Documentation</h4>
+                  <p className="text-xs text-slate-400">Complete paperwork</p>
                 </div>
               </div>
             </div>
