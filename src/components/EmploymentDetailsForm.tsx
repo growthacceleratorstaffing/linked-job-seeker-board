@@ -30,7 +30,7 @@ export const EmploymentDetailsForm: React.FC<EmploymentDetailsFormProps> = ({
   };
 
   return (
-    <Card className="bg-slate-800 border-slate-700">
+    <Card className="bg-primary-blue border border-white/20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-white">
           <Briefcase className="w-5 h-5 text-secondary-pink" />
