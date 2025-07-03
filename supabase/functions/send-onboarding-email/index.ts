@@ -34,6 +34,29 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending onboarding email to: ${candidateEmail} for candidate: ${candidateName}`);
 
+    // First, add the candidate to the General audience
+    try {
+      console.log(`Adding candidate ${candidateEmail} to General audience...`);
+      
+      const audienceResponse = await resend.contacts.create({
+        email: candidateEmail,
+        firstName: candidateName.split(' ')[0],
+        lastName: candidateName.split(' ').slice(1).join(' ') || '',
+        audienceId: 'General audience' // This should match your audience name in Resend
+      });
+      
+      console.log("Contact added to audience:", audienceResponse);
+    } catch (audienceError: any) {
+      // If contact already exists, that's fine - continue with sending email
+      if (audienceError.message?.includes('already exists') || audienceError.message?.includes('duplicate')) {
+        console.log(`Contact ${candidateEmail} already exists in audience, proceeding with email send`);
+      } else {
+        console.warn("Warning: Could not add contact to audience:", audienceError.message);
+        // Don't throw here - we still want to try sending the email
+      }
+    }
+
+    // Send the onboarding email
     const emailResponse = await resend.emails.send({
       from: "Growth Accelerator Staffing <onboarding@resend.dev>",
       to: [candidateEmail],
