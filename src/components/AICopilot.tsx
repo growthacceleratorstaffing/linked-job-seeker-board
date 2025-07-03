@@ -216,29 +216,29 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
 
         <CardContent className="flex-1 flex flex-col p-0">
           {/* Messages Area with ScrollArea */}
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
+          <ScrollArea className="flex-1 p-4 max-h-full overflow-y-auto">
+            <div className="space-y-4 pr-2">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`flex max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start space-x-2`}>
-                    <Avatar className="w-7 h-7 mt-1">
+                    <Avatar className="w-7 h-7 mt-1 flex-shrink-0">
                       <AvatarFallback className={`${message.role === 'user' ? 'bg-gradient-to-r from-secondary-pink to-primary-blue' : 'bg-gradient-to-r from-purple-500 to-purple-600'} text-white text-xs`}>
                         {message.role === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
                       </AvatarFallback>
                     </Avatar>
                     
-                    <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} min-w-0 flex-1`}>
                       <div
-                        className={`rounded-lg px-3 py-2 max-w-full text-sm ${
+                        className={`rounded-lg px-3 py-2 text-sm break-words ${
                           message.role === 'user'
                             ? 'bg-gradient-to-r from-secondary-pink to-primary-blue text-white rounded-br-sm'
                             : 'bg-gradient-to-r from-slate-700 to-slate-800 text-slate-100 rounded-bl-sm border border-slate-600'
                         }`}
                       >
-                        <div className="whitespace-pre-wrap leading-relaxed">
+                        <div className="whitespace-pre-wrap leading-relaxed break-words overflow-wrap-anywhere">
                           {message.content}
                         </div>
                         
@@ -266,7 +266,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="flex items-start space-x-2">
-                    <Avatar className="w-7 h-7 mt-1">
+                    <Avatar className="w-7 h-7 mt-1 flex-shrink-0">
                       <AvatarFallback className="bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs">
                         <Bot className="w-3 h-3" />
                       </AvatarFallback>
