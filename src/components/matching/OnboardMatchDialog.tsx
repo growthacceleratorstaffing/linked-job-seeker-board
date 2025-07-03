@@ -218,8 +218,10 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
         });
 
         // Call the callback to refresh matches
+        console.log('Match created successfully, calling onMatchCreated callback');
         if (onMatchCreated) {
-          onMatchCreated();
+          await onMatchCreated();
+          console.log('onMatchCreated callback completed');
         }
 
         // Reset form and close dialog

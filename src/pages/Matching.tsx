@@ -32,6 +32,7 @@ const Matching = () => {
 
   const fetchMatches = async () => {
     try {
+      console.log('Fetching matches...');
       const { data: matchesData, error } = await supabase
         .from('candidate_responses')
         .select(`
@@ -50,7 +51,10 @@ const Matching = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching matches:', error);
+        throw error;
+      }
 
       const formattedMatches = matchesData?.map((match: any) => ({
         id: match.id,
@@ -63,6 +67,7 @@ const Matching = () => {
         created_at: match.created_at
       })) || [];
 
+      console.log('Fetched matches:', formattedMatches.length);
       setMatches(formattedMatches);
     } catch (error) {
       console.error('Error fetching matches:', error);
