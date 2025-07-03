@@ -125,18 +125,22 @@ const AppSidebar = () => {
             <NavItem key={item.path} {...item} />
           ))}
         </div>
+
+        {/* Logout Button */}
+        <div className="px-4">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-white hover:bg-white/10"
+            onClick={handleLogout}
+          >
+            <LogOut size={20} className="mr-3" />
+            Logout
+          </Button>
+        </div>
       </div>
 
-      {/* Logout Section */}
+      {/* Empty bottom section with just the horizontal line */}
       <div className="border-t border-white/10 p-4">
-        <Button 
-          variant="ghost" 
-          className="w-full justify-start text-white hover:bg-white/10"
-          onClick={handleLogout}
-        >
-          <LogOut size={20} className="mr-3" />
-          Logout
-        </Button>
       </div>
     </div>
   );
