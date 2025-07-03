@@ -92,13 +92,13 @@ serve(async (req) => {
           console.warn('Failed to create sync log:', syncLogError);
         }
 
-        const recruitingBaseUrl = `https://${cleanSubdomain}.workable.com/api/v1`;
+        const recruitingBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
         console.log('Recruiting API URL:', recruitingBaseUrl);
         
         // Test API connectivity first
         try {
           console.log('Testing API connectivity...');
-          const testResponse = await fetch(`${recruitingBaseUrl}/jobs?limit=1`, {
+          const testResponse = await fetch(`${recruitingBaseUrl}/jobs?state=published&limit=1`, {
             method: 'GET',
             headers,
           });
