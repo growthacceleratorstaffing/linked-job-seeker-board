@@ -15,6 +15,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isValidatingEmail, setIsValidatingEmail] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,12 +31,44 @@ const Auth = () => {
     checkUser();
   }, [navigate]);
 
+  const validateEmail = async (emailToCheck: string) => {
+    if (!emailToCheck) return false;
+    
+    setIsValidatingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-email', {
+        body: { email: emailToCheck }
+      });
+
+      if (error) throw error;
+      
+      if (!data.isValid) {
+        setError(data.message);
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      setError('Failed to validate email. Please try again.');
+      return false;
+    } finally {
+      setIsValidatingEmail(false);
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
+      // First validate if email is allowed
+      const isValidEmail = await validateEmail(email);
+      if (!isValidEmail) {
+        setIsLoading(false);
+        return;
+      }
+
       const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signUp({
@@ -186,17 +219,17 @@ const Auth = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <h3 className="text-white font-medium">Employee Access</h3>
+                      <h3 className="text-white font-medium">Workable Employee Access</h3>
                       <p className="text-slate-300 text-sm">
-                        New accounts are automatically set up as general employees with access to jobs assigned through Workable.
+                        Only employees registered in Workable can create accounts. Your access permissions are based on your Workable profile.
                       </p>
                       <div className="flex items-center space-x-2 text-xs text-slate-400">
                         <CheckCircle className="w-3 h-3" />
-                        <span>Job viewing permissions</span>
+                        <span>Auto-linked to Workable profile</span>
                       </div>
                       <div className="flex items-center space-x-2 text-xs text-slate-400">
                         <CheckCircle className="w-3 h-3" />
-                        <span>Candidate management</span>
+                        <span>Assigned job permissions</span>
                       </div>
                     </div>
                   </div>
