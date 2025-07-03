@@ -117,7 +117,7 @@ const Dashboard = () => {
 
           {/* Key Metrics */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-            <Card className="bg-primary-blue border-primary-blue">
+            <Card className="bg-primary-blue border border-white/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-white">Total Candidates</CardTitle>
                 <Users className="h-4 w-4 text-secondary-pink" />
@@ -128,7 +128,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-primary-blue border-primary-blue">
+            <Card className="bg-primary-blue border border-white/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-white">Active Jobs</CardTitle>
                 <Briefcase className="h-4 w-4 text-secondary-pink" />
@@ -139,7 +139,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-primary-blue border-primary-blue">
+            <Card className="bg-primary-blue border border-white/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-white">New Applications</CardTitle>
                 <TrendingUp className="h-4 w-4 text-secondary-pink" />
@@ -150,7 +150,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-primary-blue border-primary-blue">
+            <Card className="bg-primary-blue border border-white/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-white">Active Interviews</CardTitle>
                 <Clock className="h-4 w-4 text-secondary-pink" />
@@ -161,7 +161,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-primary-blue border-primary-blue">
+            <Card className="bg-primary-blue border border-white/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-white">Pending Matches</CardTitle>
                 <UserCheck className="h-4 w-4 text-secondary-pink" />
@@ -172,7 +172,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-primary-blue border-primary-blue">
+            <Card className="bg-primary-blue border border-white/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-white">Completed Onboarding</CardTitle>
                 <CheckCircle className="h-4 w-4 text-secondary-pink" />
@@ -186,7 +186,7 @@ const Dashboard = () => {
 
           <div className="grid gap-6 md:grid-cols-2">
             {/* Recent Activity */}
-            <Card className="bg-primary-blue border-primary-blue">
+            <Card className="bg-primary-blue border border-white/20">
               <CardHeader>
                 <CardTitle className="text-white">Recent Activity</CardTitle>
                 <CardDescription className="text-slate-400">Latest candidate additions and updates</CardDescription>
@@ -216,7 +216,7 @@ const Dashboard = () => {
             </Card>
 
             {/* Pipeline Overview */}
-            <Card className="bg-primary-blue border-primary-blue">
+            <Card className="bg-primary-blue border border-white/20">
               <CardHeader>
                 <CardTitle className="text-white">Pipeline Overview</CardTitle>
                 <CardDescription className="text-slate-400">Candidates by interview stage</CardDescription>

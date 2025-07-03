@@ -88,7 +88,7 @@ const Matching = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
-          <Card className="bg-primary-blue border-primary-blue">
+          <Card className="bg-primary-blue border border-white/20">
             <CardHeader>
               <CardTitle className="flex items-center text-white">
                 <Users className="mr-2 h-5 w-5 text-secondary-pink" />
@@ -102,7 +102,7 @@ const Matching = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-primary-blue border-primary-blue">
+          <Card className="bg-primary-blue border border-white/20">
             <CardHeader>
               <CardTitle className="flex items-center text-white">
                 <Briefcase className="mr-2 h-5 w-5 text-secondary-pink" />
@@ -116,7 +116,7 @@ const Matching = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-primary-blue border-primary-blue">
+          <Card className="bg-primary-blue border border-white/20">
             <CardHeader>
               <CardTitle className="flex items-center text-white">
                 <Bot className="mr-2 h-5 w-5 text-secondary-pink" />
