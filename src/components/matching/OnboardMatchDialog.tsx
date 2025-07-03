@@ -96,6 +96,26 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
+      // Validate that either existing options are selected or we're creating new ones
+      if (jobOption === 'existing' && !selectedJobId) {
+        toast({
+          title: "Error",
+          description: "Please select a job or choose to add a new one",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (candidateOption === 'existing' && !selectedCandidateId) {
+        toast({
+          title: "Error", 
+          description: "Please select a candidate or choose to add a new one",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
       let jobId = selectedJobId;
       let candidateId = selectedCandidateId;
 
@@ -107,6 +127,7 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
             description: "Please fill in all required job fields",
             variant: "destructive",
           });
+          setIsLoading(false);
           return;
         }
 
@@ -135,6 +156,24 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
             description: "Please fill in all required candidate fields",
             variant: "destructive",
           });
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if candidate with this email already exists
+        const { data: existingCandidate } = await supabase
+          .from('candidates')
+          .select('id, email')
+          .eq('email', newCandidate.email)
+          .single();
+
+        if (existingCandidate) {
+          toast({
+            title: "Error",
+            description: `A candidate with email ${newCandidate.email} already exists. Please use a different email or select the existing candidate.`,
+            variant: "destructive",
+          });
+          setIsLoading(false);
           return;
         }
 
@@ -151,7 +190,10 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
           .select()
           .single();
 
-        if (candidateError) throw candidateError;
+        if (candidateError) {
+          console.error('Candidate creation error:', candidateError);
+          throw candidateError;
+        }
         candidateId = candidateData.id;
       }
 
@@ -178,11 +220,25 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
         resetForm();
         onOpenChange(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating match:', error);
+      
+      let errorMessage = "Failed to create match";
+      
+      // Handle specific database constraint errors
+      if (error?.code === '23505') {
+        if (error.message.includes('candidates_email_key')) {
+          errorMessage = "A candidate with this email already exists. Please use a different email or select the existing candidate.";
+        } else if (error.message.includes('candidate_responses')) {
+          errorMessage = "A match between this candidate and job already exists.";
+        }
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to create match",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
