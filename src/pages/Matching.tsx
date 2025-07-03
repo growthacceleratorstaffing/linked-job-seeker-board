@@ -88,45 +88,45 @@ const Matching = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-white border-border">
             <CardHeader>
-              <CardTitle className="flex items-center text-white">
+              <CardTitle className="flex items-center text-foreground">
                 <Users className="mr-2 h-5 w-5 text-secondary-pink" />
                 Candidates
               </CardTitle>
-              <CardDescription className="text-slate-400">Active candidates available for matching</CardDescription>
+              <CardDescription className="text-muted-foreground">Active candidates available for matching</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.candidates}</div>
-              <p className="text-xs text-slate-400">Total candidates</p>
+              <div className="text-2xl font-bold text-foreground">{stats.candidates}</div>
+              <p className="text-xs text-muted-foreground">Total candidates</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-white border-border">
             <CardHeader>
-              <CardTitle className="flex items-center text-white">
+              <CardTitle className="flex items-center text-foreground">
                 <Briefcase className="mr-2 h-5 w-5 text-secondary-pink" />
                 Open Positions
               </CardTitle>
-              <CardDescription className="text-slate-400">Jobs waiting for candidates</CardDescription>
+              <CardDescription className="text-muted-foreground">Jobs waiting for candidates</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.openPositions}</div>
-              <p className="text-xs text-slate-400">Open positions</p>
+              <div className="text-2xl font-bold text-foreground">{stats.openPositions}</div>
+              <p className="text-xs text-muted-foreground">Open positions</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-800 border-slate-700">
+          <Card className="bg-white border-border">
             <CardHeader>
-              <CardTitle className="flex items-center text-white">
+              <CardTitle className="flex items-center text-foreground">
                 <Bot className="mr-2 h-5 w-5 text-secondary-pink" />
                 AI Matches
               </CardTitle>
-              <CardDescription className="text-slate-400">Generated matches this week</CardDescription>
+              <CardDescription className="text-muted-foreground">Generated matches this week</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.matches}</div>
-              <p className="text-xs text-slate-400">Matches generated</p>
+              <div className="text-2xl font-bold text-foreground">{stats.matches}</div>
+              <p className="text-xs text-muted-foreground">Matches generated</p>
             </CardContent>
           </Card>
         </div>
