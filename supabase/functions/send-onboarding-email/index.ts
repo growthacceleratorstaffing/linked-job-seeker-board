@@ -42,7 +42,8 @@ const handler = async (req: Request): Promise<Response> => {
         email: candidateEmail,
         firstName: candidateName.split(' ')[0],
         lastName: candidateName.split(' ').slice(1).join(' ') || '',
-        audienceId: 'General audience' // This should match your audience name in Resend
+        // Note: You need to replace this with your actual audience ID from Resend dashboard
+        // audienceId: 'your-actual-audience-uuid-here'
       });
       
       console.log("Contact added to audience:", audienceResponse);
