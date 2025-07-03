@@ -103,7 +103,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
     
     const emailResponse = await resend.emails.send({
-      from: "Growth Accelerator Staffing <onboarding@resend.dev>",
+      from: "Bart Wetselaar <bart@growthaccelerator.nl>",
       to: [candidateEmail],
       subject: "Welcome to the team!",
       html: emailHTML,
