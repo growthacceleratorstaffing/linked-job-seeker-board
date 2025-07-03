@@ -273,7 +273,8 @@ export const CandidatesList = () => {
               {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
             </p>
           </div>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow className="border-slate-600">
                 <TableHead className="font-semibold w-[220px] text-slate-300">Name</TableHead>
@@ -402,6 +403,7 @@ export const CandidatesList = () => {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           {totalPages > 1 && (
             <div className="p-4 border-t border-slate-600 bg-primary-blue">
