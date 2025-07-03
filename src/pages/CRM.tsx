@@ -44,8 +44,8 @@ const CRM = () => {
           .from("candidates")
           .select("*", { count: 'exact', head: true });
 
-        // Only sync if we have very few candidates (less than 10)
-        if ((count || 0) < 10) {
+        // Only sync if we have significantly fewer candidates than expected (~900)
+        if ((count || 0) < 500) {
           console.log('Auto-syncing candidates from Workable...');
           
           const { data, error } = await supabase.functions.invoke('workable-integration', {
