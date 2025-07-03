@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   BarChart3, 
@@ -11,9 +11,13 @@ import {
   LogOut 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const AppSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -33,6 +37,27 @@ const AppSidebar = () => {
 
   const isActivePath = (path: string) => {
     return location.pathname === path;
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Logged out successfully",
+        description: "You have been signed out of your account.",
+      });
+      
+      navigate('/auth');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const NavItem = ({ path, label, icon: Icon, external }: { path: string; label: string; icon: React.ElementType; external?: boolean }) => (
@@ -107,7 +132,7 @@ const AppSidebar = () => {
         <Button 
           variant="ghost" 
           className="w-full justify-start text-white hover:bg-white/10"
-          onClick={() => console.log('Logout clicked')}
+          onClick={handleLogout}
         >
           <LogOut size={20} className="mr-3" />
           Logout
