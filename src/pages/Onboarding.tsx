@@ -16,18 +16,9 @@ interface Candidate {
   company?: string;
 }
 
-interface EmailCampaign {
-  id: string;
-  name: string;
-  subject: string;
-  description?: string;
-}
-
 const Onboarding = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>('');
-  const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>([]);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const { toast } = useToast();
@@ -54,38 +45,8 @@ const Onboarding = () => {
     }
   };
 
-  const fetchEmailCampaigns = async () => {
-    try {
-      console.log('Fetching email campaigns...');
-      const { data, error } = await supabase
-        .from('email_campaigns' as any)
-        .select('id, name, subject, description')
-        .eq('is_active', true)
-        .order('name');
-      
-      console.log('Email campaigns response:', { data, error });
-      
-      if (error) throw error;
-      setEmailCampaigns((data as unknown as EmailCampaign[]) || []);
-      
-      // Auto-select the first campaign if available
-      if (data && data.length > 0 && !selectedCampaignId) {
-        setSelectedCampaignId((data as unknown as EmailCampaign[])[0].id);
-        console.log('Auto-selected campaign:', (data as unknown as EmailCampaign[])[0].name);
-      }
-    } catch (error) {
-      console.error('Error fetching email campaigns:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch email campaigns",
-        variant: "destructive",
-      });
-    }
-  };
-
   useEffect(() => {
     fetchCandidates();
-    fetchEmailCampaigns();
   }, []);
 
   const handleBeginOnboarding = async () => {
@@ -93,15 +54,6 @@ const Onboarding = () => {
       toast({
         title: "Please select a candidate",
         description: "You must select a candidate before beginning onboarding",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!selectedCampaignId) {
-      toast({
-        title: "Please select an email campaign",
-        description: "You must select an email campaign before sending",
         variant: "destructive",
       });
       return;
@@ -119,16 +71,19 @@ const Onboarding = () => {
 
     setIsSendingEmail(true);
     try {
+      console.log('Sending email to:', selectedCandidate.email);
+      
       const { data, error } = await supabase.functions.invoke('send-onboarding-email', {
         body: {
           candidateId: selectedCandidate.id,
           candidateName: selectedCandidate.name,
           candidateEmail: selectedCandidate.email,
           jobTitle: selectedCandidate.current_position,
-          companyName: 'Growth Accelerator',
-          campaignId: selectedCampaignId
+          companyName: 'Growth Accelerator'
         }
       });
+
+      console.log('Email response:', { data, error });
 
       if (error) throw error;
 
@@ -138,9 +93,8 @@ const Onboarding = () => {
           description: `Welcome email sent successfully to ${selectedCandidate.name}`,
         });
         
-        // Reset selections after successful send
+        // Reset selection after successful send
         setSelectedCandidateId('');
-        setSelectedCampaignId('');
       } else {
         throw new Error(data?.error || 'Failed to send email');
       }
@@ -212,43 +166,25 @@ const Onboarding = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="campaign-select" className="text-white">Choose Email Campaign</Label>
-              <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue placeholder="Select an email campaign" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  {emailCampaigns.map((campaign) => (
-                    <SelectItem key={campaign.id} value={campaign.id} className="text-white hover:bg-slate-600">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{campaign.name}</span>
-                        <span className="text-sm text-slate-400">{campaign.subject}</span>
-                        {campaign.description && (
-                          <span className="text-xs text-slate-500">{campaign.description}</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-
-            {selectedCandidate && selectedCampaignId && (
+            {selectedCandidate && (
               <div className="bg-slate-700 p-4 rounded-lg">
-                <h4 className="text-white font-medium mb-2">Email Preview:</h4>
+                <h4 className="text-white font-medium mb-2">Selected Candidate:</h4>
                 <div className="space-y-1 text-sm">
-                  <p className="text-white"><strong>To:</strong> {selectedCandidate.name} ({selectedCandidate.email})</p>
-                  <p className="text-slate-300"><strong>Campaign:</strong> {emailCampaigns.find(c => c.id === selectedCampaignId)?.name}</p>
-                  <p className="text-slate-300"><strong>Subject:</strong> {emailCampaigns.find(c => c.id === selectedCampaignId)?.subject}</p>
+                  <p className="text-white"><strong>Name:</strong> {selectedCandidate.name}</p>
+                  <p className="text-slate-300"><strong>Email:</strong> {selectedCandidate.email}</p>
+                  {selectedCandidate.current_position && (
+                    <p className="text-slate-300"><strong>Position:</strong> {selectedCandidate.current_position}</p>
+                  )}
+                  {selectedCandidate.company && (
+                    <p className="text-slate-300"><strong>Current Company:</strong> {selectedCandidate.company}</p>
+                  )}
                 </div>
               </div>
             )}
 
             <Button 
               onClick={handleBeginOnboarding}
-              disabled={!selectedCandidateId || !selectedCampaignId || isSendingEmail || isLoading}
+              disabled={!selectedCandidateId || isSendingEmail || isLoading}
               className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white"
             >
               {isSendingEmail ? (
