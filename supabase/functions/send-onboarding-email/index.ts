@@ -32,6 +32,12 @@ const handler = async (req: Request): Promise<Response> => {
       companyName 
     }: OnboardingEmailRequest = await req.json();
 
+    console.log(`=== EMAIL SENDING DEBUG ===`);
+    console.log(`Candidate ID: ${candidateId}`);
+    console.log(`Candidate Name: ${candidateName}`);
+    console.log(`Candidate Email: ${candidateEmail}`);
+    console.log(`Job Title: ${jobTitle}`);
+    console.log(`Company Name: ${companyName}`);
     console.log(`Sending onboarding email to: ${candidateEmail} for candidate: ${candidateName}`);
 
     // First, add the candidate to the General audience (optional, don't fail if this fails)
@@ -89,6 +95,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send the onboarding email
     console.log("Attempting to send email via Resend...");
+    console.log("Email details:", {
+      from: "Growth Accelerator Staffing <onboarding@resend.dev>",
+      to: [candidateEmail],
+      subject: "Welcome to the team!",
+      recipientEmail: candidateEmail
+    });
+    
     const emailResponse = await resend.emails.send({
       from: "Growth Accelerator Staffing <onboarding@resend.dev>",
       to: [candidateEmail],
@@ -96,6 +109,8 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailHTML,
     });
 
+    console.log("Resend API response:", emailResponse);
+    console.log("Email sent to:", candidateEmail);
     console.log("Onboarding email sent successfully:", emailResponse);
 
     return new Response(JSON.stringify({
