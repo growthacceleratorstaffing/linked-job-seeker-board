@@ -280,7 +280,7 @@ export const CandidatesList = () => {
                 <TableHead className="font-semibold w-[220px] text-slate-300">Name</TableHead>
                 <TableHead className="font-semibold w-[200px] text-slate-300">Email</TableHead>
                 <TableHead className="font-semibold w-[130px] text-slate-300">Phone</TableHead>
-                <TableHead className="font-semibold w-[120px] text-slate-300">Position</TableHead>
+                <TableHead className="font-semibold w-[60px] text-slate-300">Position</TableHead>
                 <TableHead className="font-semibold w-[120px] text-slate-300">Location</TableHead>
                 <TableHead className="font-semibold w-[80px] text-slate-300">Source</TableHead>
                 <TableHead className="font-semibold w-[80px] text-slate-300">Score</TableHead>
@@ -329,7 +329,7 @@ export const CandidatesList = () => {
                       <span className="text-slate-400">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="w-[120px]">
+                  <TableCell className="w-[60px]">
                     <div className="space-y-1">
                       {candidate.current_position && (
                         <div className="font-medium text-white text-xs truncate">
