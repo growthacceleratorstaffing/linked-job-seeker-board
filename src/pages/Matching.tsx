@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Users, Briefcase, TrendingUp, Plus, User, Building2 } from "lucide-react";
+import { Users, Briefcase, Plus, User, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
@@ -147,7 +147,7 @@ const Matching = () => {
           </Button>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 max-w-4xl mx-auto mb-6">
           <Card className="bg-primary-blue border border-white/20">
             <CardHeader>
               <CardTitle className="flex items-center text-white">
@@ -173,20 +173,6 @@ const Matching = () => {
             <CardContent>
               <div className="text-2xl font-bold text-white">{stats.openPositions}</div>
               <p className="text-xs text-slate-400">Open positions</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-primary-blue border border-white/20">
-            <CardHeader>
-              <CardTitle className="flex items-center text-white">
-                <Bot className="mr-2 h-5 w-5 text-secondary-pink" />
-                AI Matches
-              </CardTitle>
-              <CardDescription className="text-slate-400">Generated matches this week</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.matches}</div>
-              <p className="text-xs text-slate-400">Matches generated</p>
             </CardContent>
           </Card>
         </div>
