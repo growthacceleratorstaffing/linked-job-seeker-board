@@ -56,19 +56,27 @@ const Onboarding = () => {
 
   const fetchEmailCampaigns = async () => {
     try {
-      const { data, error } = await supabase
-        .from('email_campaigns')
-        .select('id, name, subject, description')
-        .eq('is_active', true)
-        .order('name');
+      // Temporarily disabled until email_campaigns table is created
+      // const { data, error } = await supabase
+      //   .from('email_campaigns')
+      //   .select('id, name, subject, description')
+      //   .eq('is_active', true)
+      //   .order('name');
       
-      if (error) throw error;
-      setEmailCampaigns(data || []);
+      // if (error) throw error;
+      // setEmailCampaigns(data || []);
       
       // Auto-select the first campaign if available
-      if (data && data.length > 0 && !selectedCampaignId) {
-        setSelectedCampaignId(data[0].id);
-      }
+      // if (data && data.length > 0 && !selectedCampaignId) {
+      //   setSelectedCampaignId(data[0].id);
+      // }
+      
+      // Temporary default campaigns until table is created
+      const defaultCampaigns = [
+        { id: 'standard', name: 'Standard Welcome', subject: 'Welcome to Growth Accelerator - Let\'s Get Started!', description: 'Standard onboarding email with company welcome' }
+      ];
+      setEmailCampaigns(defaultCampaigns);
+      setSelectedCampaignId('standard');
     } catch (error) {
       console.error('Error fetching email campaigns:', error);
       toast({
@@ -81,6 +89,7 @@ const Onboarding = () => {
 
   useEffect(() => {
     fetchCandidates();
+    fetchEmailCampaigns();
   }, []);
 
   const handleBeginOnboarding = async () => {
@@ -188,6 +197,28 @@ const Onboarding = () => {
                         <span className="text-sm text-slate-400">{candidate.email}</span>
                         {candidate.current_position && (
                           <span className="text-xs text-slate-500">{candidate.current_position}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="campaign-select" className="text-white">Choose Email Campaign</Label>
+              <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectValue placeholder="Select an email campaign" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  {emailCampaigns.map((campaign) => (
+                    <SelectItem key={campaign.id} value={campaign.id} className="text-white hover:bg-slate-600">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{campaign.name}</span>
+                        <span className="text-sm text-slate-400">{campaign.subject}</span>
+                        {campaign.description && (
+                          <span className="text-xs text-slate-500">{campaign.description}</span>
                         )}
                       </div>
                     </SelectItem>
