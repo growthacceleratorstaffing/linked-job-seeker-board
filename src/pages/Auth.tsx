@@ -128,7 +128,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary-blue flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-primary-blue flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
       <div className="w-full max-w-md space-y-6">
         {/* Logo and Header */}
         <div className="text-center space-y-4">
@@ -136,16 +136,16 @@ const Auth = () => {
             <img 
               src="/lovable-uploads/76da95f6-805f-4f3e-91e8-f4ddc51657ad.png" 
               alt="Growth Accelerator Logo" 
-              className="h-16 w-16 object-contain"
+              className="h-12 w-12 sm:h-16 sm:w-16 object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-white">Growth Accelerator</h1>
-          <p className="text-slate-300">Access your recruitment platform</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Growth Accelerator</h1>
+          <p className="text-sm sm:text-base text-slate-300">Access your recruitment platform</p>
         </div>
 
         <Card className="bg-slate-800 border-slate-600">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center text-white">Welcome</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl font-bold text-center text-white">Welcome</CardTitle>
             <CardDescription className="text-center text-slate-300">
               Sign in to your account or create a new one
             </CardDescription>
@@ -298,7 +298,7 @@ const Auth = () => {
           <p className="text-xs text-slate-400">
             By signing up, you agree to our terms of service and privacy policy.
           </p>
-          <div className="flex justify-center space-x-4">
+          <div className="flex flex-col sm:flex-row justify-center space-y-1 sm:space-y-0 sm:space-x-4">
             <button
               onClick={() => navigate('/terms-of-service')}
               className="text-xs text-slate-400 hover:text-white underline"

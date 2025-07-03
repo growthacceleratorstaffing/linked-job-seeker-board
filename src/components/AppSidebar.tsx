@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -8,7 +8,9 @@ import {
   ArrowRightLeft, 
   CheckSquare, 
   FileText, 
-  LogOut 
+  LogOut,
+  Menu,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +20,7 @@ const AppSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -69,7 +72,7 @@ const AppSidebar = () => {
         </div>
       </a>
     ) : (
-      <NavLink to={path} className="block">
+      <NavLink to={path} className="block" onClick={() => setIsMobileMenuOpen(false)}>
         <div className={`flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors ${
           isActivePath(path) ? 'bg-white/20 border-r-2 border-secondary-pink' : ''
         }`}>
@@ -80,7 +83,7 @@ const AppSidebar = () => {
     )
   );
 
-  return (
+  const SidebarContent = () => (
     <div className="w-64 h-screen bg-primary-blue text-white flex flex-col">
       {/* Logo Section */}
       <div className="p-6 border-b border-white/10">
@@ -88,11 +91,11 @@ const AppSidebar = () => {
           <img 
             src="/lovable-uploads/76da95f6-805f-4f3e-91e8-f4ddc51657ad.png" 
             alt="Growth Accelerator Logo" 
-            className="h-10 w-10 object-contain"
+            className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
           />
           <div>
-            <h1 className="text-xl font-bold text-white">Growth</h1>
-            <h2 className="text-xl font-bold text-white">Accelerator</h2>
+            <h1 className="text-lg sm:text-xl font-bold text-white">Growth</h1>
+            <h2 className="text-lg sm:text-xl font-bold text-white">Accelerator</h2>
           </div>
         </div>
       </div>
@@ -127,7 +130,7 @@ const AppSidebar = () => {
         </div>
       </div>
 
-      {/* Logout Button - positioned right above the horizontal line */}
+      {/* Logout Button */}
       <div className="px-4 pb-4">
         <Button 
           variant="ghost" 
@@ -143,6 +146,40 @@ const AppSidebar = () => {
       <div className="border-t border-white/10 p-4">
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden fixed top-4 left-4 z-50 bg-slate-800 text-white hover:bg-slate-700"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      >
+        {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      </Button>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <SidebarContent />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <div className={`lg:hidden fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <SidebarContent />
+      </div>
+    </>
   );
 };
 

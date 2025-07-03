@@ -10,15 +10,19 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex min-h-screen bg-primary-blue">
-      <AppSidebar />
-      <div className="flex-1 flex flex-col bg-primary-blue text-white">
+      {/* Sidebar - hidden on mobile, shown on desktop */}
+      <div className="hidden lg:block">
+        <AppSidebar />
+      </div>
+      
+      <div className="flex-1 flex flex-col bg-primary-blue text-white min-w-0">
         <WorkflowHeader />
-        <main className="flex-1 bg-primary-blue relative">
+        <main className="flex-1 bg-primary-blue relative p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </div>
       
-      {/* Global AI Copilot - appears on every page */}
+      {/* Global AI Copilot - positioned responsively */}
       <CopilotTrigger />
     </div>
   );

@@ -8,7 +8,7 @@ const TermsOfService = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-primary-blue flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-primary-blue flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
       <div className="w-full max-w-4xl space-y-6">
         <div className="flex items-center space-x-4">
           <Button
@@ -23,7 +23,7 @@ const TermsOfService = () => {
 
         <Card className="bg-slate-800 border-slate-600">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-white">Terms of Service</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl font-bold text-white">Terms of Service</CardTitle>
             <CardDescription className="text-slate-300">
               Last updated: {new Date().toLocaleDateString()}
             </CardDescription>
