@@ -278,9 +278,9 @@ export const CandidatesList = () => {
             <TableHeader>
               <TableRow className="border-slate-600">
                 <TableHead className="font-semibold w-[220px] text-slate-300">Name</TableHead>
-                <TableHead className="font-semibold w-[80px] text-slate-300">Position</TableHead>
                 <TableHead className="font-semibold w-[200px] text-slate-300">Email</TableHead>
                 <TableHead className="font-semibold w-[130px] text-slate-300">Phone</TableHead>
+                <TableHead className="font-semibold w-[120px] text-slate-300">Position</TableHead>
                 <TableHead className="font-semibold w-[120px] text-slate-300">Location</TableHead>
                 <TableHead className="font-semibold w-[80px] text-slate-300">Source</TableHead>
                 <TableHead className="font-semibold w-[80px] text-slate-300">Score</TableHead>
@@ -313,21 +313,6 @@ export const CandidatesList = () => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="w-[80px]">
-                    <div className="space-y-1">
-                      {candidate.current_position && (
-                        <div className="font-medium text-white text-xs truncate">
-                          {candidate.current_position}
-                        </div>
-                      )}
-                      {candidate.company && (
-                        <div className="text-xs text-slate-400 truncate flex items-center gap-1">
-                          <Building className="h-3 w-3" />
-                          {candidate.company}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
                   <TableCell className="w-[200px]">
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-3 w-3 text-slate-400 flex-shrink-0" />
@@ -343,6 +328,21 @@ export const CandidatesList = () => {
                     ) : (
                       <span className="text-slate-400">-</span>
                     )}
+                  </TableCell>
+                  <TableCell className="w-[120px]">
+                    <div className="space-y-1">
+                      {candidate.current_position && (
+                        <div className="font-medium text-white text-xs truncate">
+                          {candidate.current_position}
+                        </div>
+                      )}
+                      {candidate.company && (
+                        <div className="text-xs text-slate-400 truncate flex items-center gap-1">
+                          <Building className="h-3 w-3" />
+                          {candidate.company}
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="w-[120px]">
                     {candidate.location ? (
