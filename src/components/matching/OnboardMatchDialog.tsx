@@ -213,7 +213,7 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
 
         toast({
           title: "Success",
-          description: "Match created successfully",
+          description: "Successfully matched candidate to job",
         });
 
         // Reset form and close dialog
