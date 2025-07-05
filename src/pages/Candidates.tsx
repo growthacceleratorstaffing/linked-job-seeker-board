@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
@@ -24,72 +25,106 @@ interface Candidate {
 }
 
 const Candidates = () => {
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [candidatesPerPage] = useState(50);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const fetchCandidates = async () => {
-    setIsLoading(true);
-    try {
-      // Fetch all candidates without pagination limits
-      let allCandidates: Candidate[] = [];
-      let from = 0;
-      const batchSize = 1000; // Fetch in batches to handle large datasets
+  // Fetch candidates with React Query
+  const { data: candidatesData, isLoading } = useQuery({
+    queryKey: ["all-candidates", searchTerm, currentPage],
+    queryFn: async () => {
+      console.log('Fetching candidates with search:', searchTerm, 'page:', currentPage);
+      
+      let query = supabase
+        .from("candidates")
+        .select("*", { count: 'exact' })
+        .order("created_at", { ascending: false });
 
-      while (true) {
-        const { data, error, count } = await supabase
-          .from('candidates')
-          .select('*', { count: 'exact' })
-          .order('created_at', { ascending: false })
-          .range(from, from + batchSize - 1);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          allCandidates = [...allCandidates, ...data];
-          from += batchSize;
-          
-          // If we got less than the batch size, we've reached the end
-          if (data.length < batchSize) break;
-        } else {
-          break;
-        }
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,current_position.ilike.%${searchTerm}%`);
       }
 
-      console.log(`Loaded ${allCandidates.length} candidates from database`);
-      setCandidates(allCandidates);
-      setFilteredCandidates(allCandidates);
+      const from = (currentPage - 1) * candidatesPerPage;
+      const to = from + candidatesPerPage - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
       
-      toast({
-        title: "Candidates loaded",
-        description: `Successfully loaded ${allCandidates.length} candidates`,
-      });
-    } catch (error) {
-      console.error('Error fetching candidates:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch candidates",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return { candidates: data as Candidate[], totalCount: count || 0 };
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const candidates = candidatesData?.candidates || [];
+  const totalCount = candidatesData?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / candidatesPerPage);
+
+  // Auto-sync candidates when component mounts if no candidates exist
+  useEffect(() => {
+    const autoSyncCandidates = async () => {
+      try {
+        // Check if we have candidates first
+        const { count } = await supabase
+          .from("candidates")
+          .select("*", { count: 'exact', head: true });
+
+        // Only bulk load if we have significantly fewer candidates than expected (~1600)
+        if ((count || 0) < 1500) {
+          console.log('Auto-loading all candidates from Workable (including archived jobs)...');
+          setIsBulkLoading(true);
+          
+          const { data, error } = await supabase.functions.invoke('workable-integration', {
+            body: { action: 'load_all_candidates' }
+          });
+
+          if (error) {
+            console.error('Auto bulk load failed:', error);
+            toast({
+              title: "Auto-load failed ❌",
+              description: `Error: ${error.message}`,
+              variant: "destructive",
+            });
+            return;
+          }
+
+          if (data && data.success) {
+            console.log('Auto bulk load completed:', data);
+            toast({
+              title: "All candidates loaded! 🎉",
+              description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable (including archived jobs)`,
+            });
+            
+            // Invalidate queries to refresh the UI
+            queryClient.invalidateQueries({ queryKey: ["all-candidates"] });
+          }
+        }
+      } catch (error: any) {
+        console.error('Auto bulk load error:', error);
+        toast({
+          title: "Auto-load failed ❌",
+          description: `Unexpected error: ${error.message}`,
+          variant: "destructive",
+        });
+      } finally {
+        setIsBulkLoading(false);
+      }
+    };
+
+    autoSyncCandidates();
+  }, [toast, queryClient]);
 
   const syncWorkableCandidates = async () => {
-    setIsLoading(true);
+    setIsBulkLoading(true);
     try {
-      console.log('Starting Workable candidate sync...');
+      console.log('Starting full Workable candidate sync...');
       
       const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_candidates' }
+        body: { action: 'load_all_candidates' }
       });
-
-      console.log('Sync response:', { data, error });
 
       if (error) {
         console.error('Sync error details:', error);
@@ -104,12 +139,12 @@ const Candidates = () => {
       console.log('Sync completed successfully:', data);
       
       toast({
-        title: "Sync completed",
-        description: data?.message || `Synced ${data?.syncedCandidates || 0} candidates from Workable`,
+        title: "Sync completed! 🎉",
+        description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable`,
       });
 
-      // Refresh the local candidates list
-      await fetchCandidates();
+      // Refresh the candidates list
+      queryClient.invalidateQueries({ queryKey: ["all-candidates"] });
     } catch (error) {
       console.error('Error syncing candidates:', error);
       
@@ -123,29 +158,14 @@ const Candidates = () => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsBulkLoading(false);
     }
   };
 
+  // Reset to first page when search changes
   useEffect(() => {
-    fetchCandidates();
-  }, []);
-
-  useEffect(() => {
-    const filtered = candidates.filter(candidate =>
-      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (candidate.company && candidate.company.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-    setFilteredCandidates(filtered);
-    setCurrentPage(1); // Reset to first page when filtering
-  }, [searchTerm, candidates]);
-
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredCandidates.length / candidatesPerPage);
-  const startIndex = (currentPage - 1) * candidatesPerPage;
-  const endIndex = startIndex + candidatesPerPage;
-  const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex);
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -176,12 +196,12 @@ const Candidates = () => {
           <div className="flex gap-2">
             <Button 
               onClick={syncWorkableCandidates}
-              disabled={isLoading}
+              disabled={isBulkLoading}
               variant="outline"
               className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
             >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Sync Workable
+              <RefreshCw className={`mr-2 h-4 w-4 ${isBulkLoading ? 'animate-spin' : ''}`} />
+              Sync All Candidates
             </Button>
             <Button className="bg-secondary-pink hover:bg-secondary-pink/80">
               <Plus className="mr-2 h-4 w-4" />
@@ -217,7 +237,7 @@ const Candidates = () => {
               <CardTitle className="text-sm font-medium text-white">Total Candidates</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{candidates.length}</div>
+              <div className="text-2xl font-bold text-white">{totalCount}</div>
               <p className="text-xs text-slate-400">All time</p>
             </CardContent>
           </Card>
@@ -257,6 +277,23 @@ const Candidates = () => {
           </Card>
         </div>
 
+        {/* Loading Status */}
+        {isBulkLoading && (
+          <div className="mb-8">
+            <Card className="bg-slate-800 border-slate-600">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-secondary-pink" />
+                  <p className="text-white">Loading all candidates from Workable (including archived jobs)...</p>
+                </div>
+                <p className="text-xs text-slate-400 text-center mt-2">
+                  This may take a few minutes to complete. Please wait...
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <Card className="bg-primary-blue border border-white/20">
           <CardHeader>
             <CardTitle className="flex items-center text-white">
@@ -264,15 +301,18 @@ const Candidates = () => {
               Candidate List
             </CardTitle>
             <CardDescription className="text-slate-400">
-              {filteredCandidates.length} of {candidates.length} candidates from growthacceleratorstaffing.workable.com
+              {totalCount} candidates from growthacceleratorstaffing.workable.com
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {filteredCandidates.length > 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center p-4 text-white">Loading candidates...</div>
+            ) : candidates.length > 0 ? (
               <>
                 <div className="mb-4 flex items-center justify-between">
                   <div className="text-sm text-slate-400">
-                    Showing {startIndex + 1}-{Math.min(endIndex, filteredCandidates.length)} of {filteredCandidates.length} candidates
+                    Showing {((currentPage - 1) * candidatesPerPage) + 1} to {Math.min(currentPage * candidatesPerPage, totalCount)} of {totalCount} candidates
+                    {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -310,7 +350,7 @@ const Candidates = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedCandidates.map((candidate) => (
+                    {candidates.map((candidate) => (
                     <TableRow key={candidate.id} className="border-slate-600 hover:bg-slate-700">
                       <TableCell className="text-white font-medium">
                         <div>
