@@ -69,10 +69,10 @@ serve(async (req) => {
 
         console.log(`📊 Starting to load from: ${spiBaseUrl}/candidates`);
 
-        while (hasMorePages && page <= 50) { // Safety limit
+        while (hasMorePages && page <= 100) { // Safety limit increased for all candidates
           try {
             const offset = (page - 1) * pageSize;
-            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${pageSize}&offset=${offset}`;
+            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${pageSize}&offset=${offset}&state=archived,active,sourced,hired,rejected`;
             
             console.log(`📄 Loading page ${page} (offset: ${offset})`);
             

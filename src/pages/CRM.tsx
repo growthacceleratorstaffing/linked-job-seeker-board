@@ -129,8 +129,8 @@ const CRM = () => {
           .from("candidates")
           .select("*", { count: 'exact', head: true });
 
-        // Only bulk load if we have significantly fewer candidates than expected (~930)
-        if ((count || 0) < 500) {
+        // Only bulk load if we have significantly fewer candidates than expected (~965)
+        if ((count || 0) < 900) {
           console.log('Auto-loading all candidates from Workable (including archived jobs)...');
           setIsBulkLoading(true);
           
