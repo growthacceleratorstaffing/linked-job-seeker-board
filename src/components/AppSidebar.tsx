@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -8,7 +8,8 @@ import {
   ArrowRightLeft, 
   CheckSquare, 
   FileText, 
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,23 +33,42 @@ const AppSidebar = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { state } = useSidebar();
+  const [userProfile, setUserProfile] = useState<{ email: string; role: string } | null>(null);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // For now, set role as admin - this would typically come from a profiles table
+        setUserProfile({
+          email: user.email || '',
+          role: 'admin'
+        });
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
   ];
 
-  const vacancyItems = [
-    { path: '/jobs', label: 'Vacancies', icon: Briefcase },
+  const jobsItems = [
+    { path: '/jobs', label: 'Jobs', icon: Briefcase },
+    { path: '/job-posting', label: 'Job Posting', icon: FileText },
+    { path: '/job-board', label: 'Job Board', icon: Users },
   ];
 
   const staffingItems = [
     { path: '/candidates', label: 'Candidates', icon: Users },
-    { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
-    { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
+    { path: '/applications', label: 'Applications', icon: FileText },
   ];
 
   const contractingItems = [
+    { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
+    { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
     { path: 'https://mijn.cootje.com', label: 'Backoffice', icon: FileText, external: true },
   ];
 
@@ -125,14 +145,14 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Vacancies Section */}
+        {/* Jobs Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-            VACANCIES
+            JOBS
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {vacancyItems.map((item) => (
+              {jobsItems.map((item) => (
                 <NavItem key={item.path} {...item} />
               ))}
             </SidebarMenu>
@@ -169,13 +189,26 @@ const AppSidebar = () => {
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-white/10">
+        {/* User Profile Section */}
+        {userProfile && state === "expanded" && (
+          <div className="mb-4 p-3 rounded-lg bg-white/5">
+            <div className="flex items-center gap-3">
+              <User className="w-5 h-5 text-white" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white truncate">{userProfile.email}</p>
+                <p className="text-xs text-slate-400">{userProfile.role}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <Button 
           variant="ghost" 
           className="w-full justify-start text-white hover:bg-white/10"
           onClick={handleLogout}
         >
           <LogOut className="mr-3" />
-          {state === "expanded" && <span>Logout</span>}
+          {state === "expanded" && <span>Sign Out</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>
