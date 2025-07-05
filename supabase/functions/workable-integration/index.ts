@@ -220,6 +220,31 @@ serve(async (req) => {
         );
       }
 
+      case 'sync_jobs': {
+        console.log('Syncing jobs from Workable...');
+        
+        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+        const response = await fetch(`${spiBaseUrl}/jobs`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to sync jobs: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            jobs: data.jobs || [],
+            message: `Synced ${data.jobs?.length || 0} jobs from Workable`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'sync_candidates': {
         console.log('Syncing recent candidates from Workable...');
         
