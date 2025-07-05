@@ -125,23 +125,26 @@ serve(async (req) => {
           throw new Error(`Cannot connect to Workable API: ${apiError.message}`);
         }
         
-        console.log('🚀 Starting to load all candidates with proper pagination...');
+        console.log('🚀 Starting comprehensive candidate loading from Workable API...');
         
         let allCandidates: any[] = [];
         let page = 1;
         let hasMorePages = true;
         let totalLoaded = 0;
+        const limit = 100; // Standard limit per page
 
-        // Load all candidates using simple page-by-page approach
+        // Use the same approach as your Node.js script
         while (hasMorePages) {
           let retryCount = 0;
           const maxRetries = 3;
           
           while (retryCount <= maxRetries) {
             try {
-              console.log(`Loading page ${page}... (attempt ${retryCount + 1})`);
-              // Use simple page parameter, let Workable handle the rest
-              const candidatesUrl = `${spiBaseUrl}/candidates?page=${page}`;
+              console.log(`📄 Loading page ${page}... (attempt ${retryCount + 1})`);
+              
+              // Try both pagination methods to ensure compatibility
+              const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&page=${page}`;
+              console.log(`🔗 Requesting: ${candidatesUrl}`);
               
               const response = await fetch(candidatesUrl, {
                 method: 'GET',
@@ -149,9 +152,9 @@ serve(async (req) => {
               });
 
               if (response.status === 429) {
-                // Rate limited - exponential backoff
-                const backoffDelay = Math.min(2000 * Math.pow(2, retryCount), 15000); // Max 15 seconds
-                console.log(`Rate limited on page ${page}, waiting ${backoffDelay}ms before retry...`);
+                // Rate limited - exponential backoff matching your Node.js pattern
+                const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+                console.log(`⏸️ Rate limited on page ${page}, waiting ${backoffDelay}ms...`);
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
                 retryCount++;
                 continue;
@@ -159,26 +162,30 @@ serve(async (req) => {
 
               if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`Failed to fetch candidates page ${page}:`, {
-                  status: response.status,
-                  statusText: response.statusText,
-                  body: errorText
-                });
-                throw new Error(`API Error on page ${page}: ${response.status} - ${errorText}`);
+                console.error(`❌ HTTP ${response.status} on page ${page}:`, errorText);
+                throw new Error(`API Error: ${response.status} - ${errorText}`);
               }
 
               const responseData = await response.json();
-              console.log(`Raw API response structure for page ${page}:`, Object.keys(responseData));
+              console.log(`📊 Response structure:`, Object.keys(responseData));
+              console.log(`📊 Response sample:`, JSON.stringify(responseData).substring(0, 200) + '...');
               
-              // Handle different possible response structures
-              const candidates = responseData.candidates || responseData.data || responseData;
+              // Extract candidates - handle various API response formats
+              let candidates = null;
+              if (responseData.candidates) {
+                candidates = responseData.candidates;
+              } else if (Array.isArray(responseData)) {
+                candidates = responseData;
+              } else if (responseData.data && Array.isArray(responseData.data)) {
+                candidates = responseData.data;
+              }
               
               if (candidates && Array.isArray(candidates) && candidates.length > 0) {
                 allCandidates.push(...candidates);
                 totalLoaded = allCandidates.length;
-                console.log(`✓ Page ${page}: ${candidates.length} candidates (Total: ${totalLoaded})`);
+                console.log(`✅ Page ${page}: +${candidates.length} candidates (Total: ${totalLoaded})`);
                 
-                // Update progress in sync log every 5 pages
+                // Progress logging every 5 pages
                 if (page % 5 === 0 && syncLog?.id) {
                   await supabase
                     .from('integration_sync_logs')
@@ -186,39 +193,43 @@ serve(async (req) => {
                       synced_data: { 
                         action: 'load_all_candidates',
                         timestamp: new Date().toISOString(),
-                        progress: `Loading page ${page}, total so far: ${totalLoaded} candidates`
+                        progress: `Page ${page} complete - ${totalLoaded} candidates loaded`,
+                        currentPage: page,
+                        totalLoaded
                       }
                     })
                     .eq('id', syncLog.id);
                 }
                 
-                // If we get less than 50 candidates, we're probably at the end
-                if (candidates.length < 50) {
-                  console.log(`Received ${candidates.length} candidates (less than 50), assuming last page`);
+                // Check if this is likely the last page based on your Node.js logic
+                if (candidates.length < limit) {
+                  console.log(`🏁 Last page detected (${candidates.length} < ${limit})`);
                   hasMorePages = false;
                 } else {
                   page++;
+                  
+                  // Rate limiting - progressive delays like your Node.js script
+                  const delay = Math.min(500 + (page * 100), 2000);
+                  console.log(`⏳ Waiting ${delay}ms before next page...`);
+                  await new Promise(resolve => setTimeout(resolve, delay));
                 }
-                
-                // Progressive rate limiting - longer delays as we get further  
-                const delay = Math.min(2000 + (page * 200), 5000); // Start at 2s, increase by 200ms per page, max 5s
-                console.log(`⏳ Waiting ${delay}ms before next page...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
                 break; // Success, exit retry loop
               } else {
-                console.log(`No more candidates found on page ${page}`);
+                console.log(`🔚 No candidates on page ${page} - ending pagination`);
                 hasMorePages = false;
                 break;
               }
             } catch (error) {
-              console.error(`❌ Error on page ${page} (attempt ${retryCount + 1}):`, error);
+              console.error(`💥 Error on page ${page} (attempt ${retryCount + 1}):`, error);
               if (retryCount >= maxRetries) {
+                console.error(`🚨 Max retries exceeded for page ${page}`);
                 hasMorePages = false;
-                throw error;
+                break;
               }
               retryCount++;
-              // Wait before retry
-              await new Promise(resolve => setTimeout(resolve, 3000 * retryCount));
+              const retryDelay = 2000 * retryCount;
+              console.log(`🔄 Retrying in ${retryDelay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
             }
           }
         }
