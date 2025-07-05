@@ -356,6 +356,45 @@ export type Database = {
           },
         ]
       }
+      jobadder_tokens: {
+        Row: {
+          access_token: string
+          api_base_url: string
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token: string | null
+          scopes: string[]
+          token_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          api_base_url?: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          refresh_token?: string | null
+          scopes?: string[]
+          token_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          api_base_url?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string | null
+          scopes?: string[]
+          token_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       jobadder_user_permissions: {
         Row: {
           created_at: string | null
