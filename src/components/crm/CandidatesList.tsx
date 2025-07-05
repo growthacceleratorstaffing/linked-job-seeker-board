@@ -41,7 +41,7 @@ export const CandidatesList = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const candidatesPerPage = 100;
+  const candidatesPerPage = 50;
   const queryClient = useQueryClient();
 
   // Debounce search term to reduce API calls
