@@ -56,7 +56,8 @@ const AppSidebar = () => {
   ];
 
   const vacancyItems = [
-    { path: '/jobs', label: 'Vacancies', icon: Briefcase },
+    { path: '/post-jobs', label: 'Post Jobs', icon: Briefcase },
+    { path: '/jobs', label: 'Vacancies', icon: FileText },
   ];
 
   const staffingItems = [
