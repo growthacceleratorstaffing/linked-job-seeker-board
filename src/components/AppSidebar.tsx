@@ -55,20 +55,17 @@ const AppSidebar = () => {
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
   ];
 
-  const jobsItems = [
-    { path: '/jobs', label: 'Jobs', icon: Briefcase },
-    { path: '/job-posting', label: 'Job Posting', icon: FileText },
-    { path: '/job-board', label: 'Job Board', icon: Users },
+  const vacancyItems = [
+    { path: '/jobs', label: 'Vacancies', icon: Briefcase },
   ];
 
   const staffingItems = [
     { path: '/candidates', label: 'Candidates', icon: Users },
-    { path: '/applications', label: 'Applications', icon: FileText },
+    { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
+    { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
   ];
 
   const contractingItems = [
-    { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
-    { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
     { path: 'https://mijn.cootje.com', label: 'Backoffice', icon: FileText, external: true },
   ];
 
@@ -145,14 +142,14 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Jobs Section */}
+        {/* Vacancies Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-            JOBS
+            VACANCIES
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {jobsItems.map((item) => (
+              {vacancyItems.map((item) => (
                 <NavItem key={item.path} {...item} />
               ))}
             </SidebarMenu>
