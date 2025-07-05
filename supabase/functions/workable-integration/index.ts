@@ -204,7 +204,7 @@ serve(async (req) => {
                 hasMorePages = paging && paging.next;
                 page++;
                 
-                // Rate limiting - 200ms delay like Node.js script
+                // Rate limiting - 200ms delay exactly like Node.js script
                 await new Promise(resolve => setTimeout(resolve, 200));
                 break; // Success, exit retry loop
               } else {
@@ -228,6 +228,95 @@ serve(async (req) => {
         }
 
         console.log(`🎉 Successfully loaded ${totalLoaded} candidates!`);
+
+        // Generate comprehensive statistics like Node.js script
+        const withEmail = allCandidates.filter(c => c.email).length;
+        const withPhone = allCandidates.filter(c => c.phone).length;
+        const withResume = allCandidates.filter(c => c.resume_url).length;
+        const activeStatus = allCandidates.filter(c => c.state === 'active').length;
+
+        // Skills distribution
+        const skills: Record<string, number> = {};
+        allCandidates.forEach(candidate => {
+          if (candidate.skills && Array.isArray(candidate.skills)) {
+            candidate.skills.forEach((skill: string) => {
+              skills[skill] = (skills[skill] || 0) + 1;
+            });
+          }
+        });
+
+        const topSkills = Object.entries(skills)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 10)
+          .reduce((obj, [skill, count]) => {
+            obj[skill] = count;
+            return obj;
+          }, {} as Record<string, number>);
+
+        // Location distribution
+        const locations: Record<string, number> = {};
+        allCandidates.forEach(candidate => {
+          const location = candidate.address?.city || candidate.address?.country || 'Unknown';
+          locations[location] = (locations[location] || 0) + 1;
+        });
+
+        const topLocations = Object.entries(locations)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 10)
+          .reduce((obj, [location, count]) => {
+            obj[location] = count;
+            return obj;
+          }, {} as Record<string, number>);
+
+        const stats = {
+          total_candidates: totalLoaded,
+          pages_processed: page - 1,
+          data_quality: {
+            with_email: withEmail,
+            with_phone: withPhone,
+            with_resume: withResume,
+            active_status: activeStatus
+          },
+          percentages: {
+            email_coverage: totalLoaded > 0 ? Math.round(withEmail / totalLoaded * 100) : 0,
+            phone_coverage: totalLoaded > 0 ? Math.round(withPhone / totalLoaded * 100) : 0,
+            resume_coverage: totalLoaded > 0 ? Math.round(withResume / totalLoaded * 100) : 0,
+            active_candidates: totalLoaded > 0 ? Math.round(activeStatus / totalLoaded * 100) : 0
+          },
+          top_skills: topSkills,
+          top_locations: topLocations,
+          recent_candidates: allCandidates
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 5)
+            .map(c => ({
+              id: c.id,
+              name: c.name,
+              email: c.email,
+              created_at: c.created_at,
+              state: c.state
+            }))
+        };
+
+        console.log('📊 Growth Accelerator Platform - Candidate Statistics');
+        console.log('='.repeat(60));
+        console.log(`Total Candidates: ${stats.total_candidates}`);
+        console.log(`API Source: ${cleanSubdomain}.workable.com`);
+        console.log(`Loaded at: ${new Date().toLocaleString()}`);
+        console.log('Data Quality:');
+        console.log(`  Email: ${stats.data_quality.with_email} (${stats.percentages.email_coverage}%)`);
+        console.log(`  Phone: ${stats.data_quality.with_phone} (${stats.percentages.phone_coverage}%)`);
+        console.log(`  Resume: ${stats.data_quality.with_resume} (${stats.percentages.resume_coverage}%)`);
+        console.log(`  Active: ${stats.data_quality.active_status} (${stats.percentages.active_candidates}%)`);
+        
+        console.log('Top Skills:');
+        Object.entries(stats.top_skills).slice(0, 5).forEach(([skill, count]) => {
+          console.log(`  ${skill}: ${count} candidates`);
+        });
+        
+        console.log('Top Locations:');
+        Object.entries(stats.top_locations).slice(0, 5).forEach(([location, count]) => {
+          console.log(`  ${location}: ${count} candidates`);
+        });
 
         // Now sync all candidates to Supabase with improved error handling
         let syncedCount = 0;
@@ -279,7 +368,6 @@ serve(async (req) => {
               console.log(`   Created: ${batchResults.created}, Updated: ${batchResults.updated}`);
               console.log(`   Duplicates: ${batchResults.duplicates}, Errors: ${batchResults.errors.length}`);
               console.log(`📊 Running totals: ${syncedCount} synced, ${skippedDuplicates} duplicates, ${errors.length} errors`);
-              console.log(`🏷️  Error categories: validation=${errorCategories.validation}, constraint=${errorCategories.constraint}, network=${errorCategories.network}, unknown=${errorCategories.unknown}`);
             }
             
             // Update progress in sync log every 20 batches
@@ -317,15 +405,6 @@ serve(async (req) => {
             const delay = Math.min(100 + (batchNum * 10), 500); // Progressive delay
             await new Promise(resolve => setTimeout(resolve, delay));
           }
-          
-          // Continue processing even with many errors (better than stopping)
-          // Only stop if more than 50% are failing (indicates systemic issue)
-          const totalProcessed = syncedCount + skippedDuplicates + errors.length;
-          const errorRate = totalProcessed > 0 ? errors.length / totalProcessed : 0;
-          if (errorRate > 0.5 && totalProcessed > 100) {
-            console.warn(`🚨 High error rate detected (${Math.round(errorRate * 100)}%), but continuing to process remaining candidates`);
-            // Log but don't break - continue processing
-          }
         }
         
         console.log(`📊 Database sync complete:`);
@@ -334,39 +413,14 @@ serve(async (req) => {
         console.log(`  ❌ Sync errors: ${errors.length}`);
         console.log(`  📈 Total processed: ${syncedCount + skippedDuplicates + errors.length}/${totalLoaded}`);
 
-        // Generate statistics following your original script format
-        const withEmail = allCandidates.filter(c => c.email).length;
-        const withPhone = allCandidates.filter(c => c.phone).length;
-        const withResume = allCandidates.filter(c => c.resume_url).length;
-        const activeStatus = allCandidates.filter(c => c.state === 'active').length;
-
-        const stats = {
-          total_candidates: totalLoaded,
+        // Update final statistics with sync results
+        const finalStats = {
+          ...stats,
           synced_candidates: syncedCount,
-          pages_processed: page - 1,
-          data_quality: {
-            with_email: withEmail,
-            with_phone: withPhone,
-            with_resume: withResume,
-            active_status: activeStatus
-          },
-          percentages: {
-            email_coverage: totalLoaded > 0 ? Math.round(withEmail / totalLoaded * 100) : 0,
-            phone_coverage: totalLoaded > 0 ? Math.round(withPhone / totalLoaded * 100) : 0,
-            resume_coverage: totalLoaded > 0 ? Math.round(withResume / totalLoaded * 100) : 0,
-            active_candidates: totalLoaded > 0 ? Math.round(activeStatus / totalLoaded * 100) : 0
-          }
+          skipped_duplicates: skippedDuplicates,
+          sync_errors: errors.length,
+          error_categories: errorCategories
         };
-
-        console.log('📊 Growth Accelerator Platform - Candidate Statistics');
-        console.log('='.repeat(60));
-        console.log(`Total Candidates: ${stats.total_candidates}`);
-        console.log(`API Source: ${cleanSubdomain}.workable.com`);
-        console.log(`Loaded at: ${new Date().toLocaleString()}`);
-        console.log('Data Quality:');
-        console.log(`  Email: ${stats.data_quality.with_email} (${stats.percentages.email_coverage}%)`);
-        console.log(`  Phone: ${stats.data_quality.with_phone} (${stats.percentages.phone_coverage}%)`);
-        console.log(`  Resume: ${stats.data_quality.with_resume} (${stats.percentages.resume_coverage}%)`);
 
         // Update sync log with completion
         if (syncLog?.id) {

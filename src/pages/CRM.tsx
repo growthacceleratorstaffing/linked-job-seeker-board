@@ -180,7 +180,7 @@ const CRM = () => {
                   : "Auto-syncing..."
                 }
               </div>
-              <p className="text-xs text-slate-400">Node.js 20 implementation</p>
+              <p className="text-xs text-slate-400">Supabase Edge Functions</p>
             </CardContent>
           </Card>
         </div>
@@ -231,7 +231,7 @@ const CRM = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Implementation:</span>
-                        <span className="text-secondary-pink">Node.js 20</span>
+                        <span className="text-secondary-pink">Supabase Edge Functions</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Loaded at:</span>
