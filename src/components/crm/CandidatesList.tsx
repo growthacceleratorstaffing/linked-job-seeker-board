@@ -28,9 +28,11 @@ type Candidate = {
   company: string | null;
   skills: any[] | null;
   experience_years: number | null;
+  education: any[] | null;
   source_platform: string | null;
   last_synced_at: string | null;
   profile_completeness_score: number | null;
+  interview_stage: string | null;
   created_at: string;
 };
 
@@ -278,10 +280,10 @@ export const CandidatesList = () => {
             <TableHeader>
               <TableRow className="border-slate-600">
                 <TableHead className="font-semibold w-[220px] text-slate-300">Name</TableHead>
-                <TableHead className="font-semibold w-[200px] text-slate-300">Email</TableHead>
-                <TableHead className="font-semibold w-[130px] text-slate-300">Phone</TableHead>
-                <TableHead className="font-semibold w-[15px] text-slate-300">Position</TableHead>
-                <TableHead className="font-semibold w-[120px] text-slate-300">Location</TableHead>
+                <TableHead className="font-semibold w-[200px] text-slate-300">Contact</TableHead>
+                <TableHead className="font-semibold w-[200px] text-slate-300">Skills</TableHead>
+                <TableHead className="font-semibold w-[150px] text-slate-300">Experience</TableHead>
+                <TableHead className="font-semibold w-[120px] text-slate-300">Status</TableHead>
                 <TableHead className="font-semibold w-[80px] text-slate-300">Source</TableHead>
                 <TableHead className="font-semibold w-[80px] text-slate-300">Score</TableHead>
                 <TableHead className="font-semibold w-[100px] text-slate-300">Actions</TableHead>
@@ -304,32 +306,45 @@ export const CandidatesList = () => {
                         <div className="font-medium text-white text-base leading-tight">
                           {candidate.name}
                         </div>
-                        {candidate.location && (
-                          <div className="text-xs text-slate-400 truncate flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3" />
-                            {candidate.location}
+                        {candidate.workable_candidate_id && (
+                          <div className="text-xs text-slate-400 truncate">
+                            ID: {candidate.workable_candidate_id}
                           </div>
                         )}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="w-[200px]">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Mail className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                      <span className="text-white truncate">{candidate.email}</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                        <span className="text-white truncate">{candidate.email}</span>
+                      </div>
+                      {candidate.phone && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                          <span className="text-white truncate">{candidate.phone}</span>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
-                  <TableCell className="w-[130px]">
-                    {candidate.phone ? (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                        <span className="text-white truncate">{candidate.phone}</span>
-                      </div>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
+                  <TableCell className="w-[200px]">
+                    <div className="skills-badges">
+                      {candidate.skills && candidate.skills.slice(0, 3).map((skill, index) => (
+                        <Badge 
+                          key={index} 
+                          variant="secondary" 
+                          className="mr-1 mb-1 text-xs bg-blue-500/20 text-blue-400 border-blue-400"
+                        >
+                          {skill}
+                        </Badge>
+                      ))}
+                      {candidate.skills && candidate.skills.length > 3 && (
+                        <span className="text-muted text-xs">+{candidate.skills.length - 3} more</span>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell className="w-[15px]">
+                  <TableCell className="w-[150px]">
                     <div className="space-y-1">
                       {candidate.current_position && (
                         <div className="font-medium text-white text-xs truncate">
@@ -342,14 +357,25 @@ export const CandidatesList = () => {
                           {candidate.company}
                         </div>
                       )}
+                      {candidate.experience_years && (
+                        <div className="text-xs text-slate-300">
+                          {candidate.experience_years} years exp.
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="w-[120px]">
-                    {candidate.location ? (
-                      <span className="text-sm text-white truncate block">{candidate.location}</span>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
+                    <Badge 
+                      variant="secondary" 
+                      className={`text-xs ${
+                        candidate.interview_stage === 'passed' ? 'bg-green-500/20 text-green-400 border-green-400' :
+                        candidate.interview_stage === 'in_progress' ? 'bg-blue-500/20 text-blue-400 border-blue-400' :
+                        candidate.interview_stage === 'failed' ? 'bg-red-500/20 text-red-400 border-red-400' :
+                        'bg-yellow-500/20 text-yellow-400 border-yellow-400'
+                      }`}
+                    >
+                      {candidate.interview_stage || 'pending'}
+                    </Badge>
                   </TableCell>
                   <TableCell className="w-[80px]">
                     <Badge 

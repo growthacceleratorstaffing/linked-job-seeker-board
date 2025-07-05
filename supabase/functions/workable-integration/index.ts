@@ -970,19 +970,24 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
   try {
     console.log(`🔄 Syncing candidate: ${workableCandidate.name || workableCandidate.email || workableCandidate.id}`);
     
-    // Clean and validate candidate data
+    // Clean and validate candidate data with all comprehensive fields
     const candidateData = {
       name: (workableCandidate.name || workableCandidate.email?.split('@')[0] || 'Unknown').trim().substring(0, 255),
       email: (workableCandidate.email || `unknown_${workableCandidate.id}@workable.com`).trim().toLowerCase(),
       phone: workableCandidate.phone?.trim()?.substring(0, 50) || null,
       workable_candidate_id: workableCandidate.id?.toString() || null,
       source_platform: 'workable',
-      location: (workableCandidate.address || workableCandidate.location)?.trim()?.substring(0, 255) || null,
+      location: extractLocation(workableCandidate),
       current_position: (workableCandidate.headline || workableCandidate.summary)?.trim()?.substring(0, 255) || null,
       company: workableCandidate.company?.trim()?.substring(0, 255) || null,
-      skills: Array.isArray(workableCandidate.skills) ? workableCandidate.skills : (workableCandidate.skills ? [workableCandidate.skills] : []),
+      skills: extractSkills(workableCandidate),
+      experience_years: extractExperienceYears(workableCandidate),
+      linkedin_profile_url: extractLinkedInUrl(workableCandidate),
+      profile_picture_url: workableCandidate.avatar_url || workableCandidate.photo?.url || null,
+      education: extractEducation(workableCandidate),
       last_synced_at: new Date().toISOString(),
-      profile_completeness_score: calculateCompletenessScore(workableCandidate)
+      profile_completeness_score: calculateCompletenessScore(workableCandidate),
+      interview_stage: mapWorkableStatusToInterviewStage(workableCandidate.state)
     };
 
     // Validate required fields
@@ -1022,6 +1027,11 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
           current_position: candidateData.current_position || existingCandidate.current_position,
           company: candidateData.company || existingCandidate.company,
           skills: candidateData.skills.length > 0 ? candidateData.skills : existingCandidate.skills,
+          experience_years: candidateData.experience_years || existingCandidate.experience_years,
+          linkedin_profile_url: candidateData.linkedin_profile_url || existingCandidate.linkedin_profile_url,
+          profile_picture_url: candidateData.profile_picture_url || existingCandidate.profile_picture_url,
+          education: candidateData.education || existingCandidate.education,
+          interview_stage: candidateData.interview_stage || existingCandidate.interview_stage,
           last_synced_at: candidateData.last_synced_at,
           profile_completeness_score: candidateData.profile_completeness_score,
           phone: candidateData.phone || existingCandidate.phone
@@ -1080,7 +1090,7 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
   
   console.log(`🔄 Processing batch of ${candidates.length} candidates`);
   
-  // Prepare candidate data with validation
+  // Prepare candidate data with validation and comprehensive fields
   const validCandidates = [];
   for (const candidate of candidates) {
     try {
@@ -1090,12 +1100,17 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
         phone: candidate.phone?.trim()?.substring(0, 50) || null,
         workable_candidate_id: candidate.id?.toString() || null,
         source_platform: 'workable',
-        location: (candidate.address || candidate.location)?.trim()?.substring(0, 255) || null,
+        location: extractLocation(candidate),
         current_position: (candidate.headline || candidate.summary)?.trim()?.substring(0, 255) || null,
         company: candidate.company?.trim()?.substring(0, 255) || null,
-        skills: Array.isArray(candidate.skills) ? candidate.skills : (candidate.skills ? [candidate.skills] : []),
+        skills: extractSkills(candidate),
+        experience_years: extractExperienceYears(candidate),
+        linkedin_profile_url: extractLinkedInUrl(candidate),
+        profile_picture_url: candidate.avatar_url || candidate.photo?.url || null,
+        education: extractEducation(candidate),
         last_synced_at: new Date().toISOString(),
-        profile_completeness_score: calculateCompletenessScore(candidate)
+        profile_completeness_score: calculateCompletenessScore(candidate),
+        interview_stage: mapWorkableStatusToInterviewStage(candidate.state)
       };
       
       // Validate required fields
@@ -1223,11 +1238,91 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
 
 function calculateCompletenessScore(candidate: any): number {
   let score = 0;
-  const fields = ['name', 'email', 'phone', 'address', 'headline', 'company'];
-  
-  fields.forEach(field => {
-    if (candidate[field]) score += Math.floor(100 / fields.length);
-  });
-  
+
+  if (candidate.name) score += 15;
+  if (candidate.email) score += 15;
+  if (candidate.phone) score += 10;
+  if (candidate.headline || candidate.summary) score += 10;
+  if (candidate.company) score += 10;
+  if (candidate.address || candidate.location) score += 10;
+  if (candidate.skills && candidate.skills.length > 0) score += 10;
+  if (candidate.avatar_url || candidate.photo?.url) score += 5;
+  if (candidate.resume_url) score += 10;
+  if (candidate.social_profiles && candidate.social_profiles.length > 0) score += 5;
+
   return Math.min(score, 100);
+}
+
+// Helper functions for extracting comprehensive candidate data
+function extractLocation(candidate: any): string | null {
+  if (candidate.address) {
+    if (typeof candidate.address === 'string') return candidate.address.trim().substring(0, 255);
+    if (candidate.address.city && candidate.address.country) {
+      return `${candidate.address.city}, ${candidate.address.country}`.trim().substring(0, 255);
+    }
+    if (candidate.address.city) return candidate.address.city.trim().substring(0, 255);
+    if (candidate.address.country) return candidate.address.country.trim().substring(0, 255);
+  }
+  return candidate.location?.trim()?.substring(0, 255) || null;
+}
+
+function extractSkills(candidate: any): any[] {
+  if (Array.isArray(candidate.skills)) return candidate.skills;
+  if (candidate.skills) return [candidate.skills];
+  
+  // Try to extract from tags or other fields
+  if (candidate.tags && Array.isArray(candidate.tags)) return candidate.tags;
+  if (candidate.keywords && Array.isArray(candidate.keywords)) return candidate.keywords;
+  
+  return [];
+}
+
+function extractExperienceYears(candidate: any): number | null {
+  // Try to extract from experience or work_experience fields
+  if (candidate.experience_years) return parseInt(candidate.experience_years);
+  if (candidate.work_experience && Array.isArray(candidate.work_experience)) {
+    // Calculate years from work experience entries
+    let totalYears = 0;
+    candidate.work_experience.forEach((exp: any) => {
+      if (exp.years) totalYears += parseInt(exp.years) || 0;
+    });
+    return totalYears > 0 ? totalYears : null;
+  }
+  return null;
+}
+
+function extractLinkedInUrl(candidate: any): string | null {
+  if (candidate.linkedin_url) return candidate.linkedin_url;
+  if (candidate.social_profiles && Array.isArray(candidate.social_profiles)) {
+    const linkedinProfile = candidate.social_profiles.find((profile: any) => 
+      profile.type === 'linkedin' || profile.url?.includes('linkedin.com')
+    );
+    return linkedinProfile?.url || null;
+  }
+  return null;
+}
+
+function extractEducation(candidate: any): any[] {
+  if (candidate.education && Array.isArray(candidate.education)) return candidate.education;
+  if (candidate.education) return [candidate.education];
+  if (candidate.schools && Array.isArray(candidate.schools)) return candidate.schools;
+  return [];
+}
+
+function mapWorkableStatusToInterviewStage(state: string): string {
+  switch (state?.toLowerCase()) {
+    case 'active':
+    case 'new':
+      return 'pending';
+    case 'interviewing':
+    case 'in_review':
+      return 'in_progress';
+    case 'hired':
+      return 'passed';
+    case 'rejected':
+    case 'disqualified':
+      return 'failed';
+    default:
+      return 'pending';
+  }
 }
