@@ -270,7 +270,7 @@ export const CandidatesList = () => {
         <div className="rounded-md border bg-primary-blue border-slate-700 shadow-sm">
           <div className="p-4 border-b border-slate-600 bg-primary-blue">
             <p className="text-sm text-slate-300">
-              Showing {candidates.length} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
+              Showing {((currentPage - 1) * candidatesPerPage) + 1} to {Math.min(currentPage * candidatesPerPage, totalCount)} of {totalCount} candidate{totalCount !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
               {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
             </p>
