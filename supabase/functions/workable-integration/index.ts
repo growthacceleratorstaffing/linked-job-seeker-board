@@ -71,7 +71,8 @@ serve(async (req) => {
 
     switch (action) {
       case 'load_all_candidates': {
-        console.log('Starting bulk load of ALL candidates from Workable...');
+        console.log('Growth Accelerator Platform - Complete Workable Candidates Loader');
+        console.log('Loading all 965 candidates from growthacceleratorstaffing.workable.com');
         
         // Log sync start
         const { data: syncLog, error: syncLogError } = await supabase
@@ -98,7 +99,7 @@ serve(async (req) => {
         // Test API connectivity first
         try {
           console.log('Testing API connectivity...');
-          const testResponse = await fetch(`${spiBaseUrl}/candidates?limit=1`, {
+          const testResponse = await fetch(`${spiBaseUrl}/jobs?state=published&limit=1`, {
             method: 'GET',
             headers,
           });
@@ -122,71 +123,240 @@ serve(async (req) => {
           throw new Error(`Cannot connect to Workable API: ${apiError.message}`);
         }
         
-        console.log('🚀 Starting to load all candidates...');
+        console.log('🚀 Starting to load candidates from ALL jobs (published AND archived)...');
         
-        let allCandidates: any[] = [];
-        let page = 1;
-        let hasMorePages = true;
+        // Step 1: Load ALL jobs (published and archived) with pagination
+        console.log('Fetching all jobs from Workable (including archived)...');
+        
+        let allJobs: any[] = [];
+        
+        // Fetch published jobs with pagination
+        let publishedPage = 1;
+        let hasMorePublishedPages = true;
         const limit = 100;
-        let totalLoaded = 0;
-
-        while (hasMorePages) {
+        
+        while (hasMorePublishedPages) {
           try {
-            console.log(`Loading page ${page}...`);
-            const offset = (page - 1) * limit;
-            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&offset=${offset}`;
-            
-            const response = await fetch(candidatesUrl, {
+            console.log(`Loading published jobs page ${publishedPage}...`);
+            const offset = (publishedPage - 1) * limit;
+            const publishedResponse = await fetch(`${spiBaseUrl}/jobs?state=published&limit=${limit}&offset=${offset}`, {
               method: 'GET',
               headers,
             });
 
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error(`Failed to fetch candidates page ${page}:`, {
-                status: response.status,
-                statusText: response.statusText,
+            if (!publishedResponse.ok) {
+              const errorText = await publishedResponse.text();
+              console.error('Failed to fetch published jobs:', {
+                status: publishedResponse.status,
+                statusText: publishedResponse.statusText,
                 body: errorText
               });
-              throw new Error(`API Error on page ${page}: ${response.status} - ${errorText}`);
+              break;
             }
 
-            const responseData = await response.json();
-            const { candidates, paging } = responseData;
+            const publishedData = await publishedResponse.json();
+            const publishedJobs = publishedData.jobs || [];
             
-            if (candidates && candidates.length > 0) {
-              allCandidates.push(...candidates);
-              totalLoaded = allCandidates.length;
-              console.log(`✓ Page ${page}: ${candidates.length} candidates (Total: ${totalLoaded})`);
+            if (publishedJobs.length > 0) {
+              allJobs.push(...publishedJobs);
+              console.log(`✓ Published jobs page ${publishedPage}: ${publishedJobs.length} jobs (Total: ${allJobs.length})`);
               
-              hasMorePages = paging && paging.next;
-              page++;
+              hasMorePublishedPages = publishedData.paging && publishedData.paging.next;
+              publishedPage++;
               
-              // Rate limiting - wait 200ms between requests
+              // Rate limiting
               await new Promise(resolve => setTimeout(resolve, 200));
             } else {
-              hasMorePages = false;
+              hasMorePublishedPages = false;
             }
           } catch (error) {
-            console.error(`❌ Error on page ${page}:`, error);
-            hasMorePages = false;
-            throw error;
+            console.error(`❌ Error on published jobs page ${publishedPage}:`, error);
+            break;
+          }
+        }
+        
+        // Fetch archived jobs with pagination
+        let archivedPage = 1;
+        let hasMoreArchivedPages = true;
+        
+        while (hasMoreArchivedPages) {
+          try {
+            console.log(`Loading archived jobs page ${archivedPage}...`);
+            const offset = (archivedPage - 1) * limit;
+            const archivedResponse = await fetch(`${spiBaseUrl}/jobs?state=archived&limit=${limit}&offset=${offset}`, {
+              method: 'GET',
+              headers,
+            });
+
+            if (!archivedResponse.ok) {
+              const errorText = await archivedResponse.text();
+              console.error('Failed to fetch archived jobs:', {
+                status: archivedResponse.status,
+                statusText: archivedResponse.statusText,
+                body: errorText
+              });
+              break;
+            }
+
+            const archivedData = await archivedResponse.json();
+            const archivedJobs = archivedData.jobs || [];
+            
+            if (archivedJobs.length > 0) {
+              allJobs.push(...archivedJobs);
+              console.log(`✓ Archived jobs page ${archivedPage}: ${archivedJobs.length} jobs (Total: ${allJobs.length})`);
+              
+              hasMoreArchivedPages = archivedData.paging && archivedData.paging.next;
+              archivedPage++;
+              
+              // Rate limiting
+              await new Promise(resolve => setTimeout(resolve, 200));
+            } else {
+              hasMoreArchivedPages = false;
+            }
+          } catch (error) {
+            console.error(`❌ Error on archived jobs page ${archivedPage}:`, error);
+            break;
+          }
+        }
+        
+        console.log(`📋 Found ${allJobs.length} total jobs in Workable (published + archived)`);
+
+        if (allJobs.length === 0) {
+          console.log('No jobs found, completing sync');
+          
+          if (syncLog?.id) {
+            await supabase
+              .from('integration_sync_logs')
+              .update({
+                status: 'completed_with_warnings',
+                completed_at: new Date().toISOString(),
+                synced_data: { 
+                  totalCandidates: 0, 
+                  syncedCandidates: 0,
+                  jobsProcessed: 0,
+                  message: 'No jobs found to sync candidates from'
+                }
+              })
+              .eq('id', syncLog.id);
+          }
+
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              totalCandidates: 0,
+              syncedCandidates: 0,
+              jobsProcessed: 0,
+              message: 'No jobs found to sync candidates from'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Step 2: Load ALL candidates from ALL jobs with pagination per job
+        let allCandidates: any[] = [];
+        let totalCandidates = 0;
+        let jobsWithCandidates = 0;
+        let errors: string[] = [];
+        const candidateIds = new Set(); // To avoid duplicates
+
+        console.log('🚀 Starting to load candidates from all jobs...');
+        
+        // Process jobs in smaller batches to avoid overwhelming the API
+        const batchSize = 3;
+        for (let i = 0; i < allJobs.length; i += batchSize) {
+          const batch = allJobs.slice(i, i + batchSize);
+          console.log(`Processing job batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allJobs.length/batchSize)}`);
+          
+          for (const job of batch) {
+            try {
+              console.log(`Processing job: ${job.title} (ID: ${job.id})`);
+              
+              // Load ALL candidates for this job with pagination
+              let jobPage = 1;
+              let hasMoreJobPages = true;
+              let jobCandidates: any[] = [];
+              
+              while (hasMoreJobPages) {
+                try {
+                  const offset = (jobPage - 1) * limit;
+                  const candidatesUrl = `${spiBaseUrl}/jobs/${job.id}/candidates?limit=${limit}&offset=${offset}`;
+                  console.log(`Fetching candidates page ${jobPage} from: ${candidatesUrl}`);
+                  
+                  const candidatesResponse = await fetch(candidatesUrl, {
+                    method: 'GET',
+                    headers,
+                  });
+
+                  if (!candidatesResponse.ok) {
+                    const errorText = await candidatesResponse.text();
+                    console.log(`Failed to fetch candidates for job ${job.id} page ${jobPage}: ${candidatesResponse.status} - ${errorText}`);
+                    errors.push(`Job ${job.title} page ${jobPage}: HTTP ${candidatesResponse.status}`);
+                    break;
+                  }
+
+                  const candidatesData = await candidatesResponse.json();
+                  const pageCandidates = candidatesData.candidates || [];
+                  
+                  if (pageCandidates.length > 0) {
+                    jobCandidates.push(...pageCandidates);
+                    console.log(`✓ Job ${job.title} page ${jobPage}: ${pageCandidates.length} candidates (Job total: ${jobCandidates.length})`);
+                    
+                    hasMoreJobPages = candidatesData.paging && candidatesData.paging.next;
+                    jobPage++;
+                    
+                    // Rate limiting between candidate page requests
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                  } else {
+                    hasMoreJobPages = false;
+                  }
+                } catch (pageError) {
+                  console.error(`Failed to fetch candidates page ${jobPage} for job ${job.id}:`, pageError);
+                  errors.push(`Job ${job.title} page ${jobPage}: ${pageError.message}`);
+                  break;
+                }
+              }
+              
+              if (jobCandidates.length > 0) {
+                console.log(`Found ${jobCandidates.length} total candidates for job: ${job.title}`);
+                jobsWithCandidates++;
+                
+                // Add unique candidates (avoid duplicates across jobs)
+                for (const candidate of jobCandidates) {
+                  if (!candidateIds.has(candidate.id)) {
+                    candidateIds.add(candidate.id);
+                    allCandidates.push(candidate);
+                  }
+                }
+                
+                totalCandidates += jobCandidates.length;
+              } else {
+                console.log(`No candidates found for job: ${job.title}`);
+              }
+            } catch (jobError) {
+              console.error(`Failed to process job ${job.id}:`, jobError);
+              errors.push(`Job processing error: ${jobError.message}`);
+            }
+          }
+
+          // Add delay between job batches to avoid rate limiting
+          if (i + batchSize < allJobs.length) {
+            console.log('Waiting before next job batch...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
 
-        console.log(`🎉 Successfully loaded ${totalLoaded} candidates from Workable!`);
+        console.log(`🎉 Successfully loaded ${allCandidates.length} unique candidates from ${allJobs.length} jobs (${jobsWithCandidates} jobs had candidates)`);
 
-        // Now sync all candidates to Supabase
+        // Step 3: Sync all candidates to Supabase
         let syncedCount = 0;
-        let errors: string[] = [];
         
         console.log('Starting to sync candidates to Supabase...');
         
         // Process candidates in batches to avoid overwhelming the database
-        const batchSize = 10;
-        for (let i = 0; i < allCandidates.length; i += batchSize) {
-          const batch = allCandidates.slice(i, i + batchSize);
-          console.log(`Syncing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allCandidates.length/batchSize)}`);
+        const syncBatchSize = 10;
+        for (let i = 0; i < allCandidates.length; i += syncBatchSize) {
+          const batch = allCandidates.slice(i, i + syncBatchSize);
+          console.log(`Syncing batch ${Math.floor(i/syncBatchSize) + 1}/${Math.ceil(allCandidates.length/syncBatchSize)}`);
           
           for (const candidate of batch) {
             try {
@@ -198,33 +368,46 @@ serve(async (req) => {
             }
           }
           
-          // Small delay between batches
-          if (i + batchSize < allCandidates.length) {
+          // Small delay between sync batches
+          if (i + syncBatchSize < allCandidates.length) {
             await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
 
-        // Generate statistics
+        // Generate statistics following your original script format
         const withEmail = allCandidates.filter(c => c.email).length;
         const withPhone = allCandidates.filter(c => c.phone).length;
+        const withResume = allCandidates.filter(c => c.resume_url).length;
         const activeStatus = allCandidates.filter(c => c.state === 'active').length;
 
         const stats = {
-          total_candidates: totalLoaded,
+          total_candidates: allCandidates.length,
           synced_candidates: syncedCount,
+          jobs_processed: allJobs.length,
+          jobs_with_candidates: jobsWithCandidates,
           data_quality: {
             with_email: withEmail,
             with_phone: withPhone,
+            with_resume: withResume,
             active_status: activeStatus
           },
           percentages: {
-            email_coverage: Math.round(withEmail / totalLoaded * 100),
-            phone_coverage: Math.round(withPhone / totalLoaded * 100),
-            active_candidates: Math.round(activeStatus / totalLoaded * 100)
+            email_coverage: Math.round(withEmail / allCandidates.length * 100),
+            phone_coverage: Math.round(withPhone / allCandidates.length * 100),
+            resume_coverage: Math.round(withResume / allCandidates.length * 100),
+            active_candidates: Math.round(activeStatus / allCandidates.length * 100)
           }
         };
 
-        console.log('📊 Bulk Load Statistics:', stats);
+        console.log('📊 Growth Accelerator Platform - Candidate Statistics');
+        console.log('='.repeat(60));
+        console.log(`Total Candidates: ${stats.total_candidates}`);
+        console.log(`API Source: ${cleanSubdomain}.workable.com`);
+        console.log(`Loaded at: ${new Date().toLocaleString()}`);
+        console.log('Data Quality:');
+        console.log(`  Email: ${stats.data_quality.with_email} (${stats.percentages.email_coverage}%)`);
+        console.log(`  Phone: ${stats.data_quality.with_phone} (${stats.percentages.phone_coverage}%)`);
+        console.log(`  Resume: ${stats.data_quality.with_resume} (${stats.percentages.resume_coverage}%)`);
 
         // Update sync log with completion
         if (syncLog?.id) {
@@ -234,9 +417,10 @@ serve(async (req) => {
               status: syncedCount > 0 ? 'success' : 'completed_with_warnings',
               completed_at: new Date().toISOString(),
               synced_data: { 
-                totalCandidates: totalLoaded,
+                totalCandidates: allCandidates.length,
                 syncedCandidates: syncedCount,
-                pagesProcessed: page - 1,
+                jobsProcessed: allJobs.length,
+                jobsWithCandidates,
                 stats,
                 errors: errors.slice(0, 10),
                 timestamp: new Date().toISOString()
@@ -256,12 +440,13 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            totalCandidates: totalLoaded,
+            totalCandidates: allCandidates.length,
             syncedCandidates: syncedCount,
-            pagesProcessed: page - 1,
+            jobsProcessed: allJobs.length,
+            jobsWithCandidates,
             stats,
             errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
-            message: `🎉 Successfully loaded and synced ${syncedCount} out of ${totalLoaded} candidates from Workable!`
+            message: `🎉 Successfully loaded and synced ${syncedCount} out of ${allCandidates.length} candidates from ${allJobs.length} Workable jobs (${jobsWithCandidates} jobs had candidates)!`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
