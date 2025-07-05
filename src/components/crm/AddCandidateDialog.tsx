@@ -62,7 +62,7 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
     },
     onSuccess: (data) => {
       toast.success("Candidate added successfully! 🎉", {
-        description: "The candidate is now visible in your candidate list and will sync with Workable & JobAdder when possible."
+        description: "The candidate is now visible in your candidate list and will sync with external platforms when possible."
       });
       setFormData({ 
         name: "", 
@@ -96,7 +96,7 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
   const syncWithExternalPlatforms = async (candidateData: any) => {
     const syncPromises = [];
 
-    // Try to sync with JobAdder
+    // Try to sync with external platforms
     syncPromises.push(
       supabase.functions.invoke('jobadder-integration', {
         body: { 
@@ -104,12 +104,12 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
           candidateData: candidateData
         }
       }).catch(error => {
-        console.warn('JobAdder sync failed:', error);
-        return { success: false, platform: 'JobAdder', error };
+        console.warn('External platform sync failed:', error);
+        return { success: false, platform: 'External Platform 1', error };
       })
     );
 
-    // Try to sync with Workable  
+    // Try to sync with external platforms
     syncPromises.push(
       supabase.functions.invoke('workable-integration', {
         body: { 
@@ -117,8 +117,8 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
           candidateData: candidateData
         }
       }).catch(error => {
-        console.warn('Workable sync failed:', error);
-        return { success: false, platform: 'Workable', error };
+        console.warn('External platform sync failed:', error);
+        return { success: false, platform: 'External Platform 2', error };
       })
     );
 
@@ -127,7 +127,7 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
     
     // Log results for debugging
     results.forEach((result, index) => {
-      const platform = index === 0 ? 'JobAdder' : 'Workable';
+      const platform = index === 0 ? 'External Platform 1' : 'External Platform 2';
       if (result.status === 'fulfilled') {
         console.log(`${platform} sync result:`, result.value);
       } else {
@@ -151,7 +151,7 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
         <DialogHeader>
           <DialogTitle>Add New Candidate</DialogTitle>
           <DialogDescription>
-            Add a new candidate to your database. They will appear immediately in your candidate list and sync with Workable & JobAdder when possible.
+            Add a new candidate to your database. They will appear immediately in your candidate list and sync with external platforms when possible.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

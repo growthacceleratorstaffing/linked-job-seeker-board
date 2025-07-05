@@ -198,7 +198,7 @@ const CRM = () => {
             CRM Dashboard
           </h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Your Workable candidates automatically synced and ready to manage
+            Your candidates automatically synced and ready to manage
           </p>
         </header>
 
@@ -243,9 +243,9 @@ const CRM = () => {
             </CardHeader>
             <CardContent>
               <div className="text-sm font-bold text-green-400">
-                Workable API v3
+                External API v3
               </div>
-              <p className="text-xs text-slate-400">growthacceleratorstaffing</p>
+              <p className="text-xs text-slate-400">Platform Integration</p>
             </CardContent>
           </Card>
 
@@ -302,24 +302,24 @@ const CRM = () => {
                         <span className="text-slate-400">With Company:</span>
                         <span className="text-white">{stats.qualityMetrics?.withCompany || 0} ({stats.percentages?.company || 0}%)</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Workable ID:</span>
-                        <span className="text-blue-400">{stats.qualityMetrics?.withWorkableId || 0} ({stats.percentages?.workableId || 0}%)</span>
-                      </div>
+                       <div className="flex justify-between">
+                         <span className="text-slate-400">Platform ID:</span>
+                         <span className="text-blue-400">{stats.qualityMetrics?.withWorkableId || 0} ({stats.percentages?.workableId || 0}%)</span>
+                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium text-slate-300">Platform Information</h4>
-                    <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">API Source:</span>
-                      <span className="text-white">growthacceleratorstaffing</span>
-                    </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">API Version:</span>
-                        <span className="text-white">SPI v3</span>
-                      </div>
+                     <div className="space-y-1 text-sm">
+                     <div className="flex justify-between">
+                       <span className="text-slate-400">API Source:</span>
+                       <span className="text-white">External Platform</span>
+                     </div>
+                       <div className="flex justify-between">
+                         <span className="text-slate-400">API Version:</span>
+                         <span className="text-white">API v3</span>
+                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Implementation:</span>
                         <span className="text-secondary-pink">Supabase Edge Functions</span>
@@ -363,10 +363,10 @@ const CRM = () => {
           <div className="mb-8">
             <Card className="bg-slate-800 border-slate-600">
               <CardContent className="pt-6">
-                <div className="flex items-center justify-center gap-3">
-                  <Loader2 className="w-5 h-5 animate-spin text-secondary-pink" />
-                  <p className="text-white">Loading all candidates from Workable (including archived jobs)...</p>
-                </div>
+                 <div className="flex items-center justify-center gap-3">
+                   <Loader2 className="w-5 h-5 animate-spin text-secondary-pink" />
+                   <p className="text-white">Loading all candidates from external platform...</p>
+                 </div>
                 <p className="text-xs text-slate-400 text-center mt-2">
                   This may take a few minutes to complete. Please wait...
                 </p>

@@ -71,7 +71,7 @@ export const VacancyGenerator = () => {
     }
   };
 
-  const publishToWorkable = async () => {
+  const publishJob = async () => {
     // Validate required fields
     if (!employmentDetails.jobTitle.trim()) {
       toast({
@@ -117,14 +117,14 @@ export const VacancyGenerator = () => {
 
       toast({
         title: "Job created as draft! 📝",
-        description: data.message || "Your vacancy has been created in Workable.",
+        description: data.message || "Your vacancy has been created successfully.",
       });
 
     } catch (error) {
-      console.error('Error publishing to Workable:', error);
+      console.error('Error publishing job:', error);
       toast({
         title: "Publishing failed",
-        description: error instanceof Error ? error.message : "Failed to publish job to Workable.",
+        description: error instanceof Error ? error.message : "Failed to publish job.",
         variant: "destructive",
       });
     } finally {
@@ -232,7 +232,7 @@ export const VacancyGenerator = () => {
             </Button>
             
             <Button
-              onClick={publishToWorkable}
+              onClick={publishJob}
               disabled={isPublishing}
               className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white font-medium py-4 text-base"
             >
