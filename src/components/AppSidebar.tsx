@@ -56,7 +56,7 @@ const AppSidebar = () => {
   ];
 
   const vacancyItems = [
-    { path: '/jobs', label: 'Vacancies', icon: Briefcase },
+    { path: '/jobs', label: 'Jobs', icon: Briefcase },
   ];
 
   const staffingItems = [
@@ -142,10 +142,10 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Vacancies Section */}
+        {/* Jobs Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-            VACANCIES
+            JOBS
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
