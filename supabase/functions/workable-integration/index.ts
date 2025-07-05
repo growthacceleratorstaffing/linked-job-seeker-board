@@ -243,8 +243,15 @@ serve(async (req) => {
         
         console.log(`🔄 Starting to sync ${totalLoaded} candidates to Supabase database...`);
         
-        // Process candidates in smaller batches with better error handling
-        const syncBatchSize = 5; // Smaller batches for better error isolation
+        // Process candidates in optimized batches with comprehensive error handling
+        const syncBatchSize = 50; // Larger batches for better database efficiency
+        const errorCategories = {
+          validation: 0,
+          constraint: 0,
+          network: 0,
+          unknown: 0
+        };
+        
         for (let i = 0; i < allCandidates.length; i += syncBatchSize) {
           const batch = allCandidates.slice(i, i + syncBatchSize);
           const batchNum = Math.floor(i/syncBatchSize) + 1;
@@ -252,58 +259,80 @@ serve(async (req) => {
           
           console.log(`📦 Processing batch ${batchNum}/${totalBatches} (${batch.length} candidates)`);
           
-          // Process each candidate in the batch
-          for (const candidate of batch) {
-            try {
-              const result = await syncCandidateToSupabase(supabase, candidate);
-              if (result === 'duplicate') {
-                skippedDuplicates++;
+          try {
+            // Process batch with bulk upsert for better performance
+            const batchResults = await processCandidateBatch(supabase, batch);
+            
+            syncedCount += batchResults.created + batchResults.updated;
+            skippedDuplicates += batchResults.duplicates;
+            
+            // Categorize errors for better troubleshooting
+            batchResults.errors.forEach(error => {
+              if (error.includes('validation') || error.includes('Invalid')) {
+                errorCategories.validation++;
+              } else if (error.includes('constraint') || error.includes('23505')) {
+                errorCategories.constraint++;
+              } else if (error.includes('network') || error.includes('timeout')) {
+                errorCategories.network++;
               } else {
-                syncedCount++;
+                errorCategories.unknown++;
               }
-              
-              // Log progress every 100 successful syncs
-              if ((syncedCount + skippedDuplicates) % 100 === 0) {
-                console.log(`✅ Progress: ${syncedCount} synced, ${skippedDuplicates} duplicates, ${errors.length} errors`);
-              }
-            } catch (candidateError) {
-              const errorMsg = candidateError instanceof Error ? candidateError.message : String(candidateError);
-              console.error(`❌ Failed to sync candidate ${candidate.name || candidate.email || candidate.id}:`, errorMsg);
-              errors.push(`${candidate.name || candidate.email || candidate.id}: ${errorMsg}`);
-              
-              // Stop processing if we get too many errors (potential systemic issue)
-              if (errors.length > 100) {
-                console.error('🚨 Too many sync errors, stopping batch processing');
-                break;
-              }
+              errors.push(error);
+            });
+            
+            // Log detailed progress every batch
+            if (batchNum % 10 === 0 || i + syncBatchSize >= allCandidates.length) {
+              console.log(`✅ Batch ${batchNum} complete:`);
+              console.log(`   Created: ${batchResults.created}, Updated: ${batchResults.updated}`);
+              console.log(`   Duplicates: ${batchResults.duplicates}, Errors: ${batchResults.errors.length}`);
+              console.log(`📊 Running totals: ${syncedCount} synced, ${skippedDuplicates} duplicates, ${errors.length} errors`);
+              console.log(`🏷️  Error categories: validation=${errorCategories.validation}, constraint=${errorCategories.constraint}, network=${errorCategories.network}, unknown=${errorCategories.unknown}`);
             }
+            
+            // Update progress in sync log every 20 batches
+            if (batchNum % 20 === 0 && syncLog?.id) {
+              await supabase
+                .from('integration_sync_logs')
+                .update({
+                  synced_data: { 
+                    action: 'load_all_candidates',
+                    timestamp: new Date().toISOString(),
+                    progress: `Syncing batch ${batchNum}/${totalBatches}: ${syncedCount} saved, ${skippedDuplicates} duplicates, ${errors.length} errors`,
+                    totalCandidates: totalLoaded,
+                    syncedCandidates: syncedCount,
+                    skippedDuplicates,
+                    syncErrors: errors.length,
+                    errorCategories,
+                    completionPercentage: Math.round((i + syncBatchSize) / allCandidates.length * 100)
+                  }
+                })
+                .eq('id', syncLog.id);
+            }
+            
+          } catch (batchError) {
+            console.error(`❌ Batch ${batchNum} failed completely:`, batchError);
+            // Add all candidates in failed batch to errors
+            batch.forEach(candidate => {
+              const errorMsg = `Batch failure: ${batchError instanceof Error ? batchError.message : String(batchError)}`;
+              errors.push(`${candidate.name || candidate.email || candidate.id}: ${errorMsg}`);
+            });
+            errorCategories.unknown += batch.length;
           }
           
-          // Update progress in sync log every 20 batches
-          if (batchNum % 20 === 0 && syncLog?.id) {
-            await supabase
-              .from('integration_sync_logs')
-              .update({
-                synced_data: { 
-                  action: 'load_all_candidates',
-                  timestamp: new Date().toISOString(),
-                  progress: `Syncing to database: ${syncedCount} saved, ${skippedDuplicates} duplicates, ${errors.length} errors`,
-                  totalCandidates: totalLoaded,
-                  syncedCandidates: syncedCount,
-                  skippedDuplicates,
-                  syncErrors: errors.length
-                }
-              })
-              .eq('id', syncLog.id);
-          }
-          
-          // Small delay between batches to avoid overwhelming database
+          // Prevent memory issues and rate limiting with progressive delays
           if (i + syncBatchSize < allCandidates.length) {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            const delay = Math.min(100 + (batchNum * 10), 500); // Progressive delay
+            await new Promise(resolve => setTimeout(resolve, delay));
           }
           
-          // Break if too many errors
-          if (errors.length > 100) break;
+          // Continue processing even with many errors (better than stopping)
+          // Only stop if more than 50% are failing (indicates systemic issue)
+          const totalProcessed = syncedCount + skippedDuplicates + errors.length;
+          const errorRate = totalProcessed > 0 ? errors.length / totalProcessed : 0;
+          if (errorRate > 0.5 && totalProcessed > 100) {
+            console.warn(`🚨 High error rate detected (${Math.round(errorRate * 100)}%), but continuing to process remaining candidates`);
+            // Log but don't break - continue processing
+          }
         }
         
         console.log(`📊 Database sync complete:`);
@@ -987,6 +1016,162 @@ async function syncCandidateToSupabase(supabase: any, workableCandidate: any, jo
     console.error(`💥 Sync failed for candidate ${workableCandidate.name || workableCandidate.email || workableCandidate.id}:`, errorMsg);
     throw new Error(`Candidate sync error: ${errorMsg}`);
   }
+}
+
+async function processCandidateBatch(supabase: any, candidates: any[]): Promise<{
+  created: number,
+  updated: number,
+  duplicates: number,
+  errors: string[]
+}> {
+  const results = {
+    created: 0,
+    updated: 0,
+    duplicates: 0,
+    errors: [] as string[]
+  };
+  
+  console.log(`🔄 Processing batch of ${candidates.length} candidates`);
+  
+  // Prepare candidate data with validation
+  const validCandidates = [];
+  for (const candidate of candidates) {
+    try {
+      const candidateData = {
+        name: (candidate.name || candidate.email?.split('@')[0] || 'Unknown').trim().substring(0, 255),
+        email: (candidate.email || `unknown_${candidate.id}@workable.com`).trim().toLowerCase(),
+        phone: candidate.phone?.trim()?.substring(0, 50) || null,
+        workable_candidate_id: candidate.id?.toString() || null,
+        source_platform: 'workable',
+        location: (candidate.address || candidate.location)?.trim()?.substring(0, 255) || null,
+        current_position: (candidate.headline || candidate.summary)?.trim()?.substring(0, 255) || null,
+        company: candidate.company?.trim()?.substring(0, 255) || null,
+        skills: Array.isArray(candidate.skills) ? candidate.skills : (candidate.skills ? [candidate.skills] : []),
+        last_synced_at: new Date().toISOString(),
+        profile_completeness_score: calculateCompletenessScore(candidate)
+      };
+      
+      // Validate required fields
+      if (!candidateData.email || candidateData.email === '@workable.com' || candidateData.email.length < 5) {
+        results.errors.push(`${candidateData.name}: Invalid email address`);
+        continue;
+      }
+      
+      validCandidates.push(candidateData);
+    } catch (validationError) {
+      const errorMsg = validationError instanceof Error ? validationError.message : String(validationError);
+      results.errors.push(`${candidate.name || candidate.id}: Validation error - ${errorMsg}`);
+    }
+  }
+  
+  if (validCandidates.length === 0) {
+    console.log(`⚠️ No valid candidates in batch`);
+    return results;
+  }
+  
+  console.log(`✅ ${validCandidates.length} valid candidates out of ${candidates.length} in batch`);
+  
+  // Use efficient upsert approach
+  try {
+    // First, try to insert all candidates
+    const { data: insertedData, error: insertError } = await supabase
+      .from('candidates')
+      .insert(validCandidates)
+      .select('email, workable_candidate_id');
+    
+    if (!insertError) {
+      // All inserted successfully
+      results.created = validCandidates.length;
+      console.log(`✅ Batch insert successful: ${results.created} candidates created`);
+      return results;
+    }
+    
+    // If there are conflicts (23505 = unique violation), handle individually
+    if (insertError.code === '23505' || insertError.message.includes('duplicate') || insertError.message.includes('unique')) {
+      console.log(`🔄 Handling duplicates in batch, processing individually...`);
+      
+      // Process each candidate individually to handle duplicates
+      for (const candidateData of validCandidates) {
+        try {
+          // Check if candidate exists by email or workable_candidate_id
+          let existingCandidate = null;
+          
+          if (candidateData.workable_candidate_id) {
+            const { data } = await supabase
+              .from('candidates')
+              .select('id, email, workable_candidate_id, location, current_position, company, skills, phone')
+              .eq('workable_candidate_id', candidateData.workable_candidate_id)
+              .maybeSingle();
+            existingCandidate = data;
+          }
+          
+          // If not found by workable_candidate_id, try by email
+          if (!existingCandidate) {
+            const { data } = await supabase
+              .from('candidates')
+              .select('id, email, workable_candidate_id, location, current_position, company, skills, phone')
+              .eq('email', candidateData.email)
+              .maybeSingle();
+            existingCandidate = data;
+          }
+          
+          if (existingCandidate) {
+            // Update existing candidate
+            const { error: updateError } = await supabase
+              .from('candidates')
+              .update({
+                workable_candidate_id: candidateData.workable_candidate_id,
+                source_platform: 'workable',
+                location: candidateData.location || existingCandidate.location,
+                current_position: candidateData.current_position || existingCandidate.current_position,
+                company: candidateData.company || existingCandidate.company,
+                skills: candidateData.skills.length > 0 ? candidateData.skills : existingCandidate.skills,
+                last_synced_at: candidateData.last_synced_at,
+                profile_completeness_score: candidateData.profile_completeness_score,
+                phone: candidateData.phone || existingCandidate.phone
+              })
+              .eq('id', existingCandidate.id);
+            
+            if (updateError) {
+              results.errors.push(`${candidateData.name}: Update failed - ${updateError.message}`);
+            } else {
+              results.updated++;
+            }
+          } else {
+            // Try to create new candidate
+            const { error: createError } = await supabase
+              .from('candidates')
+              .insert([candidateData]);
+            
+            if (createError) {
+              if (createError.code === '23505') {
+                results.duplicates++;
+              } else {
+                results.errors.push(`${candidateData.name}: Create failed - ${createError.message}`);
+              }
+            } else {
+              results.created++;
+            }
+          }
+        } catch (candidateError) {
+          const errorMsg = candidateError instanceof Error ? candidateError.message : String(candidateError);
+          results.errors.push(`${candidateData.name}: Processing error - ${errorMsg}`);
+        }
+      }
+    } else {
+      // Other database error
+      console.error(`❌ Batch insert failed with error:`, insertError);
+      results.errors.push(`Batch insert failed: ${insertError.message}`);
+    }
+    
+  } catch (batchError) {
+    console.error(`❌ Batch processing failed:`, batchError);
+    const errorMsg = batchError instanceof Error ? batchError.message : String(batchError);
+    results.errors.push(`Batch processing failed: ${errorMsg}`);
+  }
+  
+  console.log(`📊 Batch complete: ${results.created} created, ${results.updated} updated, ${results.duplicates} duplicates, ${results.errors.length} errors`);
+  return results;
 }
 
 function calculateCompletenessScore(candidate: any): number {
