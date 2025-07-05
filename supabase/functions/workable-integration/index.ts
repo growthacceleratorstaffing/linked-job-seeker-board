@@ -163,8 +163,8 @@ serve(async (req) => {
               hasMorePages = paging && paging.next;
               page++;
               
-              // Rate limiting - wait 200ms between requests
-              await new Promise(resolve => setTimeout(resolve, 200));
+              // Rate limiting - wait 1000ms between requests to avoid 429 errors
+              await new Promise(resolve => setTimeout(resolve, 1000));
             } else {
               console.log(`No more candidates found on page ${page}`);
               hasMorePages = false;
