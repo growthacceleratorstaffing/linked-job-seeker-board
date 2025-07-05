@@ -235,6 +235,43 @@ const Auth = () => {
                   </div>
                 </div>
 
+                {/* JobAdder OAuth Button */}
+                <Button
+                  onClick={async () => {
+                    try {
+                      const { data, error } = await supabase.functions.invoke('jobadder-oauth', {
+                        body: { 
+                          action: 'get_auth_url',
+                          redirectUri: window.location.origin
+                        }
+                      });
+
+                      if (error) throw error;
+
+                      if (data?.authUrl) {
+                        window.location.href = data.authUrl;
+                      } else {
+                        throw new Error('Failed to get JobAdder authorization URL');
+                      }
+                    } catch (error: any) {
+                      setError(error.message || 'Failed to initiate JobAdder authentication');
+                    }
+                  }}
+                  className="w-full bg-gradient-to-r from-secondary-pink to-primary-blue hover:from-secondary-pink/80 hover:to-primary-blue/80 mb-4"
+                >
+                  <Building className="mr-2 h-4 w-4" />
+                  Connect with JobAdder
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-slate-600" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-slate-800 px-2 text-slate-400">Or create account manually</span>
+                  </div>
+                </div>
+
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signup-name" className="text-slate-300">Full Name</Label>
