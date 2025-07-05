@@ -36,7 +36,7 @@ const Auth = () => {
     
     setIsValidatingEmail(true);
     try {
-      const { data, error } = await supabase.functions.invoke('validate-email', {
+      const { data, error } = await supabase.functions.invoke('validate-jobadder-email', {
         body: { email: emailToCheck }
       });
 
@@ -219,13 +219,13 @@ const Auth = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <h3 className="text-white font-medium">Workable Employee Access</h3>
+                      <h3 className="text-white font-medium">JobAdder Employee Access</h3>
                       <p className="text-slate-300 text-sm">
-                        Only employees registered in Workable can create accounts. Your access permissions are based on your Workable profile.
+                        Only employees registered in JobAdder can create accounts. Your access permissions are based on your JobAdder profile.
                       </p>
                       <div className="flex items-center space-x-2 text-xs text-slate-400">
                         <CheckCircle className="w-3 h-3" />
-                        <span>Auto-linked to Workable profile</span>
+                        <span>Auto-linked to JobAdder profile</span>
                       </div>
                       <div className="flex items-center space-x-2 text-xs text-slate-400">
                         <CheckCircle className="w-3 h-3" />
