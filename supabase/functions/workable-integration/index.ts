@@ -99,13 +99,11 @@ serve(async (req) => {
         // Test API connectivity first
         try {
           console.log('Testing API connectivity...');
-          const testResponse = await fetch(`${spiBaseUrl}/jobs?state=published&limit=1`, {
+          const testResponse = await fetch(`${spiBaseUrl}/candidates?limit=1`, {
             method: 'GET',
             headers,
           });
 
-          console.log('API test response status:', testResponse.status);
-          
           if (!testResponse.ok) {
             const errorText = await testResponse.text();
             console.error('API test failed:', {
@@ -117,238 +115,72 @@ serve(async (req) => {
           }
 
           const testData = await testResponse.json();
-          console.log('API test successful, sample data available');
+          console.log('API test successful, found candidates');
         } catch (apiError) {
           console.error('API connectivity test failed:', apiError);
           throw new Error(`Cannot connect to Workable API: ${apiError.message}`);
         }
         
-        console.log('🚀 Starting to load candidates from ALL jobs (published AND archived)...');
+        console.log('🚀 Starting to load all candidates with pagination...');
         
-        // Step 1: Load ALL jobs (published and archived) with pagination
-        console.log('Fetching all jobs from Workable (including archived)...');
-        
-        let allJobs: any[] = [];
-        
-        // Fetch published jobs with pagination
-        let publishedPage = 1;
-        let hasMorePublishedPages = true;
-        const limit = 100;
-        
-        while (hasMorePublishedPages) {
-          try {
-            console.log(`Loading published jobs page ${publishedPage}...`);
-            const offset = (publishedPage - 1) * limit;
-            const publishedResponse = await fetch(`${spiBaseUrl}/jobs?state=published&limit=${limit}&offset=${offset}`, {
-              method: 'GET',
-              headers,
-            });
-
-            if (!publishedResponse.ok) {
-              const errorText = await publishedResponse.text();
-              console.error('Failed to fetch published jobs:', {
-                status: publishedResponse.status,
-                statusText: publishedResponse.statusText,
-                body: errorText
-              });
-              break;
-            }
-
-            const publishedData = await publishedResponse.json();
-            const publishedJobs = publishedData.jobs || [];
-            
-            if (publishedJobs.length > 0) {
-              allJobs.push(...publishedJobs);
-              console.log(`✓ Published jobs page ${publishedPage}: ${publishedJobs.length} jobs (Total: ${allJobs.length})`);
-              
-              hasMorePublishedPages = publishedData.paging && publishedData.paging.next;
-              publishedPage++;
-              
-              // Rate limiting
-              await new Promise(resolve => setTimeout(resolve, 200));
-            } else {
-              hasMorePublishedPages = false;
-            }
-          } catch (error) {
-            console.error(`❌ Error on published jobs page ${publishedPage}:`, error);
-            break;
-          }
-        }
-        
-        // Fetch archived jobs with pagination
-        let archivedPage = 1;
-        let hasMoreArchivedPages = true;
-        
-        while (hasMoreArchivedPages) {
-          try {
-            console.log(`Loading archived jobs page ${archivedPage}...`);
-            const offset = (archivedPage - 1) * limit;
-            const archivedResponse = await fetch(`${spiBaseUrl}/jobs?state=archived&limit=${limit}&offset=${offset}`, {
-              method: 'GET',
-              headers,
-            });
-
-            if (!archivedResponse.ok) {
-              const errorText = await archivedResponse.text();
-              console.error('Failed to fetch archived jobs:', {
-                status: archivedResponse.status,
-                statusText: archivedResponse.statusText,
-                body: errorText
-              });
-              break;
-            }
-
-            const archivedData = await archivedResponse.json();
-            const archivedJobs = archivedData.jobs || [];
-            
-            if (archivedJobs.length > 0) {
-              allJobs.push(...archivedJobs);
-              console.log(`✓ Archived jobs page ${archivedPage}: ${archivedJobs.length} jobs (Total: ${allJobs.length})`);
-              
-              hasMoreArchivedPages = archivedData.paging && archivedData.paging.next;
-              archivedPage++;
-              
-              // Rate limiting
-              await new Promise(resolve => setTimeout(resolve, 200));
-            } else {
-              hasMoreArchivedPages = false;
-            }
-          } catch (error) {
-            console.error(`❌ Error on archived jobs page ${archivedPage}:`, error);
-            break;
-          }
-        }
-        
-        console.log(`📋 Found ${allJobs.length} total jobs in Workable (published + archived)`);
-
-        if (allJobs.length === 0) {
-          console.log('No jobs found, completing sync');
-          
-          if (syncLog?.id) {
-            await supabase
-              .from('integration_sync_logs')
-              .update({
-                status: 'completed_with_warnings',
-                completed_at: new Date().toISOString(),
-                synced_data: { 
-                  totalCandidates: 0, 
-                  syncedCandidates: 0,
-                  jobsProcessed: 0,
-                  message: 'No jobs found to sync candidates from'
-                }
-              })
-              .eq('id', syncLog.id);
-          }
-
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              totalCandidates: 0,
-              syncedCandidates: 0,
-              jobsProcessed: 0,
-              message: 'No jobs found to sync candidates from'
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Step 2: Load ALL candidates from ALL jobs with pagination per job
         let allCandidates: any[] = [];
-        let totalCandidates = 0;
-        let jobsWithCandidates = 0;
-        let errors: string[] = [];
-        const candidateIds = new Set(); // To avoid duplicates
+        let page = 1;
+        let hasMorePages = true;
+        const limit = 100;
+        let totalLoaded = 0;
 
-        console.log('🚀 Starting to load candidates from all jobs...');
-        
-        // Process jobs in smaller batches to avoid overwhelming the API
-        const batchSize = 3;
-        for (let i = 0; i < allJobs.length; i += batchSize) {
-          const batch = allJobs.slice(i, i + batchSize);
-          console.log(`Processing job batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allJobs.length/batchSize)}`);
-          
-          for (const job of batch) {
-            try {
-              console.log(`Processing job: ${job.title} (ID: ${job.id})`);
-              
-              // Load ALL candidates for this job with pagination
-              let jobPage = 1;
-              let hasMoreJobPages = true;
-              let jobCandidates: any[] = [];
-              
-              while (hasMoreJobPages) {
-                try {
-                  const offset = (jobPage - 1) * limit;
-                  const candidatesUrl = `${spiBaseUrl}/jobs/${job.id}/candidates?limit=${limit}&offset=${offset}`;
-                  console.log(`Fetching candidates page ${jobPage} from: ${candidatesUrl}`);
-                  
-                  const candidatesResponse = await fetch(candidatesUrl, {
-                    method: 'GET',
-                    headers,
-                  });
+        // Load all candidates using direct /candidates endpoint with pagination
+        while (hasMorePages) {
+          try {
+            console.log(`Loading page ${page}...`);
+            const offset = (page - 1) * limit;
+            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&offset=${offset}`;
+            
+            const response = await fetch(candidatesUrl, {
+              method: 'GET',
+              headers,
+            });
 
-                  if (!candidatesResponse.ok) {
-                    const errorText = await candidatesResponse.text();
-                    console.log(`Failed to fetch candidates for job ${job.id} page ${jobPage}: ${candidatesResponse.status} - ${errorText}`);
-                    errors.push(`Job ${job.title} page ${jobPage}: HTTP ${candidatesResponse.status}`);
-                    break;
-                  }
-
-                  const candidatesData = await candidatesResponse.json();
-                  const pageCandidates = candidatesData.candidates || [];
-                  
-                  if (pageCandidates.length > 0) {
-                    jobCandidates.push(...pageCandidates);
-                    console.log(`✓ Job ${job.title} page ${jobPage}: ${pageCandidates.length} candidates (Job total: ${jobCandidates.length})`);
-                    
-                    hasMoreJobPages = candidatesData.paging && candidatesData.paging.next;
-                    jobPage++;
-                    
-                    // Rate limiting between candidate page requests
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                  } else {
-                    hasMoreJobPages = false;
-                  }
-                } catch (pageError) {
-                  console.error(`Failed to fetch candidates page ${jobPage} for job ${job.id}:`, pageError);
-                  errors.push(`Job ${job.title} page ${jobPage}: ${pageError.message}`);
-                  break;
-                }
-              }
-              
-              if (jobCandidates.length > 0) {
-                console.log(`Found ${jobCandidates.length} total candidates for job: ${job.title}`);
-                jobsWithCandidates++;
-                
-                // Add unique candidates (avoid duplicates across jobs)
-                for (const candidate of jobCandidates) {
-                  if (!candidateIds.has(candidate.id)) {
-                    candidateIds.add(candidate.id);
-                    allCandidates.push(candidate);
-                  }
-                }
-                
-                totalCandidates += jobCandidates.length;
-              } else {
-                console.log(`No candidates found for job: ${job.title}`);
-              }
-            } catch (jobError) {
-              console.error(`Failed to process job ${job.id}:`, jobError);
-              errors.push(`Job processing error: ${jobError.message}`);
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Failed to fetch candidates page ${page}:`, {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+              });
+              throw new Error(`API Error on page ${page}: ${response.status} - ${errorText}`);
             }
-          }
 
-          // Add delay between job batches to avoid rate limiting
-          if (i + batchSize < allJobs.length) {
-            console.log('Waiting before next job batch...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const responseData = await response.json();
+            const { candidates, paging } = responseData;
+            
+            if (candidates && candidates.length > 0) {
+              allCandidates.push(...candidates);
+              totalLoaded = allCandidates.length;
+              console.log(`✓ Page ${page}: ${candidates.length} candidates (Total: ${totalLoaded})`);
+              
+              // Check if there are more pages using paging.next
+              hasMorePages = paging && paging.next;
+              page++;
+              
+              // Rate limiting - wait 200ms between requests
+              await new Promise(resolve => setTimeout(resolve, 200));
+            } else {
+              console.log(`No more candidates found on page ${page}`);
+              hasMorePages = false;
+            }
+          } catch (error) {
+            console.error(`❌ Error on page ${page}:`, error);
+            hasMorePages = false;
+            throw error;
           }
         }
 
-        console.log(`🎉 Successfully loaded ${allCandidates.length} unique candidates from ${allJobs.length} jobs (${jobsWithCandidates} jobs had candidates)`);
+        console.log(`🎉 Successfully loaded ${totalLoaded} candidates from Workable!`);
 
-        // Step 3: Sync all candidates to Supabase
+        // Now sync all candidates to Supabase
         let syncedCount = 0;
+        let errors: string[] = [];
         
         console.log('Starting to sync candidates to Supabase...');
         
@@ -381,10 +213,9 @@ serve(async (req) => {
         const activeStatus = allCandidates.filter(c => c.state === 'active').length;
 
         const stats = {
-          total_candidates: allCandidates.length,
+          total_candidates: totalLoaded,
           synced_candidates: syncedCount,
-          jobs_processed: allJobs.length,
-          jobs_with_candidates: jobsWithCandidates,
+          pages_processed: page - 1,
           data_quality: {
             with_email: withEmail,
             with_phone: withPhone,
@@ -392,10 +223,10 @@ serve(async (req) => {
             active_status: activeStatus
           },
           percentages: {
-            email_coverage: Math.round(withEmail / allCandidates.length * 100),
-            phone_coverage: Math.round(withPhone / allCandidates.length * 100),
-            resume_coverage: Math.round(withResume / allCandidates.length * 100),
-            active_candidates: Math.round(activeStatus / allCandidates.length * 100)
+            email_coverage: totalLoaded > 0 ? Math.round(withEmail / totalLoaded * 100) : 0,
+            phone_coverage: totalLoaded > 0 ? Math.round(withPhone / totalLoaded * 100) : 0,
+            resume_coverage: totalLoaded > 0 ? Math.round(withResume / totalLoaded * 100) : 0,
+            active_candidates: totalLoaded > 0 ? Math.round(activeStatus / totalLoaded * 100) : 0
           }
         };
 
@@ -417,10 +248,9 @@ serve(async (req) => {
               status: syncedCount > 0 ? 'success' : 'completed_with_warnings',
               completed_at: new Date().toISOString(),
               synced_data: { 
-                totalCandidates: allCandidates.length,
+                totalCandidates: totalLoaded,
                 syncedCandidates: syncedCount,
-                jobsProcessed: allJobs.length,
-                jobsWithCandidates,
+                pagesProcessed: page - 1,
                 stats,
                 errors: errors.slice(0, 10),
                 timestamp: new Date().toISOString()
@@ -440,13 +270,12 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            totalCandidates: allCandidates.length,
+            totalCandidates: totalLoaded,
             syncedCandidates: syncedCount,
-            jobsProcessed: allJobs.length,
-            jobsWithCandidates,
+            pagesProcessed: page - 1,
             stats,
             errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
-            message: `🎉 Successfully loaded and synced ${syncedCount} out of ${allCandidates.length} candidates from ${allJobs.length} Workable jobs (${jobsWithCandidates} jobs had candidates)!`
+            message: `🎉 Successfully loaded and synced ${syncedCount} out of ${totalLoaded} candidates from Workable!`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
