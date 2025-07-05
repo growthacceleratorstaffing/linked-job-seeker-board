@@ -70,6 +70,203 @@ serve(async (req) => {
     await ensureIntegrationSettings(supabase);
 
     switch (action) {
+      case 'load_all_candidates': {
+        console.log('Starting bulk load of ALL candidates from Workable...');
+        
+        // Log sync start
+        const { data: syncLog, error: syncLogError } = await supabase
+          .from('integration_sync_logs')
+          .insert([{
+            integration_type: 'workable',
+            sync_type: 'bulk_candidate_load',
+            status: 'in_progress',
+            synced_data: { 
+              action: 'load_all_candidates',
+              timestamp: new Date().toISOString()
+            }
+          }])
+          .select()
+          .single();
+
+        if (syncLogError) {
+          console.warn('Failed to create sync log:', syncLogError);
+        }
+
+        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+        console.log('SPI API URL:', spiBaseUrl);
+        
+        // Test API connectivity first
+        try {
+          console.log('Testing API connectivity...');
+          const testResponse = await fetch(`${spiBaseUrl}/candidates?limit=1`, {
+            method: 'GET',
+            headers,
+          });
+
+          console.log('API test response status:', testResponse.status);
+          
+          if (!testResponse.ok) {
+            const errorText = await testResponse.text();
+            console.error('API test failed:', {
+              status: testResponse.status,
+              statusText: testResponse.statusText,
+              body: errorText
+            });
+            throw new Error(`Workable API test failed: ${testResponse.status} - ${errorText}`);
+          }
+
+          const testData = await testResponse.json();
+          console.log('API test successful, sample data available');
+        } catch (apiError) {
+          console.error('API connectivity test failed:', apiError);
+          throw new Error(`Cannot connect to Workable API: ${apiError.message}`);
+        }
+        
+        console.log('🚀 Starting to load all candidates...');
+        
+        let allCandidates: any[] = [];
+        let page = 1;
+        let hasMorePages = true;
+        const limit = 100;
+        let totalLoaded = 0;
+
+        while (hasMorePages) {
+          try {
+            console.log(`Loading page ${page}...`);
+            const offset = (page - 1) * limit;
+            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&offset=${offset}`;
+            
+            const response = await fetch(candidatesUrl, {
+              method: 'GET',
+              headers,
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Failed to fetch candidates page ${page}:`, {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+              });
+              throw new Error(`API Error on page ${page}: ${response.status} - ${errorText}`);
+            }
+
+            const responseData = await response.json();
+            const { candidates, paging } = responseData;
+            
+            if (candidates && candidates.length > 0) {
+              allCandidates.push(...candidates);
+              totalLoaded = allCandidates.length;
+              console.log(`✓ Page ${page}: ${candidates.length} candidates (Total: ${totalLoaded})`);
+              
+              hasMorePages = paging && paging.next;
+              page++;
+              
+              // Rate limiting - wait 200ms between requests
+              await new Promise(resolve => setTimeout(resolve, 200));
+            } else {
+              hasMorePages = false;
+            }
+          } catch (error) {
+            console.error(`❌ Error on page ${page}:`, error);
+            hasMorePages = false;
+            throw error;
+          }
+        }
+
+        console.log(`🎉 Successfully loaded ${totalLoaded} candidates from Workable!`);
+
+        // Now sync all candidates to Supabase
+        let syncedCount = 0;
+        let errors: string[] = [];
+        
+        console.log('Starting to sync candidates to Supabase...');
+        
+        // Process candidates in batches to avoid overwhelming the database
+        const batchSize = 10;
+        for (let i = 0; i < allCandidates.length; i += batchSize) {
+          const batch = allCandidates.slice(i, i + batchSize);
+          console.log(`Syncing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allCandidates.length/batchSize)}`);
+          
+          for (const candidate of batch) {
+            try {
+              await syncCandidateToSupabase(supabase, candidate);
+              syncedCount++;
+            } catch (candidateError) {
+              console.error(`Failed to sync candidate ${candidate.id}:`, candidateError);
+              errors.push(`Candidate ${candidate.name || candidate.id}: ${candidateError.message}`);
+            }
+          }
+          
+          // Small delay between batches
+          if (i + batchSize < allCandidates.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+
+        // Generate statistics
+        const withEmail = allCandidates.filter(c => c.email).length;
+        const withPhone = allCandidates.filter(c => c.phone).length;
+        const activeStatus = allCandidates.filter(c => c.state === 'active').length;
+
+        const stats = {
+          total_candidates: totalLoaded,
+          synced_candidates: syncedCount,
+          data_quality: {
+            with_email: withEmail,
+            with_phone: withPhone,
+            active_status: activeStatus
+          },
+          percentages: {
+            email_coverage: Math.round(withEmail / totalLoaded * 100),
+            phone_coverage: Math.round(withPhone / totalLoaded * 100),
+            active_candidates: Math.round(activeStatus / totalLoaded * 100)
+          }
+        };
+
+        console.log('📊 Bulk Load Statistics:', stats);
+
+        // Update sync log with completion
+        if (syncLog?.id) {
+          await supabase
+            .from('integration_sync_logs')
+            .update({
+              status: syncedCount > 0 ? 'success' : 'completed_with_warnings',
+              completed_at: new Date().toISOString(),
+              synced_data: { 
+                totalCandidates: totalLoaded,
+                syncedCandidates: syncedCount,
+                pagesProcessed: page - 1,
+                stats,
+                errors: errors.slice(0, 10),
+                timestamp: new Date().toISOString()
+              }
+            })
+            .eq('id', syncLog.id);
+        }
+
+        // Update integration settings
+        await supabase
+          .from('integration_settings')
+          .update({
+            last_sync_at: new Date().toISOString(),
+          })
+          .eq('integration_type', 'workable');
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            totalCandidates: totalLoaded,
+            syncedCandidates: syncedCount,
+            pagesProcessed: page - 1,
+            stats,
+            errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
+            message: `🎉 Successfully loaded and synced ${syncedCount} out of ${totalLoaded} candidates from Workable!`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'sync_candidates': {
         console.log('Starting candidate sync from Workable...');
         
