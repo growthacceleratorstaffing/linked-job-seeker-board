@@ -437,6 +437,42 @@ export type Database = {
           },
         ]
       }
+      jobadder_users: {
+        Row: {
+          assigned_jobs: string[] | null
+          created_at: string | null
+          id: string
+          jobadder_email: string
+          jobadder_role: Database["public"]["Enums"]["jobadder_scope"]
+          jobadder_user_id: string
+          permissions: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assigned_jobs?: string[] | null
+          created_at?: string | null
+          id?: string
+          jobadder_email: string
+          jobadder_role?: Database["public"]["Enums"]["jobadder_scope"]
+          jobadder_user_id: string
+          permissions?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assigned_jobs?: string[] | null
+          created_at?: string | null
+          id?: string
+          jobadder_email?: string
+          jobadder_role?: Database["public"]["Enums"]["jobadder_scope"]
+          jobadder_user_id?: string
+          permissions?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       linkedin_ad_accounts: {
         Row: {
           created_at: string
