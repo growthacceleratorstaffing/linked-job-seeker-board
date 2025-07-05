@@ -93,10 +93,10 @@ const WorkflowHeader = () => {
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="text-center mb-4 sm:mb-8">
           <h1 className="text-xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
-            Growth Accelerator Workflow
+            Growth Accelerator Staffing Platform
           </h1>
           <p className="text-secondary-pink text-sm sm:text-lg font-medium">
-            Match. Onboard. Hire.
+            Attract. Match. Hire. Onboard.
           </p>
         </div>
         
