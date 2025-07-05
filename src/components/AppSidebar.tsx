@@ -24,11 +24,14 @@ const AppSidebar = () => {
 
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
+    { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+  ];
+
+  const vacancyItems = [
+    { path: '/jobs', label: 'Vacancies', icon: Briefcase },
   ];
 
   const staffingItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-    { path: '/jobs', label: 'Jobs', icon: Briefcase },
     { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
     { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
@@ -105,6 +108,16 @@ const AppSidebar = () => {
         {/* Main Navigation */}
         <div className="mb-6">
           {navigationItems.map((item) => (
+            <NavItem key={item.path} {...item} />
+          ))}
+        </div>
+
+        {/* Vacancies Section */}
+        <div className="mb-6">
+          <div className="px-4 py-2">
+            <h3 className="text-secondary-pink text-sm font-bold uppercase tracking-wider">VACANCIES</h3>
+          </div>
+          {vacancyItems.map((item) => (
             <NavItem key={item.path} {...item} />
           ))}
         </div>
