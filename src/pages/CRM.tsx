@@ -66,16 +66,23 @@ const CRM = () => {
           }
 
           if (data && data.success) {
-            console.log('Auto bulk load completed:', data);
+            if (data.backgroundTask) {
+              console.log('Background candidate loading started:', data);
+              toast({
+                title: "Loading started! ⚡",
+                description: "Candidates are being loaded in the background. This page will update automatically.",
+              });
+            } else {
+              console.log('Auto bulk load completed:', data);
+              toast({
+                title: "All candidates loaded! 🎉",
+                description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable (including archived jobs)`,
+              });
+            }
             
             // Invalidate queries to refresh the UI
             queryClient.invalidateQueries({ queryKey: ["candidates"] });
             queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
-            
-            toast({
-              title: "All candidates loaded! 🎉",
-              description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable (including archived jobs)`,
-            });
           }
         }
       } catch (error: any) {

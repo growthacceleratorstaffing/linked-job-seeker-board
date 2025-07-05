@@ -72,7 +72,7 @@ serve(async (req) => {
     switch (action) {
       case 'load_all_candidates': {
         console.log('Growth Accelerator Platform - Complete Workable Candidates Loader');
-        console.log('Loading all 965 candidates from growthacceleratorstaffing.workable.com');
+        console.log('Starting background loading of all 965 candidates...');
         
         // Log sync start
         const { data: syncLog, error: syncLogError } = await supabase
@@ -83,7 +83,8 @@ serve(async (req) => {
             status: 'in_progress',
             synced_data: { 
               action: 'load_all_candidates',
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              progress: 'Starting background load...'
             }
           }])
           .select()
@@ -92,6 +93,9 @@ serve(async (req) => {
         if (syncLogError) {
           console.warn('Failed to create sync log:', syncLogError);
         }
+
+        // Start background loading process
+        const backgroundLoadingTask = async () => {
 
         const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
         console.log('SPI API URL:', spiBaseUrl);
@@ -267,15 +271,25 @@ serve(async (req) => {
           })
           .eq('integration_type', 'workable');
 
+        }; // End of backgroundLoadingTask
+
+        // Start the background task
+        // @ts-ignore
+        if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(backgroundLoadingTask());
+        } else {
+          // Fallback for environments without EdgeRuntime
+          backgroundLoadingTask().catch(console.error);
+        }
+
+        // Return immediate response
         return new Response(
           JSON.stringify({ 
             success: true, 
-            totalCandidates: totalLoaded,
-            syncedCandidates: syncedCount,
-            pagesProcessed: page - 1,
-            stats,
-            errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
-            message: `🎉 Successfully loaded and synced ${syncedCount} out of ${totalLoaded} candidates from Workable!`
+            message: 'Background loading started! Candidates will be loaded automatically.',
+            backgroundTask: true,
+            syncLogId: syncLog?.id
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
