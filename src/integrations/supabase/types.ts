@@ -806,6 +806,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      validate_jobadder_email: {
+        Args: { email_to_check: string }
+        Returns: boolean
+      }
       validate_workable_email: {
         Args: { email_to_check: string }
         Returns: boolean
