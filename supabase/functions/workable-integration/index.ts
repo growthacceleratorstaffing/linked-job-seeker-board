@@ -125,15 +125,14 @@ serve(async (req) => {
           throw new Error(`Cannot connect to Workable API: ${apiError.message}`);
         }
         
-        console.log('🚀 Starting to load all candidates with pagination...');
+        console.log('🚀 Starting to load all candidates with proper pagination...');
         
         let allCandidates: any[] = [];
         let page = 1;
         let hasMorePages = true;
-        const limit = 100;
         let totalLoaded = 0;
 
-        // Load all candidates using direct /candidates endpoint with pagination
+        // Load all candidates using simple page-by-page approach
         while (hasMorePages) {
           let retryCount = 0;
           const maxRetries = 3;
@@ -141,8 +140,8 @@ serve(async (req) => {
           while (retryCount <= maxRetries) {
             try {
               console.log(`Loading page ${page}... (attempt ${retryCount + 1})`);
-              const offset = (page - 1) * limit;
-              const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&offset=${offset}`;
+              // Use simple page parameter, let Workable handle the rest
+              const candidatesUrl = `${spiBaseUrl}/candidates?page=${page}`;
               
               const response = await fetch(candidatesUrl, {
                 method: 'GET',
@@ -151,7 +150,7 @@ serve(async (req) => {
 
               if (response.status === 429) {
                 // Rate limited - exponential backoff
-                const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
+                const backoffDelay = Math.min(2000 * Math.pow(2, retryCount), 15000); // Max 15 seconds
                 console.log(`Rate limited on page ${page}, waiting ${backoffDelay}ms before retry...`);
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
                 retryCount++;
@@ -169,9 +168,12 @@ serve(async (req) => {
               }
 
               const responseData = await response.json();
-              const { candidates, paging } = responseData;
+              console.log(`Raw API response structure for page ${page}:`, Object.keys(responseData));
               
-              if (candidates && candidates.length > 0) {
+              // Handle different possible response structures
+              const candidates = responseData.candidates || responseData.data || responseData;
+              
+              if (candidates && Array.isArray(candidates) && candidates.length > 0) {
                 allCandidates.push(...candidates);
                 totalLoaded = allCandidates.length;
                 console.log(`✓ Page ${page}: ${candidates.length} candidates (Total: ${totalLoaded})`);
@@ -190,12 +192,16 @@ serve(async (req) => {
                     .eq('id', syncLog.id);
                 }
                 
-                // Check if there are more pages using paging.next
-                hasMorePages = paging && paging.next;
-                page++;
+                // If we get less than 50 candidates, we're probably at the end
+                if (candidates.length < 50) {
+                  console.log(`Received ${candidates.length} candidates (less than 50), assuming last page`);
+                  hasMorePages = false;
+                } else {
+                  page++;
+                }
                 
-                // Progressive rate limiting - longer delays as we get further
-                const delay = Math.min(1000 + (page * 100), 3000); // Start at 1s, increase by 100ms per page, max 3s
+                // Progressive rate limiting - longer delays as we get further  
+                const delay = Math.min(2000 + (page * 200), 5000); // Start at 2s, increase by 200ms per page, max 5s
                 console.log(`⏳ Waiting ${delay}ms before next page...`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 break; // Success, exit retry loop
@@ -212,7 +218,7 @@ serve(async (req) => {
               }
               retryCount++;
               // Wait before retry
-              await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+              await new Promise(resolve => setTimeout(resolve, 3000 * retryCount));
             }
           }
         }
