@@ -16,7 +16,8 @@ const WorkflowHeader = () => {
 
   const workflowSteps = [
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-    { path: '/jobs', label: 'Jobs', icon: Briefcase },
+    { path: '/post-jobs', label: 'Post Jobs', icon: Briefcase },
+    { path: '/jobs', label: 'Vacancies', icon: FileText },
     { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
     { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },

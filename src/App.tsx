@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import CRM from "./pages/CRM";
 import Matching from "./pages/Matching";
 import Candidates from "./pages/Candidates";
+import PostJobs from "./pages/PostJobs";
 import Jobs from "./pages/Jobs";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
@@ -55,6 +56,11 @@ const App = () => (
             <Route path="/candidates" element={
               <ProtectedRoute>
                 <Candidates />
+              </ProtectedRoute>
+            } />
+            <Route path="/post-jobs" element={
+              <ProtectedRoute>
+                <PostJobs />
               </ProtectedRoute>
             } />
             <Route path="/jobs" element={
