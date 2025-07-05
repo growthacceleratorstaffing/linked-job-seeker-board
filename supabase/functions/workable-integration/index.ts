@@ -236,33 +236,81 @@ serve(async (req) => {
 
         console.log(`🎉 Successfully loaded ${totalLoaded} candidates from Workable!`);
 
-        // Now sync all candidates to Supabase
+        // Now sync all candidates to Supabase with improved error handling
         let syncedCount = 0;
         let errors: string[] = [];
+        let skippedDuplicates = 0;
         
-        console.log('Starting to sync candidates to Supabase...');
+        console.log(`🔄 Starting to sync ${totalLoaded} candidates to Supabase database...`);
         
-        // Process candidates in batches to avoid overwhelming the database
-        const syncBatchSize = 10;
+        // Process candidates in smaller batches with better error handling
+        const syncBatchSize = 5; // Smaller batches for better error isolation
         for (let i = 0; i < allCandidates.length; i += syncBatchSize) {
           const batch = allCandidates.slice(i, i + syncBatchSize);
-          console.log(`Syncing batch ${Math.floor(i/syncBatchSize) + 1}/${Math.ceil(allCandidates.length/syncBatchSize)}`);
+          const batchNum = Math.floor(i/syncBatchSize) + 1;
+          const totalBatches = Math.ceil(allCandidates.length/syncBatchSize);
           
+          console.log(`📦 Processing batch ${batchNum}/${totalBatches} (${batch.length} candidates)`);
+          
+          // Process each candidate in the batch
           for (const candidate of batch) {
             try {
-              await syncCandidateToSupabase(supabase, candidate);
-              syncedCount++;
+              const result = await syncCandidateToSupabase(supabase, candidate);
+              if (result === 'duplicate') {
+                skippedDuplicates++;
+              } else {
+                syncedCount++;
+              }
+              
+              // Log progress every 100 successful syncs
+              if ((syncedCount + skippedDuplicates) % 100 === 0) {
+                console.log(`✅ Progress: ${syncedCount} synced, ${skippedDuplicates} duplicates, ${errors.length} errors`);
+              }
             } catch (candidateError) {
-              console.error(`Failed to sync candidate ${candidate.id}:`, candidateError);
-              errors.push(`Candidate ${candidate.name || candidate.id}: ${candidateError.message}`);
+              const errorMsg = candidateError instanceof Error ? candidateError.message : String(candidateError);
+              console.error(`❌ Failed to sync candidate ${candidate.name || candidate.email || candidate.id}:`, errorMsg);
+              errors.push(`${candidate.name || candidate.email || candidate.id}: ${errorMsg}`);
+              
+              // Stop processing if we get too many errors (potential systemic issue)
+              if (errors.length > 100) {
+                console.error('🚨 Too many sync errors, stopping batch processing');
+                break;
+              }
             }
           }
           
-          // Small delay between sync batches
-          if (i + syncBatchSize < allCandidates.length) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+          // Update progress in sync log every 20 batches
+          if (batchNum % 20 === 0 && syncLog?.id) {
+            await supabase
+              .from('integration_sync_logs')
+              .update({
+                synced_data: { 
+                  action: 'load_all_candidates',
+                  timestamp: new Date().toISOString(),
+                  progress: `Syncing to database: ${syncedCount} saved, ${skippedDuplicates} duplicates, ${errors.length} errors`,
+                  totalCandidates: totalLoaded,
+                  syncedCandidates: syncedCount,
+                  skippedDuplicates,
+                  syncErrors: errors.length
+                }
+              })
+              .eq('id', syncLog.id);
           }
+          
+          // Small delay between batches to avoid overwhelming database
+          if (i + syncBatchSize < allCandidates.length) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+          
+          // Break if too many errors
+          if (errors.length > 100) break;
         }
+        
+        console.log(`📊 Database sync complete:`);
+        console.log(`  ✅ Successfully synced: ${syncedCount}`);
+        console.log(`  ⏭️  Skipped duplicates: ${skippedDuplicates}`);  
+        console.log(`  ❌ Sync errors: ${errors.length}`);
+        console.log(`  📈 Total processed: ${syncedCount + skippedDuplicates + errors.length}/${totalLoaded}`);
 
         // Generate statistics following your original script format
         const withEmail = allCandidates.filter(c => c.email).length;
@@ -842,73 +890,103 @@ async function ensureIntegrationSettings(supabase: any) {
   }
 }
 
-async function syncCandidateToSupabase(supabase: any, workableCandidate: any, job: any) {
-  console.log(`Syncing candidate: ${workableCandidate.name || workableCandidate.email || workableCandidate.id} for job: ${job.title}`);
-  
-  const candidateData = {
-    name: workableCandidate.name || workableCandidate.email?.split('@')[0] || 'Unknown',
-    email: workableCandidate.email || `unknown_${workableCandidate.id}@workable.com`,
-    phone: workableCandidate.phone,
-    workable_candidate_id: workableCandidate.id,
-    source_platform: 'workable',
-    location: workableCandidate.address || workableCandidate.location,
-    current_position: workableCandidate.headline || workableCandidate.summary,
-    company: workableCandidate.company,
-    skills: workableCandidate.skills ? [workableCandidate.skills] : [],
-    last_synced_at: new Date().toISOString(),
-    profile_completeness_score: calculateCompletenessScore(workableCandidate)
-  };
+async function syncCandidateToSupabase(supabase: any, workableCandidate: any, job?: any): Promise<string> {
+  try {
+    console.log(`🔄 Syncing candidate: ${workableCandidate.name || workableCandidate.email || workableCandidate.id}`);
+    
+    // Clean and validate candidate data
+    const candidateData = {
+      name: (workableCandidate.name || workableCandidate.email?.split('@')[0] || 'Unknown').trim().substring(0, 255),
+      email: (workableCandidate.email || `unknown_${workableCandidate.id}@workable.com`).trim().toLowerCase(),
+      phone: workableCandidate.phone?.trim()?.substring(0, 50) || null,
+      workable_candidate_id: workableCandidate.id?.toString() || null,
+      source_platform: 'workable',
+      location: (workableCandidate.address || workableCandidate.location)?.trim()?.substring(0, 255) || null,
+      current_position: (workableCandidate.headline || workableCandidate.summary)?.trim()?.substring(0, 255) || null,
+      company: workableCandidate.company?.trim()?.substring(0, 255) || null,
+      skills: Array.isArray(workableCandidate.skills) ? workableCandidate.skills : (workableCandidate.skills ? [workableCandidate.skills] : []),
+      last_synced_at: new Date().toISOString(),
+      profile_completeness_score: calculateCompletenessScore(workableCandidate)
+    };
 
-  // Check if candidate already exists by email or workable_candidate_id
-  const { data: existingCandidate } = await supabase
-    .from('candidates')
-    .select('*')
-    .or(`email.eq.${candidateData.email},workable_candidate_id.eq.${candidateData.workable_candidate_id}`)
-    .maybeSingle();
-
-  let candidateId;
-
-  if (existingCandidate) {
-    // Update existing candidate
-    const { data, error } = await supabase
-      .from('candidates')
-      .update({
-        workable_candidate_id: candidateData.workable_candidate_id,
-        source_platform: 'workable',
-        location: candidateData.location || existingCandidate.location,
-        current_position: candidateData.current_position || existingCandidate.current_position,
-        company: candidateData.company || existingCandidate.company,
-        skills: candidateData.skills.length > 0 ? candidateData.skills : existingCandidate.skills,
-        last_synced_at: candidateData.last_synced_at,
-        profile_completeness_score: candidateData.profile_completeness_score
-      })
-      .eq('id', existingCandidate.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating candidate:', error);
-      throw error;
+    // Validate required fields
+    if (!candidateData.email || candidateData.email === '@workable.com') {
+      throw new Error('Invalid email address');
     }
-    candidateId = existingCandidate.id;
-    console.log(`Updated existing candidate: ${candidateData.name}`);
-  } else {
-    // Create new candidate
-    const { data, error } = await supabase
-      .from('candidates')
-      .insert([candidateData])
-      .select()
-      .single();
 
-    if (error) {
-      console.error('Error creating candidate:', error);
-      throw error;
+    // Check if candidate already exists by email or workable_candidate_id
+    let existingCandidate = null;
+    if (candidateData.workable_candidate_id) {
+      const { data } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('workable_candidate_id', candidateData.workable_candidate_id)
+        .maybeSingle();
+      existingCandidate = data;
     }
-    candidateId = data.id;
-    console.log(`Created new candidate: ${candidateData.name}`);
+    
+    // If not found by workable_candidate_id, try by email
+    if (!existingCandidate) {
+      const { data } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('email', candidateData.email)
+        .maybeSingle();
+      existingCandidate = data;
+    }
+
+    if (existingCandidate) {
+      // Update existing candidate with new data
+      const { data, error } = await supabase
+        .from('candidates')
+        .update({
+          workable_candidate_id: candidateData.workable_candidate_id,
+          source_platform: 'workable',
+          location: candidateData.location || existingCandidate.location,
+          current_position: candidateData.current_position || existingCandidate.current_position,
+          company: candidateData.company || existingCandidate.company,
+          skills: candidateData.skills.length > 0 ? candidateData.skills : existingCandidate.skills,
+          last_synced_at: candidateData.last_synced_at,
+          profile_completeness_score: candidateData.profile_completeness_score,
+          phone: candidateData.phone || existingCandidate.phone
+        })
+        .eq('id', existingCandidate.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error(`❌ Error updating candidate ${candidateData.name}:`, error);
+        throw new Error(`Update failed: ${error.message}`);
+      }
+      
+      console.log(`✅ Updated existing candidate: ${candidateData.name}`);
+      return 'updated';
+    } else {
+      // Create new candidate
+      const { data, error } = await supabase
+        .from('candidates')
+        .insert([candidateData])
+        .select()
+        .single();
+
+      if (error) {
+        // Handle specific constraint violations
+        if (error.code === '23505') {
+          console.log(`⏭️ Duplicate candidate detected: ${candidateData.name} (${candidateData.email})`);
+          return 'duplicate';
+        }
+        console.error(`❌ Error creating candidate ${candidateData.name}:`, error);
+        throw new Error(`Insert failed: ${error.message}`);
+      }
+      
+      console.log(`✅ Created new candidate: ${candidateData.name}`);
+      return 'created';
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`💥 Sync failed for candidate ${workableCandidate.name || workableCandidate.email || workableCandidate.id}:`, errorMsg);
+    throw new Error(`Candidate sync error: ${errorMsg}`);
   }
-
-  return candidateId;
 }
 
 function calculateCompletenessScore(candidate: any): number {
