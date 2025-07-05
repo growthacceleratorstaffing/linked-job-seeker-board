@@ -113,8 +113,8 @@ const AppSidebar = () => {
   );
 
   return (
-    <Sidebar className="bg-primary-blue border-r border-white/20">
-      <SidebarHeader className="p-6 border-b border-white/10">
+    <Sidebar className="bg-primary-blue border-r border-white/20" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
+      <SidebarHeader className="p-6 border-b border-white/10 bg-primary-blue">
         <div className="flex items-center gap-3">
           <img 
             src="/lovable-uploads/76da95f6-805f-4f3e-91e8-f4ddc51657ad.png" 
@@ -130,7 +130,7 @@ const AppSidebar = () => {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="text-white">
+      <SidebarContent className="text-white bg-primary-blue">
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupContent>
@@ -185,7 +185,7 @@ const AppSidebar = () => {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-white/10">
+      <SidebarFooter className="p-4 border-t border-white/10 bg-primary-blue">
         {/* User Profile Section */}
         {userProfile && state === "expanded" && (
           <div className="mb-4 p-3 rounded-lg bg-white/5">
