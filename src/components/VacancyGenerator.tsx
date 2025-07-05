@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Wand2, Copy, Download, Sparkles, Upload, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { JobsOverview } from './JobsOverview';
 import { EmploymentDetailsForm, EmploymentDetails } from './EmploymentDetailsForm';
 
 export const VacancyGenerator = () => {
@@ -15,7 +14,6 @@ export const VacancyGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [refreshJobsOverview, setRefreshJobsOverview] = useState(0);
   const [employmentDetails, setEmploymentDetails] = useState<EmploymentDetails>({
     jobTitle: '',
     employmentType: 'full_time',
@@ -122,9 +120,6 @@ export const VacancyGenerator = () => {
         description: data.message || "Your vacancy has been created in Workable.",
       });
 
-      // Trigger refresh of Jobs Overview
-      setRefreshJobsOverview(prev => prev + 1);
-
     } catch (error) {
       console.error('Error publishing to Workable:', error);
       toast({
@@ -151,9 +146,6 @@ export const VacancyGenerator = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 relative">
-      {/* Jobs Overview Section */}
-      <JobsOverview refreshTrigger={refreshJobsOverview} />
-
       <Card className="bg-primary-blue border border-white/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
