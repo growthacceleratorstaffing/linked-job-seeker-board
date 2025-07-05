@@ -306,15 +306,14 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
       .select();
 
     if (error) {
-      if (error.code === '23505') {
-        results.duplicates += candidateData.length;
-      } else {
-        results.errors.push(`Bulk upsert failed: ${error.message}`);
-      }
+      console.error(`Batch upsert error:`, error);
+      results.errors.push(`Bulk upsert failed: ${error.message}`);
     } else {
       results.created += data?.length || 0;
+      console.log(`✅ Batch upserted ${data?.length || 0} candidates`);
     }
   } catch (batchError) {
+    console.error(`Batch processing failed:`, batchError);
     results.errors.push(`Batch processing failed: ${batchError}`);
   }
   
