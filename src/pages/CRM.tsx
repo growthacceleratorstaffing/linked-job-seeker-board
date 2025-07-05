@@ -312,10 +312,10 @@ const CRM = () => {
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium text-slate-300">Platform Information</h4>
                     <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">API Source:</span>
-                        <span className="text-white">growthacceleratorstaffing.workable.com</span>
-                      </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">API Source:</span>
+                      <span className="text-white">growthacceleratorstaffing</span>
+                    </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">API Version:</span>
                         <span className="text-white">SPI v3</span>
