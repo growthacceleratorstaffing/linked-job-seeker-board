@@ -9,6 +9,7 @@ import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, Chevr
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
+import { AddCandidateDialog } from "@/components/crm/AddCandidateDialog";
 
 interface Candidate {
   id: string;
@@ -29,6 +30,7 @@ const Candidates = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [candidatesPerPage] = useState(50);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -235,7 +237,10 @@ const Candidates = () => {
               <RefreshCw className={`mr-2 h-4 w-4 ${isBulkLoading ? 'animate-spin' : ''}`} />
               Sync All Candidates
             </Button>
-            <Button className="bg-secondary-pink hover:bg-secondary-pink/80">
+            <Button 
+              onClick={() => setShowAddDialog(true)}
+              className="bg-secondary-pink hover:bg-secondary-pink/80"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Candidate
             </Button>
@@ -439,6 +444,15 @@ const Candidates = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Add Candidate Dialog */}
+        <AddCandidateDialog 
+          open={showAddDialog}
+          onOpenChange={setShowAddDialog}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["all-candidates"] });
+          }}
+        />
       </div>
     </Layout>
   );
