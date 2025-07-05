@@ -64,7 +64,7 @@ export const CopilotTrigger: React.FC<CopilotTriggerProps> = ({ onVacancyGenerat
   return (
     <>
       {/* Proactive Input Bar - Responsive */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-lg px-4 sm:px-6">
+      <div className="fixed bottom-24 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-lg px-4 sm:px-6">
         <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-full shadow-lg p-2">
           <div className="flex items-center space-x-2">
             <div className="flex items-center space-x-2 ml-3">
