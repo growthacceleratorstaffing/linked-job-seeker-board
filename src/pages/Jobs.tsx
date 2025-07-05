@@ -33,20 +33,45 @@ const Jobs = () => {
   const fetchJobs = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_jobs' }
-      });
+      let data, error;
+      let platform = 'Unknown';
+      
+      // Try JobAdder first
+      try {
+        const jobadderResult = await supabase.functions.invoke('jobadder-integration', {
+          body: { action: 'sync_jobs' }
+        });
 
-      if (error) throw error;
+        if (jobadderResult.error) throw jobadderResult.error;
+        data = jobadderResult.data;
+        platform = 'JobAdder';
+        
+      } catch (jobadderError) {
+        console.log('JobAdder jobs sync failed, trying Workable...', jobadderError);
+        
+        // Fallback to Workable
+        const workableResult = await supabase.functions.invoke('workable-integration', {
+          body: { action: 'sync_jobs' }
+        });
+
+        if (workableResult.error) throw workableResult.error;
+        data = workableResult.data;
+        platform = 'Workable';
+      }
 
       const jobsData = data.jobs || [];
       setJobs(jobsData);
       setFilteredJobs(jobsData);
+      
+      toast({
+        title: "Jobs Synced! 🎉",
+        description: `Loaded ${jobsData.length} jobs from ${platform}`,
+      });
     } catch (error) {
       console.error('Error fetching jobs:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch jobs from Workable",
+        description: "Failed to fetch jobs from JobAdder/Workable",
         variant: "destructive",
       });
     } finally {

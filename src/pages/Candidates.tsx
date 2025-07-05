@@ -74,28 +74,40 @@ const Candidates = () => {
 
         // Only bulk load if we have significantly fewer candidates than expected (~1600)
         if ((count || 0) < 1500) {
-          console.log('Auto-loading all candidates from Workable (including archived jobs)...');
+          console.log('Auto-loading all candidates from JobAdder/Workable...');
           setIsBulkLoading(true);
           
-          const { data, error } = await supabase.functions.invoke('workable-integration', {
-            body: { action: 'load_all_candidates' }
-          });
-
-          if (error) {
-            console.error('Auto bulk load failed:', error);
-            toast({
-              title: "Auto-load failed ❌",
-              description: `Error: ${error.message}`,
-              variant: "destructive",
+          let data, error;
+          let platform = 'Unknown';
+          
+          // Try JobAdder first
+          try {
+            const jobadderResult = await supabase.functions.invoke('jobadder-integration', {
+              body: { action: 'load_all_candidates' }
             });
-            return;
+            
+            if (jobadderResult.error) throw jobadderResult.error;
+            data = jobadderResult.data;
+            platform = 'JobAdder';
+            
+          } catch (jobadderError) {
+            console.log('JobAdder auto-sync failed, trying Workable...', jobadderError);
+            
+            // Fallback to Workable
+            const workableResult = await supabase.functions.invoke('workable-integration', {
+              body: { action: 'load_all_candidates' }
+            });
+
+            if (workableResult.error) throw workableResult.error;
+            data = workableResult.data;
+            platform = 'Workable';
           }
 
           if (data && data.success) {
             console.log('Auto bulk load completed:', data);
             toast({
               title: "All candidates loaded! 🎉",
-              description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable (including archived jobs)`,
+              description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from ${platform}`,
             });
             
             // Invalidate queries to refresh the UI
@@ -117,18 +129,35 @@ const Candidates = () => {
     autoSyncCandidates();
   }, [toast, queryClient]);
 
-  const syncWorkableCandidates = async () => {
+  const syncAllCandidates = async () => {
     setIsBulkLoading(true);
     try {
-      console.log('Starting full Workable candidate sync...');
+      console.log('Starting candidate sync from JobAdder/Workable...');
       
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'load_all_candidates' }
-      });
+      let data, error;
+      let platform = 'Unknown';
+      
+      // Try JobAdder first
+      try {
+        const jobadderResult = await supabase.functions.invoke('jobadder-integration', {
+          body: { action: 'load_all_candidates' }
+        });
+        
+        if (jobadderResult.error) throw jobadderResult.error;
+        data = jobadderResult.data;
+        platform = 'JobAdder';
+        
+      } catch (jobadderError) {
+        console.log('JobAdder sync failed, trying Workable...', jobadderError);
+        
+        // Fallback to Workable
+        const workableResult = await supabase.functions.invoke('workable-integration', {
+          body: { action: 'load_all_candidates' }
+        });
 
-      if (error) {
-        console.error('Sync error details:', error);
-        throw error;
+        if (workableResult.error) throw workableResult.error;
+        data = workableResult.data;
+        platform = 'Workable';
       }
 
       if (data?.error) {
@@ -140,7 +169,7 @@ const Candidates = () => {
       
       toast({
         title: "Sync completed! 🎉",
-        description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable`,
+        description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from ${platform}`,
       });
 
       // Refresh the candidates list
@@ -150,7 +179,7 @@ const Candidates = () => {
       
       const errorMessage = error instanceof Error 
         ? error.message 
-        : 'Failed to sync candidates from Workable';
+        : 'Failed to sync candidates from JobAdder/Workable';
         
       toast({
         title: "Sync failed",
@@ -174,6 +203,8 @@ const Candidates = () => {
   const getSourceBadge = (source: string | null) => {
     if (source === 'workable') {
       return <Badge className="bg-blue-500/20 text-blue-400 border-blue-400">Workable</Badge>;
+    } else if (source === 'jobadder') {
+      return <Badge className="bg-green-500/20 text-green-400 border-green-400">JobAdder</Badge>;
     } else if (source === 'manual') {
       return <Badge className="bg-secondary-pink/20 text-secondary-pink border-secondary-pink">Manual</Badge>;
     }
@@ -182,6 +213,7 @@ const Candidates = () => {
 
   const activeCandidates = candidates.filter(c => c.interview_stage === 'pending' || c.interview_stage === 'in_progress').length;
   const workableCandidates = candidates.filter(c => c.source_platform === 'workable').length;
+  const jobadderCandidates = candidates.filter(c => c.source_platform === 'jobadder').length;
 
   return (
     <Layout>
@@ -195,7 +227,7 @@ const Candidates = () => {
           <div></div>
           <div className="flex gap-2">
             <Button 
-              onClick={syncWorkableCandidates}
+              onClick={syncAllCandidates}
               disabled={isBulkLoading}
               variant="outline"
               className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
@@ -254,11 +286,11 @@ const Candidates = () => {
 
           <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">From Workable</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">From Integrations</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{workableCandidates}</div>
-              <p className="text-xs text-slate-400">Synced</p>
+              <div className="text-2xl font-bold text-white">{workableCandidates + jobadderCandidates}</div>
+              <p className="text-xs text-slate-400">JobAdder + Workable</p>
             </CardContent>
           </Card>
 
@@ -284,7 +316,7 @@ const Candidates = () => {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-center gap-3">
                   <Loader2 className="w-5 h-5 animate-spin text-secondary-pink" />
-                  <p className="text-white">Loading all candidates from Workable (including archived jobs)...</p>
+                  <p className="text-white">Loading all candidates from JobAdder/Workable...</p>
                 </div>
                 <p className="text-xs text-slate-400 text-center mt-2">
                   This may take a few minutes to complete. Please wait...
@@ -301,7 +333,7 @@ const Candidates = () => {
               Candidate List
             </CardTitle>
             <CardDescription className="text-slate-400">
-              {totalCount} candidates from growthacceleratorstaffing.workable.com
+              {totalCount} candidates from JobAdder and Workable integrations
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -399,8 +431,8 @@ const Candidates = () => {
                 </h3>
                 <p>
                   {searchTerm 
-                    ? 'Try adjusting your search criteria' 
-                    : 'Click "Sync Workable" to import candidates or add them manually'
+                    ? "Try adjusting your search criteria" 
+                    : "Click \"Sync All Candidates\" to import from JobAdder/Workable or add them manually"
                   }
                 </p>
               </div>
