@@ -72,7 +72,7 @@ serve(async (req) => {
     switch (action) {
       case 'load_all_candidates': {
         console.log('Growth Accelerator Platform - Complete Workable Candidates Loader');
-        console.log('Starting background loading of all 965 candidates...');
+        console.log('Starting background loading of all 930 candidates...');
         
         // Log sync start
         const { data: syncLog, error: syncLogError } = await supabase
