@@ -74,13 +74,13 @@ const PostJobs = () => {
       
       toast({
         title: "Jobs Synced! 🎉",
-        description: `Loaded ${jobsData.length} jobs from ${platform}`,
+        description: `Loaded ${jobsData.length} jobs successfully`,
       });
     } catch (error) {
       console.error('Error fetching jobs:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch jobs from JobAdder/Workable",
+        description: "Failed to fetch jobs from external platforms",
         variant: "destructive",
       });
     } finally {
@@ -178,7 +178,7 @@ const PostJobs = () => {
         <div className="container mx-auto px-6 py-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Vacancies</h1>
-            <p className="text-slate-300">Manage your job postings across JobAdder and Workable</p>
+            <p className="text-slate-300">Manage your job postings across external platforms</p>
           </div>
 
           <div className="flex items-center justify-between mb-6">
@@ -309,9 +309,9 @@ const PostJobs = () => {
               ) : (
                 <div className="text-center py-8">
                   <Briefcase className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-                  <p className="text-slate-400 text-sm">
-                    No jobs found. Create a new job or refresh to sync from Workable/JobAdder!
-                  </p>
+                   <p className="text-slate-400 text-sm">
+                     No jobs found. Create a new job or refresh to sync from external platforms!
+                   </p>
                 </div>
               )}
             </CardContent>
@@ -322,9 +322,9 @@ const PostJobs = () => {
             <DialogContent className="bg-primary-blue border-slate-700 text-white">
               <DialogHeader>
                 <DialogTitle className="text-white">Create New Job</DialogTitle>
-                <DialogDescription className="text-slate-300">
-                  Create a new job posting that will be visible in your jobs overview and can sync with Workable & JobAdder.
-                </DialogDescription>
+                 <DialogDescription className="text-slate-300">
+                   Create a new job posting that will be visible in your jobs overview and can sync with external platforms.
+                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
