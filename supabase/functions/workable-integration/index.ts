@@ -72,7 +72,8 @@ serve(async (req) => {
     switch (action) {
       case 'load_all_candidates': {
         console.log('Growth Accelerator Platform - Complete Workable Candidates Loader');
-        console.log('Starting background loading of all 930 candidates...');
+        console.log('Node.js 20 implementation adapted for Supabase Edge Functions');
+        console.log('Loading all 930 candidates from growthacceleratorstaffing.workable.com');
         
         // Log sync start
         const { data: syncLog, error: syncLogError } = await supabase
@@ -84,7 +85,9 @@ serve(async (req) => {
             synced_data: { 
               action: 'load_all_candidates',
               timestamp: new Date().toISOString(),
-              progress: 'Starting background load...'
+              progress: 'Starting background load...',
+              platform: 'Growth Accelerator Platform',
+              api_version: 'v3'
             }
           }])
           .select()
@@ -105,7 +108,10 @@ serve(async (req) => {
           console.log('Testing API connectivity...');
           const testResponse = await fetch(`${spiBaseUrl}/candidates?limit=1`, {
             method: 'GET',
-            headers,
+            headers: {
+              ...headers,
+              'User-Agent': 'Growth-Accelerator-Platform/1.0'
+            },
           });
 
           if (!testResponse.ok) {
@@ -125,34 +131,37 @@ serve(async (req) => {
           throw new Error(`Cannot connect to Workable API: ${apiError.message}`);
         }
         
-        console.log('🚀 Starting comprehensive candidate loading from Workable API...');
+        console.log('🚀 Starting to load candidates...');
         
         let allCandidates: any[] = [];
         let page = 1;
         let hasMorePages = true;
         let totalLoaded = 0;
-        const limit = 100; // Standard limit per page
+        const limit = 100;
 
-        // Use the same approach as your Node.js script
+        // Use offset-based pagination like the Node.js script
         while (hasMorePages) {
           let retryCount = 0;
           const maxRetries = 3;
           
           while (retryCount <= maxRetries) {
             try {
-              console.log(`📄 Loading page ${page}... (attempt ${retryCount + 1})`);
+              console.log(`Loading page ${page}...`);
               
-              // Try both pagination methods to ensure compatibility
-              const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&page=${page}`;
-              console.log(`🔗 Requesting: ${candidatesUrl}`);
+              // Use offset-based pagination matching Node.js implementation
+              const offset = (page - 1) * limit;
+              const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&offset=${offset}`;
               
               const response = await fetch(candidatesUrl, {
                 method: 'GET',
-                headers,
+                headers: {
+                  ...headers,
+                  'User-Agent': 'Growth-Accelerator-Platform/1.0'
+                },
               });
 
               if (response.status === 429) {
-                // Rate limited - exponential backoff matching your Node.js pattern
+                // Rate limited - exponential backoff
                 const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000);
                 console.log(`⏸️ Rate limited on page ${page}, waiting ${backoffDelay}ms...`);
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
@@ -160,30 +169,19 @@ serve(async (req) => {
                 continue;
               }
 
-              if (!response.ok) {
+              if (response.status !== 200) {
                 const errorText = await response.text();
-                console.error(`❌ HTTP ${response.status} on page ${page}:`, errorText);
+                console.error(`❌ API Error ${response.status} on page ${page}:`, errorText);
                 throw new Error(`API Error: ${response.status} - ${errorText}`);
               }
 
               const responseData = await response.json();
-              console.log(`📊 Response structure:`, Object.keys(responseData));
-              console.log(`📊 Response sample:`, JSON.stringify(responseData).substring(0, 200) + '...');
+              const { candidates, paging } = responseData;
               
-              // Extract candidates - handle various API response formats
-              let candidates = null;
-              if (responseData.candidates) {
-                candidates = responseData.candidates;
-              } else if (Array.isArray(responseData)) {
-                candidates = responseData;
-              } else if (responseData.data && Array.isArray(responseData.data)) {
-                candidates = responseData.data;
-              }
-              
-              if (candidates && Array.isArray(candidates) && candidates.length > 0) {
+              if (candidates && candidates.length > 0) {
                 allCandidates.push(...candidates);
                 totalLoaded = allCandidates.length;
-                console.log(`✅ Page ${page}: +${candidates.length} candidates (Total: ${totalLoaded})`);
+                console.log(`✓ Page ${page}: ${candidates.length} candidates (Total: ${totalLoaded})`);
                 
                 // Progress logging every 5 pages
                 if (page % 5 === 0 && syncLog?.id) {
@@ -195,32 +193,27 @@ serve(async (req) => {
                         timestamp: new Date().toISOString(),
                         progress: `Page ${page} complete - ${totalLoaded} candidates loaded`,
                         currentPage: page,
-                        totalLoaded
+                        totalLoaded,
+                        platform: 'Growth Accelerator Platform'
                       }
                     })
                     .eq('id', syncLog.id);
                 }
                 
-                // Check if this is likely the last page based on your Node.js logic
-                if (candidates.length < limit) {
-                  console.log(`🏁 Last page detected (${candidates.length} < ${limit})`);
-                  hasMorePages = false;
-                } else {
-                  page++;
-                  
-                  // Rate limiting - progressive delays like your Node.js script
-                  const delay = Math.min(500 + (page * 100), 2000);
-                  console.log(`⏳ Waiting ${delay}ms before next page...`);
-                  await new Promise(resolve => setTimeout(resolve, delay));
-                }
+                // Check if there are more pages
+                hasMorePages = paging && paging.next;
+                page++;
+                
+                // Rate limiting - 200ms delay like Node.js script
+                await new Promise(resolve => setTimeout(resolve, 200));
                 break; // Success, exit retry loop
               } else {
-                console.log(`🔚 No candidates on page ${page} - ending pagination`);
+                console.log(`No candidates on page ${page} - ending pagination`);
                 hasMorePages = false;
                 break;
               }
             } catch (error) {
-              console.error(`💥 Error on page ${page} (attempt ${retryCount + 1}):`, error);
+              console.error(`❌ Error on page ${page} (attempt ${retryCount + 1}):`, error);
               if (retryCount >= maxRetries) {
                 console.error(`🚨 Max retries exceeded for page ${page}`);
                 hasMorePages = false;
@@ -234,7 +227,7 @@ serve(async (req) => {
           }
         }
 
-        console.log(`🎉 Successfully loaded ${totalLoaded} candidates from Workable!`);
+        console.log(`🎉 Successfully loaded ${totalLoaded} candidates!`);
 
         // Now sync all candidates to Supabase with improved error handling
         let syncedCount = 0;
