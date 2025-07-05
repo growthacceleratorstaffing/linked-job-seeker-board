@@ -131,7 +131,7 @@ const CRM = () => {
 
         // Only bulk load if we have significantly fewer candidates than expected (~1600)
         if ((count || 0) < 1500) {
-          console.log('Auto-loading all candidates from Workable (including archived jobs)...');
+          console.log('Auto-loading all candidates...');
           setIsBulkLoading(true);
           
           const { data, error } = await supabase.functions.invoke('workable-integration', {
@@ -159,7 +159,7 @@ const CRM = () => {
               console.log('Auto bulk load completed:', data);
               toast({
                 title: "All candidates loaded! 🎉",
-                description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable (including archived jobs)`,
+                description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates`,
               });
             }
             
@@ -243,9 +243,9 @@ const CRM = () => {
             </CardHeader>
             <CardContent>
               <div className="text-sm font-bold text-green-400">
-                External API v3
+                Data API v3
               </div>
-              <p className="text-xs text-slate-400">Platform Integration</p>
+              <p className="text-xs text-slate-400">Integrated System</p>
             </CardContent>
           </Card>
 
@@ -303,7 +303,7 @@ const CRM = () => {
                         <span className="text-white">{stats.qualityMetrics?.withCompany || 0} ({stats.percentages?.company || 0}%)</span>
                       </div>
                        <div className="flex justify-between">
-                         <span className="text-slate-400">Platform ID:</span>
+                         <span className="text-slate-400">System ID:</span>
                          <span className="text-blue-400">{stats.qualityMetrics?.withWorkableId || 0} ({stats.percentages?.workableId || 0}%)</span>
                        </div>
                     </div>
@@ -313,8 +313,8 @@ const CRM = () => {
                     <h4 className="text-sm font-medium text-slate-300">Platform Information</h4>
                      <div className="space-y-1 text-sm">
                      <div className="flex justify-between">
-                       <span className="text-slate-400">API Source:</span>
-                       <span className="text-white">External Platform</span>
+                       <span className="text-slate-400">Data Source:</span>
+                       <span className="text-white">Integrated System</span>
                      </div>
                        <div className="flex justify-between">
                          <span className="text-slate-400">API Version:</span>
@@ -365,11 +365,11 @@ const CRM = () => {
               <CardContent className="pt-6">
                  <div className="flex items-center justify-center gap-3">
                    <Loader2 className="w-5 h-5 animate-spin text-secondary-pink" />
-                   <p className="text-white">Loading all candidates from external platform...</p>
+                   <p className="text-white">Loading all candidates...</p>
                  </div>
-                <p className="text-xs text-slate-400 text-center mt-2">
-                  This may take a few minutes to complete. Please wait...
-                </p>
+                 <p className="text-xs text-slate-400 text-center mt-2">
+                   This may take a few minutes to complete. Please wait...
+                 </p>
               </CardContent>
             </Card>
           </div>

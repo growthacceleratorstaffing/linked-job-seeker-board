@@ -114,7 +114,7 @@ export const IntegrationSyncPanel = () => {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Integration Status</CardTitle>
           <CardDescription>
-            Real-time sync status for integrated platforms
+            Real-time sync status
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -150,7 +150,7 @@ export const IntegrationSyncPanel = () => {
                     <CheckCircle className="h-4 w-4 text-green-500" />
                 )}
                 <div>
-                  <div className="font-medium">External Platform Integration</div>
+                  <div className="font-medium">Data Integration</div>
                   <div className="text-sm text-muted-foreground">
                     {syncStats?.workable.lastSync ? 
                       `Last sync: ${new Date(syncStats.workable.lastSync).toLocaleDateString()}` :

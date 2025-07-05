@@ -62,7 +62,7 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
     },
     onSuccess: (data) => {
       toast.success("Candidate added successfully! 🎉", {
-        description: "The candidate is now visible in your candidate list and will sync with external platforms when possible."
+        description: "The candidate is now visible in your candidate list."
       });
       setFormData({ 
         name: "", 
@@ -151,7 +151,7 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
         <DialogHeader>
           <DialogTitle>Add New Candidate</DialogTitle>
           <DialogDescription>
-            Add a new candidate to your database. They will appear immediately in your candidate list and sync with external platforms when possible.
+            Add a new candidate to your database. They will appear immediately in your candidate list.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
