@@ -135,48 +135,85 @@ serve(async (req) => {
 
         // Load all candidates using direct /candidates endpoint with pagination
         while (hasMorePages) {
-          try {
-            console.log(`Loading page ${page}...`);
-            const offset = (page - 1) * limit;
-            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&offset=${offset}`;
-            
-            const response = await fetch(candidatesUrl, {
-              method: 'GET',
-              headers,
-            });
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error(`Failed to fetch candidates page ${page}:`, {
-                status: response.status,
-                statusText: response.statusText,
-                body: errorText
+          let retryCount = 0;
+          const maxRetries = 3;
+          
+          while (retryCount <= maxRetries) {
+            try {
+              console.log(`Loading page ${page}... (attempt ${retryCount + 1})`);
+              const offset = (page - 1) * limit;
+              const candidatesUrl = `${spiBaseUrl}/candidates?limit=${limit}&offset=${offset}`;
+              
+              const response = await fetch(candidatesUrl, {
+                method: 'GET',
+                headers,
               });
-              throw new Error(`API Error on page ${page}: ${response.status} - ${errorText}`);
-            }
 
-            const responseData = await response.json();
-            const { candidates, paging } = responseData;
-            
-            if (candidates && candidates.length > 0) {
-              allCandidates.push(...candidates);
-              totalLoaded = allCandidates.length;
-              console.log(`✓ Page ${page}: ${candidates.length} candidates (Total: ${totalLoaded})`);
+              if (response.status === 429) {
+                // Rate limited - exponential backoff
+                const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
+                console.log(`Rate limited on page ${page}, waiting ${backoffDelay}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, backoffDelay));
+                retryCount++;
+                continue;
+              }
+
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`Failed to fetch candidates page ${page}:`, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  body: errorText
+                });
+                throw new Error(`API Error on page ${page}: ${response.status} - ${errorText}`);
+              }
+
+              const responseData = await response.json();
+              const { candidates, paging } = responseData;
               
-              // Check if there are more pages using paging.next
-              hasMorePages = paging && paging.next;
-              page++;
-              
-              // Rate limiting - wait 1000ms between requests to avoid 429 errors
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            } else {
-              console.log(`No more candidates found on page ${page}`);
-              hasMorePages = false;
+              if (candidates && candidates.length > 0) {
+                allCandidates.push(...candidates);
+                totalLoaded = allCandidates.length;
+                console.log(`✓ Page ${page}: ${candidates.length} candidates (Total: ${totalLoaded})`);
+                
+                // Update progress in sync log every 5 pages
+                if (page % 5 === 0 && syncLog?.id) {
+                  await supabase
+                    .from('integration_sync_logs')
+                    .update({
+                      synced_data: { 
+                        action: 'load_all_candidates',
+                        timestamp: new Date().toISOString(),
+                        progress: `Loading page ${page}, total so far: ${totalLoaded} candidates`
+                      }
+                    })
+                    .eq('id', syncLog.id);
+                }
+                
+                // Check if there are more pages using paging.next
+                hasMorePages = paging && paging.next;
+                page++;
+                
+                // Progressive rate limiting - longer delays as we get further
+                const delay = Math.min(1000 + (page * 100), 3000); // Start at 1s, increase by 100ms per page, max 3s
+                console.log(`⏳ Waiting ${delay}ms before next page...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                break; // Success, exit retry loop
+              } else {
+                console.log(`No more candidates found on page ${page}`);
+                hasMorePages = false;
+                break;
+              }
+            } catch (error) {
+              console.error(`❌ Error on page ${page} (attempt ${retryCount + 1}):`, error);
+              if (retryCount >= maxRetries) {
+                hasMorePages = false;
+                throw error;
+              }
+              retryCount++;
+              // Wait before retry
+              await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
             }
-          } catch (error) {
-            console.error(`❌ Error on page ${page}:`, error);
-            hasMorePages = false;
-            throw error;
           }
         }
 
