@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -8,19 +8,30 @@ import {
   ArrowRightLeft, 
   CheckSquare, 
   FileText, 
-  LogOut,
-  Menu,
-  X
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
+  useSidebar,
+} from '@/components/ui/sidebar';
 
 const AppSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { state } = useSidebar();
 
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -67,132 +78,107 @@ const AppSidebar = () => {
   };
 
   const NavItem = ({ path, label, icon: Icon, external }: { path: string; label: string; icon: React.ElementType; external?: boolean }) => (
-    external ? (
-      <a href={path} target="_blank" rel="noopener noreferrer" className="block">
-        <div className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors">
-          <Icon size={20} />
-          <span className="font-medium">{label}</span>
-        </div>
-      </a>
-    ) : (
-      <NavLink to={path} className="block" onClick={() => setIsMobileMenuOpen(false)}>
-        <div className={`flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors ${
-          isActivePath(path) ? 'bg-white/20 border-r-2 border-secondary-pink' : ''
-        }`}>
-          <Icon size={20} />
-          <span className="font-medium">{label}</span>
-        </div>
-      </NavLink>
-    )
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={!external && isActivePath(path)}>
+        {external ? (
+          <a href={path} target="_blank" rel="noopener noreferrer">
+            <Icon />
+            <span>{label}</span>
+          </a>
+        ) : (
+          <NavLink to={path}>
+            <Icon />
+            <span>{label}</span>
+          </NavLink>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 
-  const SidebarContent = () => (
-    <div className="w-64 h-screen bg-primary-blue text-white flex flex-col">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-white/10">
+  return (
+    <Sidebar className="bg-primary-blue border-r border-white/20">
+      <SidebarHeader className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
           <img 
             src="/lovable-uploads/76da95f6-805f-4f3e-91e8-f4ddc51657ad.png" 
             alt="Growth Accelerator Logo" 
             className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
           />
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold text-white">Growth</h1>
-            <h2 className="text-lg sm:text-xl font-bold text-white">Accelerator</h2>
-          </div>
+          {state === "expanded" && (
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-white">Growth</h1>
+              <h2 className="text-lg sm:text-xl font-bold text-white">Accelerator</h2>
+            </div>
+          )}
         </div>
-      </div>
+      </SidebarHeader>
 
-      {/* Navigation */}
-      <div className="flex-1 py-4">
+      <SidebarContent className="text-white">
         {/* Main Navigation */}
-        <div className="mb-6">
-          {navigationItems.map((item) => (
-            <NavItem key={item.path} {...item} />
-          ))}
-        </div>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationItems.map((item) => (
+                <NavItem key={item.path} {...item} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         {/* Vacancies Section */}
-        <div className="mb-6">
-          <div className="px-4 py-2">
-            <h3 className="text-secondary-pink text-sm font-bold uppercase tracking-wider">VACANCIES</h3>
-          </div>
-          {vacancyItems.map((item) => (
-            <NavItem key={item.path} {...item} />
-          ))}
-        </div>
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+            VACANCIES
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {vacancyItems.map((item) => (
+                <NavItem key={item.path} {...item} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         {/* Staffing Section */}
-        <div className="mb-6">
-          <div className="px-4 py-2">
-            <h3 className="text-secondary-pink text-sm font-bold uppercase tracking-wider">STAFFING</h3>
-          </div>
-          {staffingItems.map((item) => (
-            <NavItem key={item.path} {...item} />
-          ))}
-        </div>
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+            STAFFING
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {staffingItems.map((item) => (
+                <NavItem key={item.path} {...item} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         {/* Contracting Section */}
-        <div className="mb-6">
-          <div className="px-4 py-2">
-            <h3 className="text-secondary-pink text-sm font-bold uppercase tracking-wider">CONTRACTING</h3>
-          </div>
-          {contractingItems.map((item) => (
-            <NavItem key={item.path} {...item} />
-          ))}
-        </div>
-      </div>
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+            CONTRACTING
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {contractingItems.map((item) => (
+                <NavItem key={item.path} {...item} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
-      {/* Logout Button */}
-      <div className="px-4 pb-4">
+      <SidebarFooter className="p-4 border-t border-white/10">
         <Button 
           variant="ghost" 
           className="w-full justify-start text-white hover:bg-white/10"
           onClick={handleLogout}
         >
-          <LogOut size={20} className="mr-3" />
-          Logout
+          <LogOut className="mr-3" />
+          {state === "expanded" && <span>Logout</span>}
         </Button>
-      </div>
-
-      {/* Bottom section with horizontal line */}
-      <div className="border-t border-white/10 p-4">
-      </div>
-    </div>
-  );
-
-  return (
-    <>
-      {/* Mobile Menu Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="lg:hidden fixed top-4 left-4 z-50 bg-slate-800 text-white hover:bg-slate-700"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      >
-        {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-      </Button>
-
-      {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <SidebarContent />
-      </div>
-
-      {/* Mobile Sidebar */}
-      <div className={`lg:hidden fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
-        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        <SidebarContent />
-      </div>
-    </>
+      </SidebarFooter>
+    </Sidebar>
   );
 };
 
