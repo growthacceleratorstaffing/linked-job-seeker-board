@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Users, UserCheck, Building, Clock, Download, Loader2 } from "lucide-react";
+import { Users, UserCheck, Building, Clock, Loader2 } from "lucide-react";
 import { CandidatesList } from "@/components/crm/CandidatesList";
 import { useToast } from "@/hooks/use-toast";
 
@@ -11,51 +10,6 @@ const CRM = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isBulkLoading, setIsBulkLoading] = useState(false);
-
-  // Bulk load all candidates from Workable
-  const handleBulkLoadCandidates = async () => {
-    setIsBulkLoading(true);
-    
-    try {
-      console.log('Starting bulk load of all 965 candidates from Workable...');
-      
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'load_all_candidates' }
-      });
-
-      if (error) {
-        console.error('Bulk load failed:', error);
-        toast({
-          title: "Bulk load failed ❌",
-          description: `Error: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data && data.success) {
-        console.log('Bulk load completed:', data);
-        
-        // Invalidate queries to refresh the UI
-        queryClient.invalidateQueries({ queryKey: ["candidates"] });
-        queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
-        
-        toast({
-          title: "All candidates loaded! 🎉",
-          description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable`,
-        });
-      }
-    } catch (error: any) {
-      console.error('Bulk load error:', error);
-      toast({
-        title: "Bulk load failed ❌",
-        description: `Unexpected error: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsBulkLoading(false);
-    }
-  };
 
   // Fetch stats
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -92,34 +46,52 @@ const CRM = () => {
           .from("candidates")
           .select("*", { count: 'exact', head: true });
 
-        // Only sync if we have significantly fewer candidates than expected (~900)
+        // Only bulk load if we have significantly fewer candidates than expected (~965)
         if ((count || 0) < 500) {
-          console.log('Auto-syncing candidates from Workable...');
+          console.log('Auto-loading all candidates from Workable (including archived jobs)...');
+          setIsBulkLoading(true);
           
           const { data, error } = await supabase.functions.invoke('workable-integration', {
-            body: { action: 'sync_candidates' }
+            body: { action: 'load_all_candidates' }
           });
 
           if (error) {
-            console.error('Auto-sync failed:', error);
+            console.error('Auto bulk load failed:', error);
+            toast({
+              title: "Auto-load failed ❌",
+              description: `Error: ${error.message}`,
+              variant: "destructive",
+            });
             return;
           }
 
-          if (data && data.syncedCandidates > 0) {
+          if (data && data.success) {
+            console.log('Auto bulk load completed:', data);
+            
+            // Invalidate queries to refresh the UI
+            queryClient.invalidateQueries({ queryKey: ["candidates"] });
+            queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
+            
             toast({
-              title: "Candidates synced! 🎉",
-              description: `Loaded ${data.syncedCandidates} candidates from Workable`,
+              title: "All candidates loaded! 🎉",
+              description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from Workable (including archived jobs)`,
             });
           }
         }
       } catch (error: any) {
-        console.error('Auto-sync error:', error);
-        // Don't show error toast for auto-sync failures to avoid annoying users
+        console.error('Auto bulk load error:', error);
+        toast({
+          title: "Auto-load failed ❌",
+          description: `Unexpected error: ${error.message}`,
+          variant: "destructive",
+        });
+      } finally {
+        setIsBulkLoading(false);
       }
     };
 
     autoSyncCandidates();
-  }, [toast]);
+  }, [toast, queryClient]);
 
   return (
     <div className="min-h-screen bg-primary-blue text-white">
@@ -206,44 +178,22 @@ const CRM = () => {
           </Card>
         </div>
         
-        {/* Bulk Load Section */}
-        <div className="mb-8">
-          <Card className="bg-slate-800 border-slate-600">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Download className="w-5 h-5" />
-                Load All Candidates from Workable
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-slate-300 mb-4">
-                Load all 965 candidates from your Workable platform in one go. This will fetch every candidate with their complete profile data, skills, and contact information.
-              </p>
-              <Button
-                onClick={handleBulkLoadCandidates}
-                disabled={isBulkLoading}
-                className="bg-secondary-pink hover:bg-secondary-pink/90 text-white"
-              >
-                {isBulkLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Loading All Candidates...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Load All 965 Candidates
-                  </>
-                )}
-              </Button>
-              {isBulkLoading && (
-                <p className="text-xs text-slate-400 mt-2">
+        {/* Loading Status */}
+        {isBulkLoading && (
+          <div className="mb-8">
+            <Card className="bg-slate-800 border-slate-600">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-secondary-pink" />
+                  <p className="text-white">Loading all candidates from Workable (including archived jobs)...</p>
+                </div>
+                <p className="text-xs text-slate-400 text-center mt-2">
                   This may take a few minutes to complete. Please wait...
                 </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
         
         <CandidatesList />
       </div>
