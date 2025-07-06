@@ -122,9 +122,31 @@ const PostJobs = () => {
     }
 
     try {
-      // Create a new job with current timestamp and published state
+      // Save to local database first
+      const { data: localJob, error: localError } = await supabase
+        .from('jobs')
+        .insert([{
+          title: newJob.title,
+          job_description: newJob.description || 'Job description to be added.',
+          location_name: newJob.location || 'Location TBD',
+          work_type_name: newJob.workplace_type,
+          company_name: newJob.company,
+          source: 'Manual Entry', // Track source as manual
+          category_name: 'General',
+        }])
+        .select()
+        .single();
+
+      if (localError) {
+        console.error('Error saving to local database:', localError);
+        throw new Error(`Failed to save job locally: ${localError.message}`);
+      }
+
+      console.log('✅ Job saved to local database:', localJob.id);
+
+      // Create a display job for the current view (temporary until refresh)
       const createdJob: WorkableJob = {
-        id: `local-${Date.now()}`,
+        id: localJob.id,
         title: newJob.title,
         full_title: newJob.title,
         state: 'published',
@@ -152,7 +174,7 @@ const PostJobs = () => {
 
       toast({
         title: "Job Created! 🎉",
-        description: `${newJob.title} has been created and is now visible in your jobs overview`,
+        description: `${newJob.title} has been saved to the database and is now visible in your jobs overview`,
       });
       
     } catch (error) {

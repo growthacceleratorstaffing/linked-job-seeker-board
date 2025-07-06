@@ -514,6 +514,109 @@ serve(async (req) => {
         }
       }
 
+      case 'publish_job': {
+        console.log('Publishing job to Workable and local database...');
+        
+        if (!supabaseUrl || !supabaseServiceKey) {
+          throw new Error('Supabase configuration missing');
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        // First, save to local database
+        try {
+          const { data: localJob, error: localError } = await supabase
+            .from('jobs')
+            .insert([{
+              title: jobData.title,
+              job_description: jobData.description,
+              location_name: jobData.location,
+              work_type_name: jobData.employment_type,
+              company_name: jobData.department || 'Growth Accelerator',
+              source: 'AI Generator', // Track source
+              category_name: jobData.department,
+              workplace: jobData.workplace,
+              skill_tags: jobData.skills || []
+            }])
+            .select()
+            .single();
+
+          if (localError) {
+            console.error('Error saving to local database:', localError);
+            throw new Error(`Failed to save job locally: ${localError.message}`);
+          }
+
+          console.log('✅ Job saved to local database:', localJob.id);
+        } catch (localSaveError) {
+          console.error('Local save failed:', localSaveError);
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: 'Failed to save job to local database',
+              message: localSaveError.message 
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Then try to publish to Workable (optional)
+        try {
+          const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+          const workableJobData = {
+            title: jobData.title,
+            full_title: jobData.title,
+            description: jobData.description,
+            location: {
+              location_str: jobData.location,
+              workplace_type: jobData.workplace || 'onsite'
+            },
+            employment_type: jobData.employment_type,
+            department: jobData.department,
+            state: 'draft' // Create as draft initially
+          };
+
+          const response = await fetch(`${spiBaseUrl}/jobs`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(workableJobData)
+          });
+
+          if (response.ok) {
+            const workableJob = await response.json();
+            console.log('✅ Job also published to Workable:', workableJob.shortcode);
+            
+            return new Response(
+              JSON.stringify({ 
+                success: true,
+                message: `Job "${jobData.title}" created successfully in both local database and Workable (as draft)`,
+                workable_job_id: workableJob.shortcode
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          } else {
+            console.log('⚠️ Failed to publish to Workable, but job saved locally');
+            return new Response(
+              JSON.stringify({ 
+                success: true,
+                message: `Job "${jobData.title}" created successfully in local database. Workable sync failed but job is still available.`,
+                workable_error: await response.text()
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } catch (workableError) {
+          console.log('⚠️ Workable publishing failed, but job saved locally:', workableError);
+          return new Response(
+            JSON.stringify({ 
+              success: true,
+              message: `Job "${jobData.title}" created successfully in local database. Workable publishing failed but job is still available.`,
+              workable_error: workableError.message
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),

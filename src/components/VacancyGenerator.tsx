@@ -106,6 +106,7 @@ export const VacancyGenerator = () => {
         location: employmentDetails.officeLocation,
         job_code: employmentDetails.jobCode,
         workplace: employmentDetails.workplace,
+        source: generatedVacancy.trim() ? 'AI Generator' : 'Manual Entry', // Track if AI was used
       };
       
       const { data, error } = await supabase.functions.invoke('workable-integration', {
