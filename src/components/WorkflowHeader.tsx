@@ -18,6 +18,7 @@ const WorkflowHeader = () => {
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { path: '/post-jobs', label: 'Jobs', icon: Briefcase },
     { path: '/candidates', label: 'Candidates', icon: Users },
+    { path: '/jobs', label: 'Attract', icon: FileText },
     { path: '/matching', label: 'Match', icon: ArrowRightLeft },
     { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Hire', icon: FileText, external: true },
     { path: '/onboarding', label: 'Onboard', icon: CheckSquare },
