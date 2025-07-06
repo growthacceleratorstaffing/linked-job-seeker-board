@@ -68,16 +68,20 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
       content: message
     });
 
-    const response = await fetch(`${azureEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview`, {
+    const response = await fetch(`${azureEndpoint.replace(/\/$/, '')}/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'api-key': azureApiKey,
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
         messages: messages,
         temperature: 0.7,
         max_tokens: 800,
+        top_p: 0.95,
+        frequency_penalty: 0,
+        presence_penalty: 0
       }),
     });
 
