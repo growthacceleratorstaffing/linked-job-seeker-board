@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
 import {
   Sidebar,
   SidebarContent,
@@ -33,22 +34,22 @@ const AppSidebar = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { state } = useSidebar();
+  const { permissions, role } = useWorkablePermissions();
   const [userProfile, setUserProfile] = useState<{ email: string; role: string } | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // For now, set role as admin - this would typically come from a profiles table
         setUserProfile({
           email: user.email || '',
-          role: 'admin'
+          role: role || 'user'
         });
       }
     };
 
     fetchUserProfile();
-  }, []);
+  }, [role]);
 
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -56,20 +57,31 @@ const AppSidebar = () => {
   ];
 
   const vacancyItems = [
-    { path: '/jobs', label: 'Job Posting', icon: FileText },
-    { path: '/post-jobs', label: 'Vacancies', icon: Briefcase },
+    { path: '/jobs', label: 'Job Posting', icon: FileText, permission: 'jobs' },
+    { path: '/post-jobs', label: 'Vacancies', icon: Briefcase, permission: 'jobs' },
   ];
 
   const staffingItems = [
-    { path: '/candidates', label: 'Candidates', icon: Users },
-    { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
-    { path: '/onboarding', label: 'Preboarding', icon: CheckSquare },
+    { path: '/candidates', label: 'Candidates', icon: Users, permission: 'candidates' },
+    { path: '/matching', label: 'Matching', icon: ArrowRightLeft, permission: 'reviewer' },
+    { path: '/onboarding', label: 'Preboarding', icon: CheckSquare, permission: 'simple' },
   ];
 
   const contractingItems = [
-    { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Backoffice', icon: FileText, external: true },
-    { path: 'https://mijn.cootje.com/recruiter/kandidaten/b50e2506-9644-40be-8e87-08b2046ca3ee?view=Vacatures&tab=Koppelen', label: 'Onboarding', icon: FileText, external: true },
+    { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Backoffice', icon: FileText, external: true, permission: 'admin' },
+    { path: 'https://mijn.cootje.com/recruiter/kandidaten/b50e2506-9644-40be-8e87-08b2046ca3ee?view=Vacatures&tab=Koppelen', label: 'Onboarding', icon: FileText, external: true, permission: 'simple' },
   ];
+
+  // Filter navigation items based on permissions
+  const filteredVacancyItems = vacancyItems.filter(item => 
+    !item.permission || permissions[item.permission as keyof typeof permissions]
+  );
+  const filteredStaffingItems = staffingItems.filter(item => 
+    !item.permission || permissions[item.permission as keyof typeof permissions]
+  );
+  const filteredContractingItems = contractingItems.filter(item => 
+    !item.permission || permissions[item.permission as keyof typeof permissions]
+  );
 
   const isActivePath = (path: string) => {
     return location.pathname === path;
@@ -144,47 +156,53 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Jobs Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-            JOBS
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {vacancyItems.map((item) => (
-                <NavItem key={item.path} {...item} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Jobs Section - Only show if user has job permissions */}
+        {filteredVacancyItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+              JOBS
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredVacancyItems.map((item) => (
+                  <NavItem key={item.path} {...item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        {/* Staffing Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-            STAFFING
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {staffingItems.map((item) => (
-                <NavItem key={item.path} {...item} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Staffing Section - Only show if user has staffing permissions */}
+        {filteredStaffingItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+              STAFFING
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredStaffingItems.map((item) => (
+                  <NavItem key={item.path} {...item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        {/* Contracting Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-            CONTRACTING
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {contractingItems.map((item) => (
-                <NavItem key={item.path} {...item} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Contracting Section - Only show if user has contracting permissions */}
+        {filteredContractingItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+              CONTRACTING
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredContractingItems.map((item) => (
+                  <NavItem key={item.path} {...item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-white/10 bg-primary-blue">
