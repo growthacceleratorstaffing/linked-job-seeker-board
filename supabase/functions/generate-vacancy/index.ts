@@ -28,28 +28,31 @@ serve(async (req) => {
 
     const azureApiKey = Deno.env.get('AZURE_OPENAI_API_KEY');
     let azureEndpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    console.log('Azure OpenAI Environment check:', {
-      hasApiKey: !!azureApiKey,
-      hasEndpoint: !!azureEndpoint,
-      endpointValue: azureEndpoint,
-      apiKeyLength: azureApiKey ? azureApiKey.length : 0
+    console.log('API Configuration check:', {
+      hasAzureApiKey: !!azureApiKey,
+      hasAzureEndpoint: !!azureEndpoint,
+      hasOpenAIKey: !!openaiApiKey
     });
 
+    // Try Azure OpenAI first, then fallback to OpenAI
+    let useOpenAI = false;
     if (!azureApiKey || !azureEndpoint) {
-      return new Response(
-        JSON.stringify({ error: 'Azure OpenAI configuration missing' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      console.log('Azure OpenAI not configured, trying OpenAI fallback');
+      if (!openaiApiKey) {
+        return new Response(
+          JSON.stringify({ error: 'Neither Azure OpenAI nor OpenAI API key is configured' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      useOpenAI = true;
     }
 
-    // Clean up the endpoint URL to avoid double slashes
-    azureEndpoint = azureEndpoint.replace(/\/$/, '');
-
-    console.log('Generating vacancy with Azure OpenAI for prompt:', prompt.substring(0, 100) + '...');
+    console.log('Generating vacancy for prompt:', prompt.substring(0, 100) + '...');
 
     const systemPrompt = `You are an expert HR professional and job description writer. Create a compelling, professional job vacancy based on the user's requirements. 
 
@@ -62,10 +65,6 @@ Structure the vacancy with these sections:
 6. Call to action
 
 Make it engaging, professional, and tailored to the specific role described. Use markdown formatting for headers and lists.`;
-
-    // Use the same deployment name and API version as the AI chat function
-    const apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
-    console.log('Using Azure OpenAI URL:', apiUrl);
 
     const requestBody = {
       messages: [
@@ -86,15 +85,36 @@ Make it engaging, professional, and tailored to the specific role described. Use
       stream: false
     };
 
+    let apiUrl, headers;
+    
+    if (useOpenAI) {
+      // Use OpenAI API
+      apiUrl = 'https://api.openai.com/v1/chat/completions';
+      headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Accept': 'application/json'
+      };
+      requestBody.model = 'gpt-4o-mini'; // Use the latest model
+      console.log('Using OpenAI API');
+    } else {
+      // Use Azure OpenAI
+      azureEndpoint = azureEndpoint.replace(/\/$/, '');
+      apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2024-08-01-preview`;
+      headers = {
+        'Content-Type': 'application/json',
+        'api-key': azureApiKey,
+        'Accept': 'application/json'
+      };
+      console.log('Using Azure OpenAI API');
+    }
+
+    console.log('API URL:', apiUrl);
     console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': azureApiKey,
-        'Accept': 'application/json'
-      },
+      headers: headers,
       body: JSON.stringify(requestBody),
     });
 
@@ -103,7 +123,7 @@ Make it engaging, professional, and tailored to the specific role described. Use
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Azure OpenAI API error:', response.status, errorText);
+      console.error('API error:', response.status, errorText);
       
       // Try to parse error as JSON for better debugging
       try {
@@ -114,7 +134,7 @@ Make it engaging, professional, and tailored to the specific role described. Use
       }
       
       return new Response(
-        JSON.stringify({ error: `Azure OpenAI API error: ${response.status} - ${errorText}` }),
+        JSON.stringify({ error: `AI API error: ${response.status} - ${errorText}` }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -131,7 +151,7 @@ Make it engaging, professional, and tailored to the specific role described. Use
     } catch (e) {
       console.error('Failed to parse response as JSON:', e);
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON response from Azure OpenAI' }),
+        JSON.stringify({ error: 'Invalid JSON response from AI API' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -142,9 +162,9 @@ Make it engaging, professional, and tailored to the specific role described. Use
     console.log('Parsed response data:', JSON.stringify(data, null, 2));
 
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Unexpected response format from Azure OpenAI:', data);
+      console.error('Unexpected response format from AI API:', data);
       return new Response(
-        JSON.stringify({ error: 'Invalid response format from Azure OpenAI' }),
+        JSON.stringify({ error: 'Invalid response format from AI API' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -154,7 +174,7 @@ Make it engaging, professional, and tailored to the specific role described. Use
 
     const generatedVacancy = data.choices[0].message.content;
     
-    console.log('Successfully generated vacancy with Azure OpenAI');
+    console.log('Successfully generated vacancy with AI');
 
     return new Response(
       JSON.stringify({ generatedVacancy }),
