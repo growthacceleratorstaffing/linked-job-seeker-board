@@ -75,7 +75,6 @@ const Auth = () => {
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName
           }
@@ -86,7 +85,7 @@ const Auth = () => {
 
       toast({
         title: "Account created successfully! 🎉",
-        description: "Please check your email to confirm your account, then you can sign in.",
+        description: "You can now sign in with your credentials.",
       });
 
       // Clear the form
