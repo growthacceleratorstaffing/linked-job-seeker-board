@@ -107,7 +107,7 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
     } else {
       // Use Azure OpenAI
       azureEndpoint = azureEndpoint.replace(/\/$/, '');
-      apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
+      apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview`;
       headers = {
         'Content-Type': 'application/json',
         'api-key': azureApiKey,
