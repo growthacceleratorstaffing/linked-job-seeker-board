@@ -28,28 +28,31 @@ serve(async (req) => {
 
     const azureApiKey = Deno.env.get('AZURE_OPENAI_API_KEY');
     let azureEndpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    console.log('Azure OpenAI Environment check:', {
-      hasApiKey: !!azureApiKey,
-      hasEndpoint: !!azureEndpoint,
-      endpointValue: azureEndpoint,
-      apiKeyLength: azureApiKey ? azureApiKey.length : 0
+    console.log('API Configuration check:', {
+      hasAzureApiKey: !!azureApiKey,
+      hasAzureEndpoint: !!azureEndpoint,
+      hasOpenAIKey: !!openaiApiKey
     });
 
+    // Try Azure OpenAI first, then fallback to OpenAI
+    let useOpenAI = false;
     if (!azureApiKey || !azureEndpoint) {
-      return new Response(
-        JSON.stringify({ error: 'Azure OpenAI configuration missing' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      console.log('Azure OpenAI not configured, trying OpenAI fallback');
+      if (!openaiApiKey) {
+        return new Response(
+          JSON.stringify({ error: 'Neither Azure OpenAI nor OpenAI API key is configured' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      useOpenAI = true;
     }
 
-    // Clean up the endpoint URL to avoid double slashes
-    azureEndpoint = azureEndpoint.replace(/\/$/, '');
-
-    console.log('Sending message to Azure OpenAI:', message.substring(0, 100) + '...');
+    console.log('Sending message to AI:', message.substring(0, 100) + '...');
 
     // Format conversation history for Azure OpenAI
     const messages = [
@@ -79,10 +82,6 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
       content: message
     });
 
-    // Use your specific deployment name and API version
-    const apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
-    console.log('Using Azure OpenAI URL:', apiUrl);
-
     const requestBody = {
       messages: messages,
       temperature: 0.7,
@@ -93,15 +92,36 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
       stream: false
     };
 
+    let apiUrl, headers;
+    
+    if (useOpenAI) {
+      // Use OpenAI API
+      apiUrl = 'https://api.openai.com/v1/chat/completions';
+      headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Accept': 'application/json'
+      };
+      requestBody.model = 'gpt-4o-mini';
+      console.log('Using OpenAI API');
+    } else {
+      // Use Azure OpenAI
+      azureEndpoint = azureEndpoint.replace(/\/$/, '');
+      apiUrl = `${azureEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview`;
+      headers = {
+        'Content-Type': 'application/json',
+        'api-key': azureApiKey,
+        'Accept': 'application/json'
+      };
+      console.log('Using Azure OpenAI API');
+    }
+
+    console.log('API URL:', apiUrl);
     console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': azureApiKey,
-        'Accept': 'application/json'
-      },
+      headers: headers,
       body: JSON.stringify(requestBody),
     });
 
@@ -110,7 +130,7 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Azure OpenAI API error:', response.status, errorText);
+      console.error('AI API error:', response.status, errorText);
       
       // Try to parse error as JSON for better debugging
       try {
@@ -121,7 +141,7 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
       }
       
       return new Response(
-        JSON.stringify({ error: `Azure OpenAI API error: ${response.status} - ${errorText}` }),
+        JSON.stringify({ error: `AI API error: ${response.status} - ${errorText}` }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -138,7 +158,7 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
     } catch (e) {
       console.error('Failed to parse response as JSON:', e);
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON response from Azure OpenAI' }),
+        JSON.stringify({ error: 'Invalid JSON response from AI API' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -149,9 +169,9 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
     console.log('Parsed response data:', JSON.stringify(data, null, 2));
 
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Unexpected response format from Azure OpenAI:', data);
+      console.error('Unexpected response format from AI API:', data);
       return new Response(
-        JSON.stringify({ error: 'Invalid response format from Azure OpenAI' }),
+        JSON.stringify({ error: 'Invalid response format from AI API' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -161,7 +181,7 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
 
     const aiResponse = data.choices[0].message.content;
     
-    console.log('Successfully received response from Azure OpenAI');
+    console.log('Successfully received response from AI');
 
     return new Response(
       JSON.stringify({ response: aiResponse }),
@@ -171,7 +191,7 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
     );
 
   } catch (error) {
-    console.error('Error in azure-openai-chat function:', error);
+    console.error('Error in myowncopilot-chat function:', error);
     console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message }),
