@@ -31,6 +31,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        
+        // Automatically sync Workable roles when user signs in
+        if (event === 'SIGNED_IN' && session?.user?.email) {
+          setTimeout(() => {
+            syncWorkableRole(session.user.email);
+          }, 0);
+        }
       }
     );
 
@@ -39,10 +46,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
+      
+      // Also sync for existing sessions on page load
+      if (session?.user?.email) {
+        setTimeout(() => {
+          syncWorkableRole(session.user.email);
+        }, 1000); // Small delay to ensure user is fully loaded
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const syncWorkableRole = async (email: string) => {
+    try {
+      console.log(`🔄 Auto-syncing Workable role for ${email}...`);
+      
+      const result = await supabase.functions.invoke('workable-integration', {
+        body: { 
+          action: 'sync_single_user',
+          email: email 
+        }
+      });
+
+      if (result.error) {
+        console.log('⚠️ Workable sync failed:', result.error);
+        return;
+      }
+      
+      const syncData = result.data;
+      if (syncData.success) {
+        console.log(`✅ Auto-synced ${email}: ${syncData.user?.workable_role} role with ${syncData.user?.assigned_jobs || 0} jobs`);
+      }
+    } catch (error) {
+      console.log('⚠️ Background Workable sync failed:', error);
+      // Silent fail - don't disrupt user experience
+    }
+  };
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();

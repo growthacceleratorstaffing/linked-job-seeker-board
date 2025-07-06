@@ -31,7 +31,7 @@ interface WorkableJob {
 const PostJobs = () => {
   const [jobs, setJobs] = useState<WorkableJob[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSyncingUser, setIsSyncingUser] = useState(false);
+  
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newJob, setNewJob] = useState({
     title: '',
@@ -187,58 +187,6 @@ const PostJobs = () => {
     }
   };
 
-  const syncMyData = async () => {
-    if (!user?.email) {
-      toast({
-        title: "Error",
-        description: "User email not found",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSyncingUser(true);
-    try {
-      console.log('Syncing user data from Workable...');
-      
-      const result = await supabase.functions.invoke('workable-integration', {
-        body: { 
-          action: 'sync_single_user',
-          email: user.email 
-        }
-      });
-
-      if (result.error) throw result.error;
-      
-      const syncData = result.data;
-      
-      if (syncData.success) {
-        toast({
-          title: "Data Synced! 🎉",
-          description: `Updated your role and permissions from Workable`,
-        });
-        
-        // Refresh the page to get updated permissions and jobs
-        window.location.reload();
-      } else {
-        toast({
-          title: "Sync Info",
-          description: syncData.message || "User data sync completed",
-          variant: "default",
-        });
-      }
-    } catch (error) {
-      console.error('Error syncing user data:', error);
-      toast({
-        title: "Sync Error",
-        description: "Failed to sync your data from Workable. Please try again or contact admin.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSyncingUser(false);
-    }
-  };
-
   useEffect(() => {
     fetchJobs();
   }, []);
@@ -281,15 +229,6 @@ const PostJobs = () => {
           <div className="flex items-center justify-between mb-6">
             <div></div>
             <div className="flex gap-4">
-              <Button 
-                onClick={syncMyData}
-                disabled={isSyncingUser}
-                variant="outline"
-                className="border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white"
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isSyncingUser ? 'animate-spin' : ''}`} />
-                Sync My Data
-              </Button>
               <Button 
                 onClick={fetchJobs}
                 disabled={isLoading}
