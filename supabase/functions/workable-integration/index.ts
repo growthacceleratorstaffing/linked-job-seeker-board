@@ -409,12 +409,15 @@ serve(async (req) => {
         }
 
         const membersData = await membersResponse.json();
+        console.log(`📊 Total members found: ${membersData.members?.length || 0}`);
+        
         const member = membersData.members?.find((m: any) => 
           m.email.toLowerCase() === email.toLowerCase()
         );
         
         if (!member) {
           console.log(`❌ User ${email} not found in Workable`);
+          console.log(`Available emails: ${membersData.members?.map((m: any) => m.email).join(', ')}`);
           return new Response(
             JSON.stringify({ 
               success: false,
@@ -423,6 +426,11 @@ serve(async (req) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+        
+        console.log(`✅ Found member: ${member.email}`);
+        console.log(`👤 Member role: ${member.role}`);
+        console.log(`📋 Assigned jobs: ${member.assigned_jobs?.length || 0} jobs`);
+        console.log(`🔍 Job details:`, member.assigned_jobs);
         
         try {
           const workableUserData = {
