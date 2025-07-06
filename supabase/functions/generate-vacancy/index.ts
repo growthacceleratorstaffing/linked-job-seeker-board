@@ -125,6 +125,40 @@ Make it engaging, professional, and tailored to the specific role described. Use
       const errorText = await response.text();
       console.error('API error:', response.status, errorText);
       
+      // If Azure OpenAI fails with auth error and we have OpenAI key, try fallback
+      if (!useOpenAI && response.status === 401 && openaiApiKey) {
+        console.log('Azure OpenAI auth failed, trying OpenAI fallback');
+        
+        const fallbackRequestBody = {
+          ...requestBody,
+          model: 'gpt-4o-mini'
+        };
+        
+        const fallbackResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(fallbackRequestBody),
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          const generatedVacancy = fallbackData.choices[0].message.content;
+          
+          console.log('Successfully generated vacancy with OpenAI fallback');
+          
+          return new Response(
+            JSON.stringify({ generatedVacancy }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+      
       // Try to parse error as JSON for better debugging
       try {
         const errorJson = JSON.parse(errorText);

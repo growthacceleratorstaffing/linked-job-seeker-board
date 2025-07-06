@@ -132,6 +132,40 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
       const errorText = await response.text();
       console.error('AI API error:', response.status, errorText);
       
+      // If Azure OpenAI fails with auth error and we have OpenAI key, try fallback
+      if (!useOpenAI && response.status === 401 && openaiApiKey) {
+        console.log('Azure OpenAI auth failed, trying OpenAI fallback');
+        
+        const fallbackRequestBody = {
+          ...requestBody,
+          model: 'gpt-4o-mini'
+        };
+        
+        const fallbackResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(fallbackRequestBody),
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          const aiResponse = fallbackData.choices[0].message.content;
+          
+          console.log('Successfully received response from OpenAI fallback');
+          
+          return new Response(
+            JSON.stringify({ response: aiResponse }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+      
       // Try to parse error as JSON for better debugging
       try {
         const errorJson = JSON.parse(errorText);
