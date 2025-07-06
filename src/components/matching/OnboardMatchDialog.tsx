@@ -67,16 +67,24 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
 
   const fetchJobs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('crawled_jobs')
-        .select('id, title, company, location')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+      // Fetch jobs directly from Workable
+      const { data, error } = await supabase.functions.invoke('workable-integration', {
+        body: { action: 'sync_jobs' }
+      });
       
       if (error) throw error;
-      setJobs(data || []);
+      
+      // Transform Workable jobs to match our interface
+      const workableJobs = (data?.jobs || []).map((job: any) => ({
+        id: job.id,
+        title: job.title,
+        company: job.department?.name || 'Unknown Company',
+        location: job.location?.city || job.location?.region || 'Remote'
+      }));
+      
+      setJobs(workableJobs);
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      console.error('Error fetching jobs from Workable:', error);
     }
   };
 
