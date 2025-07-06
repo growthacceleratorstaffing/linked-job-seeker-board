@@ -26,11 +26,10 @@ serve(async (req) => {
     }
 
     const azureApiKey = Deno.env.get('AZURE_OPENAI_API_KEY');
-    const azureEndpoint = Deno.env.get('AZURE_OPENAI_ENDPOINT');
 
-    if (!azureApiKey || !azureEndpoint) {
+    if (!azureApiKey) {
       return new Response(
-        JSON.stringify({ error: 'Azure OpenAI configuration missing' }),
+        JSON.stringify({ error: 'Azure OpenAI API key missing' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -68,20 +67,16 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
       content: message
     });
 
-    const response = await fetch(`${azureEndpoint.replace(/\/$/, '')}/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview`, {
+    const response = await fetch('https://aistudioaiservices773784968662.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'api-key': azureApiKey,
-        'Accept': 'application/json'
       },
       body: JSON.stringify({
         messages: messages,
         temperature: 0.7,
         max_tokens: 800,
-        top_p: 0.95,
-        frequency_penalty: 0,
-        presence_penalty: 0
       }),
     });
 
