@@ -63,11 +63,12 @@ const AppSidebar = () => {
   const staffingItems = [
     { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/matching', label: 'Matching', icon: ArrowRightLeft },
-    { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
   ];
 
   const contractingItems = [
-    { path: 'https://mijn.cootje.com', label: 'Backoffice', icon: FileText, external: true },
+    { path: '/onboarding', label: 'Onboarding', icon: CheckSquare },
+    { path: 'https://mijn.cootje.com/recruiter/kandidaten/b50e2506-9644-40be-8e87-08b2046ca3ee?view=Vacatures&tab=Koppelen', label: 'Administration', icon: FileText, external: true },
+    { path: 'https://mijn.cootje.com/urenregistraties', label: 'Backoffice', icon: FileText, external: true },
   ];
 
   const isActivePath = (path: string) => {
