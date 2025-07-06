@@ -380,6 +380,134 @@ serve(async (req) => {
         );
       }
 
+      case 'sync_single_user': {
+        const { email } = await req.json();
+        
+        if (!email) {
+          return new Response(
+            JSON.stringify({ error: 'Email is required for single user sync' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        console.log(`Syncing single user from Workable: ${email}`);
+        
+        if (!supabaseUrl || !supabaseServiceKey) {
+          throw new Error('Supabase configuration missing');
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+        
+        // Fetch specific member from Workable
+        const membersResponse = await fetch(`${spiBaseUrl}/members`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (!membersResponse.ok) {
+          throw new Error(`Failed to fetch members: ${membersResponse.status}`);
+        }
+
+        const membersData = await membersResponse.json();
+        const member = membersData.members?.find((m: any) => 
+          m.email.toLowerCase() === email.toLowerCase()
+        );
+        
+        if (!member) {
+          console.log(`❌ User ${email} not found in Workable`);
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              message: `User ${email} not found in Workable. They may not have access or their email might be different.`
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        try {
+          const workableUserData = {
+            workable_email: member.email.toLowerCase(),
+            workable_user_id: member.id.toString(),
+            workable_role: mapWorkableRoleToEnum(member.role),
+            permissions: member.permissions || {},
+            assigned_jobs: member.assigned_jobs || [],
+            updated_at: new Date().toISOString()
+          };
+          
+          // Upsert workable user data
+          const { error: upsertError } = await supabase
+            .from('workable_users')
+            .upsert(workableUserData, { 
+              onConflict: 'workable_email',
+              ignoreDuplicates: false 
+            });
+            
+          if (upsertError) {
+            throw new Error(`Error syncing user: ${upsertError.message}`);
+          }
+          
+          console.log(`✅ Synced user: ${member.email} (${member.role})`);
+          
+          // If user already exists in auth, update their role assignment
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', member.email.toLowerCase())
+            .single();
+            
+          let linkedToAuth = false;
+          if (existingProfile) {
+            // Update user role based on Workable role
+            const appRole = mapWorkableRoleToAppRole(member.role);
+            await supabase
+              .from('user_roles')
+              .upsert({ 
+                user_id: existingProfile.id, 
+                role: appRole,
+                updated_at: new Date().toISOString()
+              }, { 
+                onConflict: 'user_id',
+                ignoreDuplicates: false 
+              });
+              
+            // Link workable user to auth user
+            await supabase
+              .from('workable_users')
+              .update({ user_id: existingProfile.id })
+              .eq('workable_email', member.email.toLowerCase());
+              
+            linkedToAuth = true;
+            console.log(`🔗 Linked existing user: ${member.email}`);
+          }
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              user: {
+                email: member.email,
+                workable_role: member.role,
+                assigned_jobs: member.assigned_jobs?.length || 0,
+                linked_to_auth: linkedToAuth
+              },
+              message: `Successfully synced ${member.email} from Workable`
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } catch (error) {
+          console.error(`Error processing member ${member.email}:`, error);
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: error.message,
+              message: `Failed to sync ${member.email}`
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
