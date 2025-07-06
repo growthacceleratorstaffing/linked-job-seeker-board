@@ -36,7 +36,7 @@ const Auth = () => {
     
     setIsValidatingEmail(true);
     try {
-      const { data, error } = await supabase.functions.invoke('validate-jobadder-email', {
+      const { data, error } = await supabase.functions.invoke('validate-workable-email', {
         body: { email: emailToCheck }
       });
 
@@ -218,28 +218,28 @@ const Auth = () => {
                         <Users className="w-4 h-4 text-white" />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <h3 className="text-white font-medium">JobAdder Employee Access</h3>
-                      <p className="text-slate-300 text-sm">
-                        Only employees registered in JobAdder can create accounts. Your access permissions are based on your JobAdder profile.
-                      </p>
-                      <div className="flex items-center space-x-2 text-xs text-slate-400">
-                        <CheckCircle className="w-3 h-3" />
-                        <span>Auto-linked to JobAdder profile</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-xs text-slate-400">
-                        <CheckCircle className="w-3 h-3" />
-                        <span>Assigned job permissions</span>
-                      </div>
+                  <div className="space-y-2">
+                    <h3 className="text-white font-medium">Workable Team Access</h3>
+                    <p className="text-slate-300 text-sm">
+                      Only team members registered in Workable can create accounts. Your access permissions are based on your Workable role.
+                    </p>
+                    <div className="flex items-center space-x-2 text-xs text-slate-400">
+                      <CheckCircle className="w-3 h-3" />
+                      <span>Auto-linked to Workable profile</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-xs text-slate-400">
+                      <CheckCircle className="w-3 h-3" />
+                      <span>Role-based permissions</span>
+                    </div>
                     </div>
                   </div>
                 </div>
 
-                {/* JobAdder OAuth Button */}
+                {/* Workable OAuth Button */}
                 <Button
                   onClick={async () => {
                     try {
-                      const { data, error } = await supabase.functions.invoke('jobadder-oauth', {
+                      const { data, error } = await supabase.functions.invoke('workable-oauth', {
                         body: { 
                           action: 'get_auth_url',
                           redirectUri: window.location.origin
@@ -251,16 +251,16 @@ const Auth = () => {
                       if (data?.authUrl) {
                         window.location.href = data.authUrl;
                       } else {
-                        throw new Error('Failed to get JobAdder authorization URL');
+                        throw new Error('Failed to get Workable authorization URL');
                       }
                     } catch (error: any) {
-                      setError(error.message || 'Failed to initiate JobAdder authentication');
+                      setError(error.message || 'Failed to initiate Workable authentication');
                     }
                   }}
                   className="w-full bg-gradient-to-r from-secondary-pink to-primary-blue hover:from-secondary-pink/80 hover:to-primary-blue/80 mb-4"
                 >
                   <Building className="mr-2 h-4 w-4" />
-                  Connect with JobAdder
+                  Connect with Workable
                 </Button>
 
                 <div className="relative">
