@@ -81,7 +81,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           isValid: false, 
-          message: 'This email is not authorized. Only active Workable team members can create accounts.' 
+          message: 'This email is not authorised. Only Growth Accelerator Staffing Partners can create accounts.' 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
