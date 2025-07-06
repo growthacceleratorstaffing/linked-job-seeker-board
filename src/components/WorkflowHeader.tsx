@@ -19,8 +19,8 @@ const WorkflowHeader = () => {
     { path: '/post-jobs', label: 'Jobs', icon: Briefcase },
     { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/matching', label: 'Match', icon: ArrowRightLeft },
-    { path: '/onboarding', label: 'Onboard', icon: CheckSquare },
     { path: 'https://mijn.cootje.com', label: 'Hire', icon: FileText, external: true },
+    { path: '/onboarding', label: 'Onboard', icon: CheckSquare },
   ];
 
   const getCurrentStepIndex = () => {
