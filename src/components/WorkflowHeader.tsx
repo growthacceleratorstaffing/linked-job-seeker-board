@@ -9,20 +9,28 @@ import {
   FileText 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
 
 const WorkflowHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { permissions } = useWorkablePermissions();
 
-  const workflowSteps = [
+  const allWorkflowSteps = [
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { path: '/post-jobs', label: 'Jobs', icon: Briefcase },
     { path: '/candidates', label: 'Candidates', icon: Users },
-    { path: '/jobs', label: 'Attract', icon: FileText },
-    { path: '/matching', label: 'Match', icon: ArrowRightLeft },
+    { path: '/jobs', label: 'Attract', icon: FileText, requiresPermission: 'publish_jobs' },
+    { path: '/matching', label: 'Match', icon: ArrowRightLeft, requiresPermission: 'create_matches' },
     { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Hire', icon: FileText, external: true },
     { path: '/onboarding', label: 'Onboard', icon: CheckSquare },
   ];
+
+  // Filter workflow steps based on user permissions
+  const workflowSteps = allWorkflowSteps.filter(step => {
+    if (!step.requiresPermission) return true;
+    return permissions[step.requiresPermission as keyof typeof permissions];
+  });
 
   const getCurrentStepIndex = () => {
     return workflowSteps.findIndex(step => step.path === location.pathname);
