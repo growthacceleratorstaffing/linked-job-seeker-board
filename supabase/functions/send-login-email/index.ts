@@ -12,9 +12,17 @@ serve(async (req) => {
   }
 
   try {
-    // Just return success without doing anything
-    // This prevents the webhook from failing
-    console.log("Email confirmation disabled - no email sent");
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.log("No authorization header found");
+    } else {
+      console.log("Authorization header received");
+    }
+
+    // Get the request body (contains user data from auth webhook)
+    const body = await req.json();
+    console.log("Email confirmation disabled - no email sent for:", body?.user?.email || 'unknown user');
     
     return new Response(
       JSON.stringify({ success: true, message: "Email confirmation disabled" }),
