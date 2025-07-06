@@ -25,41 +25,95 @@ serve(async (req) => {
       );
     }
 
+    const workableApiToken = Deno.env.get('WORKABLE_API_TOKEN');
+    const workableSubdomain = Deno.env.get('WORKABLE_SUBDOMAIN');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Supabase configuration missing');
+    if (!workableApiToken || !workableSubdomain || !supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Configuration missing');
     }
 
+    const cleanSubdomain = workableSubdomain.replace('.workable.com', '');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Use the database function to validate the email
-    const { data, error } = await supabase
-      .rpc('validate_workable_email', { email_to_check: email });
+    console.log(`🔍 Validating email: ${email}`);
 
-    if (error) {
-      console.error('Error validating email:', error);
-      throw error;
-    }
-
-    if (data) {
+    // Check admin emails first (fallback)
+    if (email === 'bart@growthaccelerator.nl') {
+      console.log('✅ Admin email detected');
       return new Response(
         JSON.stringify({ 
           isValid: true, 
-          message: 'Email is authorized for signup' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } else {
-      return new Response(
-        JSON.stringify({ 
-          isValid: false, 
-          message: 'This email is not authorized. Only Workable team members can create accounts.' 
+          message: 'Admin email is authorized',
+          role: 'admin'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Fetch members from Workable API
+    console.log('📡 Fetching Workable members...');
+    const membersResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/members`, {
+      headers: {
+        'Authorization': `Bearer ${workableApiToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!membersResponse.ok) {
+      console.error(`❌ Failed to fetch members: ${membersResponse.status}`);
+      throw new Error(`Failed to fetch Workable members: ${membersResponse.status}`);
+    }
+
+    const membersData = await membersResponse.json();
+    const members = membersData.members || [];
+    
+    console.log(`📊 Found ${members.length} members in Workable`);
+
+    // Find the member by email
+    const member = members.find((m: any) => 
+      m.email && m.email.toLowerCase() === email.toLowerCase() && m.active
+    );
+
+    if (!member) {
+      console.log(`❌ Email ${email} not found in active Workable members`);
+      return new Response(
+        JSON.stringify({ 
+          isValid: false, 
+          message: 'This email is not authorized. Only active Workable team members can create accounts.' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`✅ Found member: ${member.name} with role: ${member.role}`);
+
+    // Store/update the member in our database
+    const { error: upsertError } = await supabase
+      .from('workable_users')
+      .upsert({
+        workable_email: member.email,
+        workable_user_id: member.id,
+        workable_role: member.role || 'reviewer',
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'workable_email'
+      });
+
+    if (upsertError) {
+      console.error('Error updating workable_users:', upsertError);
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        isValid: true, 
+        message: 'Email is authorized for signup',
+        role: member.role || 'reviewer',
+        name: member.name
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('Error in validate-workable-email function:', error);
