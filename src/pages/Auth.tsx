@@ -211,66 +211,6 @@ const Auth = () => {
               </TabsContent>
 
               <TabsContent value="signup" className="space-y-4">
-                <div className="bg-gradient-to-r from-secondary-pink/20 to-primary-blue/20 p-4 rounded-lg border border-slate-600">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-gradient-to-r from-secondary-pink to-primary-blue rounded-full flex items-center justify-center">
-                        <Users className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                  <div className="space-y-2">
-                    <h3 className="text-white font-medium">Workable Team Access</h3>
-                    <p className="text-slate-300 text-sm">
-                      Only team members registered in Workable can create accounts. Your access permissions are based on your Workable role.
-                    </p>
-                    <div className="flex items-center space-x-2 text-xs text-slate-400">
-                      <CheckCircle className="w-3 h-3" />
-                      <span>Auto-linked to Workable profile</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-xs text-slate-400">
-                      <CheckCircle className="w-3 h-3" />
-                      <span>Role-based permissions</span>
-                    </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Workable OAuth Button */}
-                <Button
-                  onClick={async () => {
-                    try {
-                      const { data, error } = await supabase.functions.invoke('workable-oauth', {
-                        body: { 
-                          action: 'get_auth_url',
-                          redirectUri: window.location.origin
-                        }
-                      });
-
-                      if (error) throw error;
-
-                      if (data?.authUrl) {
-                        window.location.href = data.authUrl;
-                      } else {
-                        throw new Error('Failed to get Workable authorization URL');
-                      }
-                    } catch (error: any) {
-                      setError(error.message || 'Failed to initiate Workable authentication');
-                    }
-                  }}
-                  className="w-full bg-gradient-to-r from-secondary-pink to-primary-blue hover:from-secondary-pink/80 hover:to-primary-blue/80 mb-4"
-                >
-                  <Building className="mr-2 h-4 w-4" />
-                  Connect with Workable
-                </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-slate-600" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-slate-800 px-2 text-slate-400">Or create account manually</span>
-                  </div>
-                </div>
 
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
