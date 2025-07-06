@@ -237,7 +237,7 @@ const Onboarding = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">Total Candidates</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Total Matches</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{candidates.length}</div>
