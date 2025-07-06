@@ -222,8 +222,29 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
 
         toast({
           title: "Success",
-          description: "Successfully matched candidate to job",
+          description: "Successfully matched candidate to job and sent notification email",
         });
+
+        // Send onboarding email to candidate
+        try {
+          const candidateData = candidateOption === 'new' ? newCandidate : candidates.find(c => c.id === candidateId);
+          const jobData = jobOption === 'new' ? newJob : jobs.find(j => j.id === jobId);
+          
+          if (candidateData && jobData) {
+            await supabase.functions.invoke('send-onboarding-email', {
+              body: {
+                candidateName: candidateData.name,
+                candidateEmail: candidateData.email,
+                jobTitle: jobData.title,
+                companyName: jobData.company,
+                location: jobData.location
+              }
+            });
+          }
+        } catch (emailError) {
+          console.error('Failed to send onboarding email:', emailError);
+          // Don't fail the whole process if email fails
+        }
 
         // Call the callback to refresh matches
         console.log('Match created successfully, calling onMatchCreated callback');
@@ -456,7 +477,7 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
             disabled={isLoading || (jobOption === 'existing' && !selectedJobId) || (candidateOption === 'existing' && !selectedCandidateId)}
             className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white"
           >
-            {isLoading ? 'Creating Match...' : 'Onboard Candidate'}
+            {isLoading ? 'Creating Match...' : 'Match candidate with job'}
           </Button>
         </div>
       </DialogContent>

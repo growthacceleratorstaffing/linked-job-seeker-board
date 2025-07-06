@@ -10,11 +10,11 @@ const corsHeaders = {
 };
 
 interface OnboardingEmailRequest {
-  candidateId: string;
   candidateName: string;
   candidateEmail: string;
-  jobTitle?: string;
+  jobTitle: string;
   companyName: string;
+  location?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -24,101 +24,51 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { 
-      candidateId, 
-      candidateName, 
-      candidateEmail, 
-      jobTitle, 
-      companyName 
-    }: OnboardingEmailRequest = await req.json();
+    const { candidateName, candidateEmail, jobTitle, companyName, location }: OnboardingEmailRequest = await req.json();
 
-    console.log(`=== EMAIL SENDING DEBUG ===`);
-    console.log(`Candidate ID: ${candidateId}`);
-    console.log(`Candidate Name: ${candidateName}`);
-    console.log(`Candidate Email: ${candidateEmail}`);
-    console.log(`Job Title: ${jobTitle}`);
-    console.log(`Company Name: ${companyName}`);
-    console.log(`Sending onboarding email to: ${candidateEmail} for candidate: ${candidateName}`);
-
-    // First, add the candidate to the General audience (optional, don't fail if this fails)
-    try {
-      console.log(`Adding candidate ${candidateEmail} to General audience...`);
-      
-      const audienceId = Deno.env.get("RESEND_AUDIENCE_ID");
-      if (audienceId) {
-        const audienceResponse = await resend.contacts.create({
-          email: candidateEmail,
-          firstName: candidateName.split(' ')[0],
-          lastName: candidateName.split(' ').slice(1).join(' ') || '',
-          audienceId: audienceId
-        });
-        
-        console.log("Contact added to audience:", audienceResponse);
-      }
-    } catch (audienceError: any) {
-      // If contact already exists, that's fine - continue with sending email
-      if (audienceError.message?.includes('already exists') || audienceError.message?.includes('duplicate')) {
-        console.log(`Contact ${candidateEmail} already exists in audience, proceeding with email send`);
-      } else {
-        console.warn("Warning: Could not add contact to audience:", audienceError.message);
-        // Don't throw here - we still want to try sending the email
-      }
-    }
-
-    // Create a simple HTML email template
-    const emailHTML = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to the team</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        
-        <p>Hi ${candidateName}!</p>
-        
-        <p>Welcome to the team!</p>
-        
-        <p>To finish your onboarding, please create an account at Growth Accelerator Contracting, where you can view your contracts, fill in your hours and see your payslips, among other things.</p>
-        
-        <p><strong>Sign-up URL:</strong> <a href="https://www.contractdossier.nl" style="color: #1e40af;">https://www.contractdossier.nl</a></p>
-        
-        <p>If you have any questions, please don't hesitate to contact us.</p>
-        
-        <p>Best regards,<br>
-        Bart Wetselaar</p>
-        
-      </body>
-      </html>
-    `;
-
-    // Send the onboarding email
-    console.log("Attempting to send email via Resend...");
-    console.log("Email details:", {
-      from: "Growth Accelerator Staffing <onboarding@resend.dev>",
-      to: [candidateEmail],
-      subject: "Welcome to the team!",
-      recipientEmail: candidateEmail
-    });
-    
     const emailResponse = await resend.emails.send({
-      from: "Bart Wetselaar <bart@growthaccelerator.nl>",
+      from: "Growth Accelerator <onboarding@resend.dev>",
       to: [candidateEmail],
-      subject: "Welcome to the team!",
-      html: emailHTML,
+      subject: `Great news! You've been matched with ${jobTitle} at ${companyName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb; text-align: center;">Congratulations ${candidateName}!</h1>
+          
+          <div style="background-color: #f8fafc; padding: 30px; border-radius: 8px; margin: 20px 0;">
+            <h2 style="color: #1e293b; margin-top: 0;">You've been matched with a great opportunity!</h2>
+            
+            <div style="background-color: white; padding: 20px; border-radius: 6px; border-left: 4px solid #ec4899;">
+              <h3 style="color: #ec4899; margin-top: 0;">Position Details:</h3>
+              <p><strong>Job Title:</strong> ${jobTitle}</p>
+              <p><strong>Company:</strong> ${companyName}</p>
+              ${location ? `<p><strong>Location:</strong> ${location}</p>` : ''}
+            </div>
+            
+            <p style="margin-top: 20px;">Our team has identified you as an excellent fit for this position. We believe your skills and experience align perfectly with what they're looking for.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="mailto:bart@growthaccelerator.nl?subject=Re: ${jobTitle} Match" 
+                 style="background-color: #ec4899; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                Get in Touch
+              </a>
+            </div>
+            
+            <p style="color: #64748b; font-size: 14px;">
+              Next steps: Our recruitment team will be in touch within 24 hours to discuss this opportunity in more detail and answer any questions you may have.
+            </p>
+          </div>
+          
+          <div style="text-align: center; padding: 20px; color: #64748b; font-size: 12px;">
+            <p>Best regards,<br>The Growth Accelerator Team</p>
+            <p>This is an automated message. Please don't reply directly to this email.</p>
+          </div>
+        </div>
+      `,
     });
 
-    console.log("Resend API response:", emailResponse);
-    console.log("Email sent to:", candidateEmail);
     console.log("Onboarding email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify({
-      success: true,
-      message: `Onboarding email sent successfully to ${candidateName}`,
-      emailId: emailResponse.data?.id,
-      candidateId: candidateId
-    }), {
+    return new Response(JSON.stringify(emailResponse), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -128,11 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-onboarding-email function:", error);
     return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: error.message,
-        details: "Failed to send onboarding email"
-      }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
