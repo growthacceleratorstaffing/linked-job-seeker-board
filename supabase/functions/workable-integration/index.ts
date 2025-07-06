@@ -270,6 +270,116 @@ serve(async (req) => {
         );
       }
 
+      case 'sync_users': {
+        console.log('Syncing users from Workable...');
+        
+        if (!supabaseUrl || !supabaseServiceKey) {
+          throw new Error('Supabase configuration missing');
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+        
+        // Fetch all members from Workable
+        const membersResponse = await fetch(`${spiBaseUrl}/members`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (!membersResponse.ok) {
+          throw new Error(`Failed to sync users: ${membersResponse.status}`);
+        }
+
+        const membersData = await membersResponse.json();
+        const members = membersData.members || [];
+        
+        console.log(`Found ${members.length} members in Workable`);
+        
+        let syncedCount = 0;
+        let updatedCount = 0;
+        const errors: string[] = [];
+        
+        // Process each member
+        for (const member of members) {
+          try {
+            const workableUserData = {
+              workable_email: member.email.toLowerCase(),
+              workable_user_id: member.id.toString(),
+              workable_role: mapWorkableRoleToEnum(member.role),
+              permissions: member.permissions || {},
+              assigned_jobs: member.assigned_jobs || [],
+              updated_at: new Date().toISOString()
+            };
+            
+            // Upsert workable user data
+            const { error: upsertError } = await supabase
+              .from('workable_users')
+              .upsert(workableUserData, { 
+                onConflict: 'workable_email',
+                ignoreDuplicates: false 
+              });
+              
+            if (upsertError) {
+              console.error(`Error syncing user ${member.email}:`, upsertError);
+              errors.push(`${member.email}: ${upsertError.message}`);
+            } else {
+              syncedCount++;
+              console.log(`✅ Synced user: ${member.email} (${member.role})`);
+              
+              // If user already exists in auth, update their role assignment
+              const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', member.email.toLowerCase())
+                .single();
+                
+              if (existingProfile) {
+                // Update user role based on Workable role
+                const appRole = mapWorkableRoleToAppRole(member.role);
+                await supabase
+                  .from('user_roles')
+                  .upsert({ 
+                    user_id: existingProfile.id, 
+                    role: appRole,
+                    updated_at: new Date().toISOString()
+                  }, { 
+                    onConflict: 'user_id',
+                    ignoreDuplicates: false 
+                  });
+                  
+                // Link workable user to auth user
+                await supabase
+                  .from('workable_users')
+                  .update({ user_id: existingProfile.id })
+                  .eq('workable_email', member.email.toLowerCase());
+                  
+                updatedCount++;
+                console.log(`🔗 Linked existing user: ${member.email}`);
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing member ${member.email}:`, error);
+            errors.push(`${member.email}: ${error.message}`);
+          }
+        }
+        
+        console.log(`🎯 Sync complete: ${syncedCount} users synced, ${updatedCount} existing users updated, ${errors.length} errors`);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            totalMembers: members.length,
+            syncedUsers: syncedCount,
+            updatedUsers: updatedCount,
+            errors: errors.length,
+            errorDetails: errors,
+            message: `Synced ${syncedCount} users from Workable, updated ${updatedCount} existing users`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
@@ -428,4 +538,37 @@ function calculateCompletenessScore(candidate: any): number {
   if (candidate.social_profiles && candidate.social_profiles.length > 0) score += 5;
 
   return Math.min(score, 100);
+}
+
+// Helper functions for role mapping
+function mapWorkableRoleToEnum(role: string): string {
+  const roleMap: { [key: string]: string } = {
+    'admin': 'admin',
+    'hiring_manager': 'hiring_manager',
+    'recruiter': 'recruiter',
+    'interviewer': 'interviewer',
+    'viewer': 'viewer',
+    'simple': 'simple',
+    'reviewer': 'reviewer',
+    'no_access': 'no_access',
+    'hris_admin': 'hris_admin',
+    'hris_employee': 'hris_employee',
+    'hris_no_access': 'hris_no_access'
+  };
+  
+  return roleMap[role?.toLowerCase()] || 'viewer';
+}
+
+function mapWorkableRoleToAppRole(workableRole: string): string {
+  switch (workableRole?.toLowerCase()) {
+    case 'admin':
+      return 'admin';
+    case 'hiring_manager':
+    case 'recruiter':
+    case 'simple':
+    case 'hris_admin':
+      return 'moderator';
+    default:
+      return 'user';
+  }
 }
