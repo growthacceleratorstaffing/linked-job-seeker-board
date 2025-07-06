@@ -884,7 +884,7 @@ export type Database = {
           id: string
           permissions: Json | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
           workable_email: string
           workable_role: Database["public"]["Enums"]["workable_role"]
           workable_user_id: string
@@ -895,7 +895,7 @@ export type Database = {
           id?: string
           permissions?: Json | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
           workable_email: string
           workable_role?: Database["public"]["Enums"]["workable_role"]
           workable_user_id: string
@@ -906,7 +906,7 @@ export type Database = {
           id?: string
           permissions?: Json | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
           workable_email?: string
           workable_role?: Database["public"]["Enums"]["workable_role"]
           workable_user_id?: string
