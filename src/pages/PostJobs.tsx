@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Briefcase, Plus, RefreshCw, ExternalLink, CheckCircle, Archive } from "lucide-react";
+import { Briefcase, Plus, RefreshCw, ExternalLink, CheckCircle, Archive, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
+import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 
 interface WorkableJob {
@@ -38,6 +40,8 @@ const PostJobs = () => {
     salary: '',
     company: 'Growth Accelerator'
   });
+  const { permissions } = useWorkablePermissions();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchJobs = async () => {
@@ -69,7 +73,25 @@ const PostJobs = () => {
         platform = 'Workable';
       }
 
-      const jobsData = data.jobs || [];
+      let jobsData = data.jobs || [];
+      
+      // Filter jobs for standard members - only show assigned jobs
+      if (!permissions.admin && user?.id) {
+        const { data: workableUser } = await supabase
+          .from('workable_users')
+          .select('assigned_jobs')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (workableUser?.assigned_jobs) {
+          jobsData = jobsData.filter((job: WorkableJob) => 
+            workableUser.assigned_jobs.includes(job.id)
+          );
+        } else {
+          jobsData = []; // No assigned jobs = no jobs visible
+        }
+      }
+      
       setJobs(jobsData);
       
       toast({
@@ -193,13 +215,23 @@ const PostJobs = () => {
                 <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh Jobs
               </Button>
-              <Button 
-                onClick={() => setShowCreateDialog(true)}
-                className="bg-secondary-pink hover:bg-secondary-pink/80"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create Job
-              </Button>
+              {permissions.admin ? (
+                <Button 
+                  onClick={() => setShowCreateDialog(true)}
+                  className="bg-secondary-pink hover:bg-secondary-pink/80"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Job
+                </Button>
+              ) : (
+                <Button 
+                  disabled
+                  className="bg-slate-600 text-slate-400 cursor-not-allowed"
+                >
+                  <Lock className="mr-2 h-4 w-4" />
+                  Admin Only
+                </Button>
+              )}
             </div>
           </div>
 

@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, ChevronRight, Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
+import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import { AddCandidateDialog } from "@/components/crm/AddCandidateDialog";
 
@@ -31,19 +33,55 @@ const Candidates = () => {
   const [candidatesPerPage] = useState(50);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const { permissions } = useWorkablePermissions();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch candidates with React Query
   const { data: candidatesData, isLoading } = useQuery({
-    queryKey: ["all-candidates", searchTerm, currentPage],
+    queryKey: ["all-candidates", searchTerm, currentPage, user?.id],
     queryFn: async () => {
       console.log('Fetching candidates with search:', searchTerm, 'page:', currentPage);
+      
+      // For standard members, get their assigned jobs first
+      let assignedJobIds: string[] = [];
+      if (!permissions.admin && user?.id) {
+        const { data: workableUser } = await supabase
+          .from('workable_users')
+          .select('assigned_jobs')
+          .eq('user_id', user.id)
+          .single();
+          
+        assignedJobIds = workableUser?.assigned_jobs || [];
+        
+        // If no assigned jobs, return empty result
+        if (assignedJobIds.length === 0) {
+          return { candidates: [], totalCount: 0 };
+        }
+      }
       
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact' })
         .order("created_at", { ascending: false });
+
+      // For standard members, filter candidates by job responses to assigned jobs
+      if (!permissions.admin && assignedJobIds.length > 0) {
+        // Get candidate IDs that have responses to assigned jobs
+        const { data: responses } = await supabase
+          .from('candidate_responses')
+          .select('candidate_id')
+          .in('job_id', assignedJobIds);
+          
+        const candidateIds = responses?.map(r => r.candidate_id) || [];
+        
+        if (candidateIds.length === 0) {
+          return { candidates: [], totalCount: 0 };
+        }
+        
+        query = query.in('id', candidateIds);
+      }
 
       if (searchTerm) {
         query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,current_position.ilike.%${searchTerm}%`);
@@ -59,6 +97,7 @@ const Candidates = () => {
       return { candidates: data as Candidate[], totalCount: count || 0 };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!user, // Only run when user is available
   });
 
   const candidates = candidatesData?.candidates || [];
@@ -228,22 +267,34 @@ const Candidates = () => {
         <div className="flex items-center justify-between mb-6">
           <div></div>
           <div className="flex gap-2">
-            <Button 
-              onClick={syncAllCandidates}
-              disabled={isBulkLoading}
-              variant="outline"
-              className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isBulkLoading ? 'animate-spin' : ''}`} />
-              Sync All Candidates
-            </Button>
-            <Button 
-              onClick={() => setShowAddDialog(true)}
-              className="bg-secondary-pink hover:bg-secondary-pink/80"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Candidate
-            </Button>
+            {permissions.admin && (
+              <Button 
+                onClick={syncAllCandidates}
+                disabled={isBulkLoading}
+                variant="outline"
+                className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isBulkLoading ? 'animate-spin' : ''}`} />
+                Sync All Candidates
+              </Button>
+            )}
+            {permissions.admin ? (
+              <Button 
+                onClick={() => setShowAddDialog(true)}
+                className="bg-secondary-pink hover:bg-secondary-pink/80"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Candidate
+              </Button>
+            ) : (
+              <Button 
+                disabled
+                className="bg-slate-600 text-slate-400 cursor-not-allowed"
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Admin Only
+              </Button>
+            )}
           </div>
         </div>
 
