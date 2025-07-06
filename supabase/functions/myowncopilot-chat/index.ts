@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -69,37 +68,24 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
       content: message
     });
 
-    const requestBody = {
-      messages: messages,
-      temperature: 0.7,
-      max_tokens: 800,
-      top_p: 0.95,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      stream: false
-    };
-
-    const cleanEndpoint = azureEndpoint.replace(/\/$/, '');
-    const apiUrl = `${cleanEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview`;
-    
-    console.log('Using Azure OpenAI API:', apiUrl);
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`${azureEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'api-key': azureApiKey,
-        'Accept': 'application/json'
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 800,
+      }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Azure OpenAI API error:', response.status, errorText);
-      
+      const error = await response.text();
+      console.error('Azure OpenAI error:', error);
       return new Response(
-        JSON.stringify({ error: `Azure OpenAI API error: ${response.status} - ${errorText}` }),
+        JSON.stringify({ error: `Azure OpenAI error: ${response.status}` }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -107,36 +93,7 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
       );
     }
 
-    const responseText = await response.text();
-    console.log('Raw response:', responseText);
-
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      console.error('Failed to parse response as JSON:', e);
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON response from Azure OpenAI' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-    
-    console.log('Parsed response data:', JSON.stringify(data, null, 2));
-
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Unexpected response format from Azure OpenAI:', data);
-      return new Response(
-        JSON.stringify({ error: 'Invalid response format from Azure OpenAI' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
+    const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
     console.log('Successfully received response from Azure OpenAI');
@@ -150,9 +107,8 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
 
   } catch (error) {
     console.error('Error in myowncopilot-chat function:', error);
-    console.error('Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      JSON.stringify({ error: 'Internal server error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
