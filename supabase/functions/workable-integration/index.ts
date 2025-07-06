@@ -442,6 +442,8 @@ serve(async (req) => {
             updated_at: new Date().toISOString()
           };
           
+          console.log(`📋 Mapping Workable role "${member.role}" to enum "${mapWorkableRoleToEnum(member.role)}"`);
+          
           // Upsert workable user data
           const { error: upsertError } = await supabase
             .from('workable_users')
@@ -454,7 +456,7 @@ serve(async (req) => {
             throw new Error(`Error syncing user: ${upsertError.message}`);
           }
           
-          console.log(`✅ Synced user: ${member.email} (${member.role})`);
+          console.log(`✅ Synced user: ${member.email} (${member.role} -> ${mapWorkableRoleToEnum(member.role)})`);
           
           // If user already exists in auth, update their role assignment
           const { data: existingProfile } = await supabase
@@ -467,6 +469,8 @@ serve(async (req) => {
           if (existingProfile) {
             // Update user role based on Workable role
             const appRole = mapWorkableRoleToAppRole(member.role);
+            console.log(`🔗 Linking ${member.email} - App role: ${appRole}`);
+            
             await supabase
               .from('user_roles')
               .upsert({ 
@@ -485,7 +489,7 @@ serve(async (req) => {
               .eq('workable_email', member.email.toLowerCase());
               
             linkedToAuth = true;
-            console.log(`🔗 Linked existing user: ${member.email}`);
+            console.log(`🔗 Linked existing user: ${member.email} with role ${appRole}`);
           }
           
           return new Response(
