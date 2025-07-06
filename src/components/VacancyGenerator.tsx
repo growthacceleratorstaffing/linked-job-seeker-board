@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Wand2, Copy, Download, Sparkles, Upload, Edit } from "lucide-react";
+import { Wand2, Copy, Download, Sparkles, Upload, Edit, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { EmploymentDetailsForm, EmploymentDetails } from './EmploymentDetailsForm';
 
 export const VacancyGenerator = () => {
@@ -22,6 +23,7 @@ export const VacancyGenerator = () => {
     officeLocation: '',
     workplace: 'on_site',
   });
+  const { permissions } = useWorkablePermissions();
   const { toast } = useToast();
 
   const generateVacancy = async () => {
@@ -232,11 +234,20 @@ export const VacancyGenerator = () => {
             </Button>
             
             <Button
-              onClick={publishJob}
-              disabled={isPublishing}
-              className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white font-medium py-4 text-base"
+              onClick={permissions.publish_jobs ? publishJob : undefined}
+              disabled={isPublishing || !permissions.publish_jobs}
+              className={`w-full font-medium py-4 text-base ${
+                permissions.publish_jobs 
+                  ? 'bg-secondary-pink hover:bg-secondary-pink/80 text-white' 
+                  : 'bg-slate-600 text-slate-400 cursor-not-allowed'
+              }`}
             >
-              {isPublishing ? (
+              {!permissions.publish_jobs ? (
+                <>
+                  <Lock className="w-5 h-5 mr-2" />
+                  Admin Only - Publish Job
+                </>
+              ) : isPublishing ? (
                 <>
                   <Upload className="w-5 h-5 mr-2 animate-spin" />
                   Publishing...

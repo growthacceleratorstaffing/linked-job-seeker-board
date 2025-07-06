@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Briefcase, Plus, User, Building2 } from "lucide-react";
+import { Users, Briefcase, Plus, User, Building2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import Layout from "@/components/Layout";
 import OnboardMatchDialog from "@/components/matching/OnboardMatchDialog";
 
@@ -28,6 +29,7 @@ const Matching = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showMatchDialog, setShowMatchDialog] = useState(false);
+  const { permissions } = useWorkablePermissions();
   const { toast } = useToast();
 
   const fetchMatches = async () => {
@@ -187,15 +189,31 @@ const Matching = () => {
           <Card className="bg-primary-blue border border-white/20">
             <CardContent className="p-6 text-center">
               <h3 className="text-xl font-semibold text-white mb-2">Ready to Create a Match?</h3>
-              <p className="text-slate-400 mb-4">Connect the right candidate with the perfect job opportunity</p>
-              <Button 
-                onClick={() => setShowMatchDialog(true)}
-                className="bg-secondary-pink hover:bg-secondary-pink/80 text-white"
-                size="lg"
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                Create New Match
-              </Button>
+              {permissions.create_matches ? (
+                <>
+                  <p className="text-slate-400 mb-4">Connect the right candidate with the perfect job opportunity</p>
+                  <Button 
+                    onClick={() => setShowMatchDialog(true)}
+                    className="bg-secondary-pink hover:bg-secondary-pink/80 text-white"
+                    size="lg"
+                  >
+                    <Plus className="mr-2 h-5 w-5" />
+                    Create New Match
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-slate-400 mb-4">Creating matches requires admin permissions</p>
+                  <Button 
+                    disabled
+                    className="bg-slate-600 text-slate-400 cursor-not-allowed"
+                    size="lg"
+                  >
+                    <Lock className="mr-2 h-5 w-5" />
+                    Admin Only
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
