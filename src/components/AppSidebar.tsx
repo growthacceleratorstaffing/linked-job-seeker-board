@@ -67,7 +67,7 @@ const AppSidebar = () => {
   ];
 
   const contractingItems = [
-    { path: 'https://mijn.cootje.com/urenregistraties', label: 'Backoffice', icon: FileText, external: true },
+    { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Backoffice', icon: FileText, external: true },
     { path: 'https://mijn.cootje.com/recruiter/kandidaten/b50e2506-9644-40be-8e87-08b2046ca3ee?view=Vacatures&tab=Koppelen', label: 'Onboarding', icon: FileText, external: true },
   ];
 
