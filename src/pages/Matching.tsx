@@ -77,7 +77,7 @@ const Matching = () => {
   const fetchMatchingData = async () => {
     setIsLoading(true);
     try {
-      // Fetch candidates count
+      // Fetch candidates count (includes manually added candidates)
       const { count: candidatesCount } = await supabase
         .from('candidates')
         .select('*', { count: 'exact', head: true });
@@ -87,16 +87,23 @@ const Matching = () => {
         .from('candidate_responses')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch jobs data
+      // Fetch Workable jobs data
       const { data: jobsData } = await supabase.functions.invoke('workable-integration', {
         body: { action: 'sync_jobs' }
       });
 
-      const openPositions = jobsData?.jobs?.filter((job: any) => job.state === 'published').length || 0;
+      const workableJobs = jobsData?.jobs?.filter((job: any) => job.state === 'published').length || 0;
+
+      // Fetch app-posted jobs count
+      const { count: appJobsCount } = await supabase
+        .from('jobs')
+        .select('*', { count: 'exact', head: true });
+
+      const totalOpenPositions = workableJobs + (appJobsCount || 0);
 
       setStats({
         candidates: candidatesCount || 0,
-        openPositions,
+        openPositions: totalOpenPositions,
         matches: matchesCount || 0
       });
 
