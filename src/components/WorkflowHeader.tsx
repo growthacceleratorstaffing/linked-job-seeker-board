@@ -105,6 +105,10 @@ const WorkflowHeader = () => {
         <div className="hidden lg:flex justify-center items-center space-x-16 xl:space-x-24 relative">
           {workflowSteps.map((step, index) => (
             <div key={step.path} className="relative">
+              {/* Vertical line before Attract to emphasize the tagline section */}
+              {step.label === 'Attract' && (
+                <div className="absolute -left-8 top-0 h-full w-0.5 bg-secondary-pink opacity-60" />
+              )}
               <WorkflowStep 
                 step={step} 
                 index={index}
