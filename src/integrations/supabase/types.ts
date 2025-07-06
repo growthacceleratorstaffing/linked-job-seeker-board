@@ -944,6 +944,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_workable_admin_role: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       has_workable_permission: {
         Args: { _user_id: string; _permission: string }
         Returns: boolean

@@ -73,7 +73,7 @@ export const useWorkablePermissions = () => {
         candidates: ['admin', 'hiring_manager'].includes(role), // Hiring managers can see candidates for their jobs
         jobs: ['admin', 'simple', 'reviewer', 'hiring_manager'].includes(role), // Hiring managers see assigned jobs
         create_matches: ['admin', 'hiring_manager'].includes(role), // Hiring managers can create matches
-        publish_jobs: role === 'admin', // Only admins can publish jobs (attract workflow)
+        publish_jobs: ['admin', 'hiring_manager'].includes(role), // Hiring managers can publish jobs
         role
       };
 
