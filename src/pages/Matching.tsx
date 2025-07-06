@@ -157,13 +157,13 @@ const Matching = () => {
             <CardHeader>
               <CardTitle className="flex items-center text-white">
                 <Users className="mr-2 h-5 w-5 text-secondary-pink" />
-                Candidates
+                Matches
               </CardTitle>
-              <CardDescription className="text-slate-400">Active candidates available for matching</CardDescription>
+              <CardDescription className="text-slate-400">Successful candidate-job matches</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.candidates}</div>
-              <p className="text-xs text-slate-400">Total candidates</p>
+              <div className="text-2xl font-bold text-white">{stats.matches}</div>
+              <p className="text-xs text-slate-400">Total matches</p>
             </CardContent>
           </Card>
 
