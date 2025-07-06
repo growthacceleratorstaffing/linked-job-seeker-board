@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, jobData, jobId, candidateData } = await req.json();
+    const { action, jobData, jobId, candidateData, email } = await req.json();
     
     const workableApiToken = Deno.env.get('WORKABLE_API_TOKEN');
     const workableSubdomain = Deno.env.get('WORKABLE_SUBDOMAIN');
@@ -380,9 +380,7 @@ serve(async (req) => {
         );
       }
 
-      case 'sync_single_user': {
-        const { email } = await req.json();
-        
+      case 'sync_single_user': {        
         if (!email) {
           return new Response(
             JSON.stringify({ error: 'Email is required for single user sync' }),
