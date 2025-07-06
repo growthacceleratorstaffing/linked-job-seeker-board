@@ -81,18 +81,27 @@ const Onboarding = () => {
   const fetchCandidates = async () => {
     setIsLoading(true);
     try {
+      // Only fetch candidates that have been matched
       const { data, error } = await supabase
         .from('candidates')
-        .select('id, name, email, current_position, company')
+        .select(`
+          id, 
+          name, 
+          email, 
+          current_position, 
+          company,
+          candidate_responses!inner(status)
+        `)
+        .eq('candidate_responses.status', 'matched')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       setCandidates(data || []);
     } catch (error) {
-      console.error('Error fetching candidates:', error);
+      console.error('Error fetching matched candidates:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch candidates",
+        description: "Failed to fetch matched candidates",
         variant: "destructive",
       });
     } finally {
