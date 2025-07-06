@@ -128,7 +128,7 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
       let jobId = selectedJobId;
       let candidateId = selectedCandidateId;
 
-      // Create new job if needed
+      // Handle job creation/selection
       if (jobOption === 'new') {
         if (!newJob.title || !newJob.company) {
           toast({
@@ -155,6 +155,51 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
 
         if (jobError) throw jobError;
         jobId = jobData.id;
+      } else {
+        // For existing Workable jobs, we need to create/find the corresponding crawled_jobs entry
+        const selectedJob = jobs.find(j => j.id === selectedJobId);
+        if (!selectedJob) {
+          toast({
+            title: "Error",
+            description: "Selected job not found",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if this Workable job already exists in crawled_jobs
+        const { data: existingJob, error: findError } = await supabase
+          .from('crawled_jobs')
+          .select('id')
+          .eq('source', 'workable')
+          .eq('url', `workable-${selectedJobId}`)
+          .single();
+
+        if (findError && findError.code !== 'PGRST116') { // PGRST116 is "not found" error
+          throw findError;
+        }
+
+        if (existingJob) {
+          jobId = existingJob.id;
+        } else {
+          // Create new crawled_jobs entry for this Workable job
+          const { data: jobData, error: jobError } = await supabase
+            .from('crawled_jobs')
+            .insert([{
+              title: selectedJob.title,
+              company: selectedJob.company,
+              location: selectedJob.location || '',
+              description: `Workable job: ${selectedJob.title}`,
+              source: 'workable',
+              url: `workable-${selectedJobId}`
+            }])
+            .select()
+            .single();
+
+          if (jobError) throw jobError;
+          jobId = jobData.id;
+        }
       }
 
       // Create new candidate if needed
