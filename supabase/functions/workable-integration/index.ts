@@ -491,6 +491,31 @@ serve(async (req) => {
             linkedToAuth = true;
             console.log(`🔗 Linked existing user: ${member.email} with role ${appRole}`);
           }
+
+          // Now fetch and sync the actual jobs from Workable
+          console.log(`🔄 Fetching jobs from Workable to sync assigned jobs...`);
+          
+          const jobsResponse = await fetch(`${spiBaseUrl}/jobs`, {
+            method: 'GET',
+            headers,
+          });
+
+          if (!jobsResponse.ok) {
+            console.log(`⚠️ Failed to fetch jobs from Workable: ${jobsResponse.status}`);
+          } else {
+            const jobsData = await jobsResponse.json();
+            const allJobs = jobsData.jobs || [];
+            console.log(`📊 Total jobs available in Workable: ${allJobs.length}`);
+            
+            // Filter jobs assigned to this user
+            const userAssignedJobs = allJobs.filter((job: any) => {
+              // Check if user is assigned to this job
+              return member.assigned_jobs && member.assigned_jobs.includes(job.shortcode);
+            });
+            
+            console.log(`🎯 Jobs assigned to ${member.email}: ${userAssignedJobs.length}`);
+            console.log(`📋 Assigned job titles:`, userAssignedJobs.map((job: any) => job.title));
+          }
           
           return new Response(
             JSON.stringify({ 
@@ -499,9 +524,10 @@ serve(async (req) => {
                 email: member.email,
                 workable_role: member.role,
                 assigned_jobs: member.assigned_jobs?.length || 0,
+                assigned_job_titles: member.assigned_jobs || [],
                 linked_to_auth: linkedToAuth
               },
-              message: `Successfully synced ${member.email} from Workable`
+              message: `Successfully synced ${member.email} from Workable with ${member.assigned_jobs?.length || 0} assigned jobs`
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
