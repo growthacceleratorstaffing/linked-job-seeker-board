@@ -143,13 +143,6 @@ const Matching = () => {
 
         <div className="flex items-center justify-between mb-6">
           <div></div>
-          <Button 
-            onClick={() => setShowMatchDialog(true)}
-            className="bg-secondary-pink hover:bg-secondary-pink/80"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Match
-          </Button>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 max-w-4xl mx-auto mb-6">
@@ -178,6 +171,24 @@ const Matching = () => {
             <CardContent>
               <div className="text-2xl font-bold text-white">{stats.openPositions}</div>
               <p className="text-xs text-slate-400">Open positions</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Create Match Section */}
+        <div className="mb-8">
+          <Card className="bg-primary-blue border border-white/20">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-xl font-semibold text-white mb-2">Ready to Create a Match?</h3>
+              <p className="text-slate-400 mb-4">Connect the right candidate with the perfect job opportunity</p>
+              <Button 
+                onClick={() => setShowMatchDialog(true)}
+                className="bg-secondary-pink hover:bg-secondary-pink/80 text-white"
+                size="lg"
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                Create New Match
+              </Button>
             </CardContent>
           </Card>
         </div>
