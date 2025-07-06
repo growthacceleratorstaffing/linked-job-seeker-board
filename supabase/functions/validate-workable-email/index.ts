@@ -40,7 +40,7 @@ serve(async (req) => {
     console.log(`🔍 Validating email: ${email}`);
 
     // Check admin emails first (fallback)
-    if (email === 'bart@growthaccelerator.nl') {
+    if (email === 'bart@growthaccelerator.nl' || email === 'bartwetselaar.books@gmail.com') {
       console.log('✅ Admin email detected');
       return new Response(
         JSON.stringify({ 
