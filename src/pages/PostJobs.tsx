@@ -48,31 +48,14 @@ const PostJobs = () => {
   const fetchJobs = async () => {
     setIsLoading(true);
     try {
-      let data, error;
-      let platform = 'Unknown';
-      
-      // Try JobAdder first
-      try {
-        const jobadderResult = await supabase.functions.invoke('jobadder-integration', {
-          body: { action: 'sync_jobs' }
-        });
+      // Load from Workable
+      const workableResult = await supabase.functions.invoke('workable-integration', {
+        body: { action: 'sync_jobs' }
+      });
 
-        if (jobadderResult.error) throw jobadderResult.error;
-        data = jobadderResult.data;
-        platform = 'JobAdder';
-        
-      } catch (jobadderError) {
-        console.log('JobAdder jobs sync failed, trying Workable...', jobadderError);
-        
-        // Fallback to Workable
-        const workableResult = await supabase.functions.invoke('workable-integration', {
-          body: { action: 'sync_jobs' }
-        });
-
-        if (workableResult.error) throw workableResult.error;
-        data = workableResult.data;
-        platform = 'Workable';
-      }
+      if (workableResult.error) throw workableResult.error;
+      const data = workableResult.data;
+      const platform = 'Workable';
 
       let jobsData = data.jobs || [];
       

@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Auth from "@/pages/Auth";
-import JobAdderCallback from "@/pages/JobAdderCallback";
+
 import WorkableCallback from "@/pages/WorkableCallback";
 import Index from "./pages/Index";
 import CRM from "./pages/CRM";
@@ -33,7 +33,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/auth/jobadder/callback" element={<JobAdderCallback />} />
+            
             <Route path="/auth/workable/callback" element={<WorkableCallback />} />
             <Route path="/" element={
               <ProtectedRoute>
