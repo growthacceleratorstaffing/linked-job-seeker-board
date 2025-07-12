@@ -546,8 +546,10 @@ serve(async (req) => {
 
       case 'publish_job': {
         console.log('Publishing job to Workable and local database...');
+        console.log('Received job data:', JSON.stringify(jobData, null, 2));
         
         if (!supabaseUrl || !supabaseServiceKey) {
+          console.error('Supabase configuration missing:', { supabaseUrl: !!supabaseUrl, supabaseServiceKey: !!supabaseServiceKey });
           return new Response(
             JSON.stringify({ error: 'Supabase configuration missing' }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

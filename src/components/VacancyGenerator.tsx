@@ -74,6 +74,10 @@ export const VacancyGenerator = () => {
   };
 
   const publishJob = async () => {
+    console.log('Publishing job - starting validation...');
+    console.log('Current permissions:', permissions);
+    console.log('Employment details:', employmentDetails);
+    
     // Validate required fields
     if (!employmentDetails.jobTitle.trim()) {
       toast({
@@ -86,7 +90,7 @@ export const VacancyGenerator = () => {
 
     if (!employmentDetails.officeLocation.trim()) {
       toast({
-        title: "Office location required",
+        title: "Office location required", 
         description: "Please enter an office location before publishing.",
         variant: "destructive",
       });
@@ -106,8 +110,10 @@ export const VacancyGenerator = () => {
         location: employmentDetails.officeLocation,
         job_code: employmentDetails.jobCode,
         workplace: employmentDetails.workplace,
-        source: generatedVacancy.trim() ? 'AI Generator' : 'Manual Entry', // Track if AI was used
+        source: generatedVacancy.trim() ? 'AI Generator' : 'Manual Entry',
       };
+      
+      console.log('Publishing job with data:', jobData);
       
       const { data, error } = await supabase.functions.invoke('workable-integration', {
         body: { 
@@ -116,18 +122,37 @@ export const VacancyGenerator = () => {
         }
       });
 
-      if (error) throw error;
+      console.log('Edge function response:', { data, error });
+
+      if (error) {
+        console.error('Edge function error details:', error);
+        throw error;
+      }
+
+      // Check if the response indicates success
+      if (data && !data.success && data.error) {
+        throw new Error(data.message || data.error || 'Job creation failed');
+      }
 
       toast({
-        title: "Job created as draft! 📝",
-        description: data.message || "Your vacancy has been created successfully.",
+        title: "Job created! 📝",
+        description: data?.message || "Your vacancy has been created successfully.",
       });
 
     } catch (error) {
       console.error('Error publishing job:', error);
+      
+      // More detailed error message
+      let errorMessage = "Failed to publish job.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = (error as any).message || JSON.stringify(error);
+      }
+      
       toast({
         title: "Publishing failed",
-        description: error instanceof Error ? error.message : "Failed to publish job.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
