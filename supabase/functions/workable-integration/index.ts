@@ -21,10 +21,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!workableApiToken || !workableSubdomain) {
-      console.error('Missing Workable configuration:', { 
-        hasToken: !!workableApiToken, 
-        hasSubdomain: !!workableSubdomain 
-      });
       return new Response(
         JSON.stringify({ error: 'Workable API configuration missing' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -63,121 +59,83 @@ serve(async (req) => {
           .select()
           .single();
 
-        // First, load YOUR actual jobs from Workable to get job IDs
+        // Load ALL candidates directly from /candidates endpoint INCLUDING archived jobs
         const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
-        console.log(`📋 First loading YOUR Workable jobs from: ${spiBaseUrl}/jobs`);
-        
-        let allJobs: any[] = [];
-        let jobPage = 1;
-        let hasMoreJobPages = true;
-        
-        while (hasMoreJobPages && jobPage <= 10) {
-          try {
-            const jobsUrl = `${spiBaseUrl}/jobs?limit=100&offset=${(jobPage - 1) * 100}&state=all`;
-            console.log(`📋 Fetching jobs from: ${jobsUrl}`);
-            const jobsResponse = await fetch(jobsUrl, { method: 'GET', headers });
-            
-            console.log(`Jobs API Response Status: ${jobsResponse.status}`);
-            
-            if (!jobsResponse.ok) {
-              const errorText = await jobsResponse.text();
-              console.error(`Jobs API Error ${jobsResponse.status}: ${jobsResponse.statusText}`, errorText);
-              throw new Error(`Jobs API Error ${jobsResponse.status}: ${jobsResponse.statusText} - ${errorText}`);
-            }
-            
-            const jobsData = await jobsResponse.json();
-            console.log(`📊 Jobs API Response:`, JSON.stringify(jobsData, null, 2));
-            
-            if (jobsData.jobs && jobsData.jobs.length > 0) {
-              allJobs.push(...jobsData.jobs);
-              console.log(`📋 Loaded ${jobsData.jobs.length} jobs from page ${jobPage}`);
-              hasMoreJobPages = jobsData.paging && jobsData.paging.next;
-              jobPage++;
-            } else {
-              console.log(`No jobs found on page ${jobPage}`);
-              hasMoreJobPages = false;
-            }
-            await new Promise(resolve => setTimeout(resolve, 200));
-          } catch (error) {
-            console.error(`Error loading jobs page ${jobPage}:`, error);
-            hasMoreJobPages = false;
-          }
-        }
-        
-        console.log(`✅ Total jobs in YOUR Workable: ${allJobs.length}`);
-        console.log(`📋 Job details:`, allJobs.map(job => ({ id: job.id, title: job.title, state: job.state })));
-        const jobIds = allJobs.map(job => job.id);
-        
-        if (jobIds.length === 0) {
-          throw new Error(`No jobs found in your Workable instance. API URL: ${spiBaseUrl}/jobs - Check if you have any jobs in Workable and verify API permissions.`);
-        }
-
-        // Now load candidates ONLY from YOUR specific jobs
         let allCandidates: any[] = [];
-        let candidatesLoaded = 0;
-        
-        console.log(`📊 Loading candidates from YOUR ${jobIds.length} jobs...`);
-        
-        // Load candidates for each of YOUR jobs
-        for (const jobId of jobIds) {
+        let page = 1;
+        let hasMorePages = true;
+        let totalLoaded = 0;
+        const pageSize = 100;
+
+        console.log(`📊 Starting to load from: ${spiBaseUrl}/candidates (including archived jobs)`);
+
+        while (hasMorePages && page <= 200) { // Increased safety limit for all 900+ candidates
           try {
-            let jobPage = 1;
-            let hasMoreCandidatesForJob = true;
+            const offset = (page - 1) * pageSize;
+            // Include candidates from ALL job states including archived/closed jobs
+            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${pageSize}&offset=${offset}&state=all`;
             
-            while (hasMoreCandidatesForJob && jobPage <= 10) {
-              const candidatesUrl = `${spiBaseUrl}/jobs/${jobId}/candidates?limit=100&offset=${(jobPage - 1) * 100}&state=all`;
-              
-              console.log(`📄 Loading candidates for job ${jobId}, page ${jobPage}`);
-              
-              const response = await fetch(candidatesUrl, { method: 'GET', headers });
+            console.log(`📄 Loading page ${page} (offset: ${offset})`);
+            
+            const response = await fetch(candidatesUrl, {
+              method: 'GET',
+              headers,
+            });
 
-              if (!response.ok) {
-                if (response.status === 404) {
-                  console.log(`No candidates found for job ${jobId}`);
-                  break;
-                }
-                throw new Error(`API Error ${response.status}: ${response.statusText}`);
-              }
+            if (!response.ok) {
+              throw new Error(`API Error ${response.status}: ${response.statusText}`);
+            }
 
-              const data = await response.json();
-              const jobCandidates = data.candidates || [];
+            const data = await response.json();
+            console.log(`📊 Page ${page} response: ${data.candidates?.length || 0} candidates`);
+            
+            if (data.candidates && data.candidates.length > 0) {
+              allCandidates.push(...data.candidates);
+              totalLoaded += data.candidates.length;
+              console.log(`✅ Page ${page}: +${data.candidates.length} candidates (Total: ${totalLoaded})`);
               
-              if (jobCandidates.length > 0) {
-                allCandidates.push(...jobCandidates);
-                candidatesLoaded += jobCandidates.length;
-                console.log(`✅ Job ${jobId} page ${jobPage}: +${jobCandidates.length} candidates (Total: ${candidatesLoaded})`);
-                
-                hasMoreCandidatesForJob = data.paging && data.paging.next;
-                jobPage++;
-              } else {
-                console.log(`No more candidates for job ${jobId}`);
-                hasMoreCandidatesForJob = false;
+              // Update progress
+              if (syncLog?.id && page % 5 === 0) {
+                await supabase
+                  .from('integration_sync_logs')
+                  .update({
+                    synced_data: { 
+                      action: 'load_all_candidates',
+                      timestamp: new Date().toISOString(),
+                      progress: `Loading page ${page}: ${totalLoaded} candidates loaded`,
+                      currentPage: page
+                    }
+                  })
+                  .eq('id', syncLog.id);
               }
               
-              // Rate limiting
+              // Check pagination
+              hasMorePages = data.paging && data.paging.next;
+              page++;
+              
+              // Rate limiting - 200ms like Node.js
               await new Promise(resolve => setTimeout(resolve, 200));
+            } else {
+              console.log(`No candidates on page ${page} - ending`);
+              hasMorePages = false;
             }
           } catch (error) {
-            console.error(`❌ Error loading candidates for job ${jobId}:`, error);
-            // Continue with next job
+            console.error(`❌ Error on page ${page}:`, error);
+            hasMorePages = false;
           }
         }
 
-        console.log(`🎉 Successfully loaded ${candidatesLoaded} candidates from YOUR ${allJobs.length} Workable jobs!`);
+        console.log(`🎉 Successfully loaded ${totalLoaded} candidates from Workable!`);
 
-        if (candidatesLoaded < 2) {
-          console.log(`⚠️ Only ${candidatesLoaded} candidates found - this might indicate an issue with job access or job state filters`);
-        }
-
-        // Generate statistics
+        // Generate statistics like Node.js
         const withEmail = allCandidates.filter(c => c.email).length;
         const withPhone = allCandidates.filter(c => c.phone).length;
         const withResume = allCandidates.filter(c => c.resume_url).length;
         const activeStatus = allCandidates.filter(c => c.state === 'active').length;
 
         const stats = {
-          total_candidates: candidatesLoaded,
-          total_jobs: allJobs.length,
+          total_candidates: totalLoaded,
+          pages_processed: page - 1,
           data_quality: {
             with_email: withEmail,
             with_phone: withPhone,
@@ -185,27 +143,26 @@ serve(async (req) => {
             active_status: activeStatus
           },
           percentages: {
-            email_coverage: candidatesLoaded > 0 ? Math.round(withEmail / candidatesLoaded * 100) : 0,
-            phone_coverage: candidatesLoaded > 0 ? Math.round(withPhone / candidatesLoaded * 100) : 0,
-            resume_coverage: candidatesLoaded > 0 ? Math.round(withResume / candidatesLoaded * 100) : 0,
-            active_candidates: candidatesLoaded > 0 ? Math.round(activeStatus / candidatesLoaded * 100) : 0
+            email_coverage: totalLoaded > 0 ? Math.round(withEmail / totalLoaded * 100) : 0,
+            phone_coverage: totalLoaded > 0 ? Math.round(withPhone / totalLoaded * 100) : 0,
+            resume_coverage: totalLoaded > 0 ? Math.round(withResume / totalLoaded * 100) : 0,
+            active_candidates: totalLoaded > 0 ? Math.round(activeStatus / totalLoaded * 100) : 0
           }
         };
 
-        console.log('📊 Growth Accelerator Platform - Candidate Statistics (From YOUR Jobs)');
+        console.log('📊 Growth Accelerator Platform - Candidate Statistics');
         console.log('='.repeat(60));
-        console.log(`Total Jobs in Your Workable: ${allJobs.length}`);
-        console.log(`Total Candidates from Your Jobs: ${candidatesLoaded}`);
+        console.log(`Total Candidates: ${stats.total_candidates}`);
         console.log(`API Source: ${cleanSubdomain}.workable.com`);
         console.log(`Data Quality:`);
         console.log(`  Email: ${stats.data_quality.with_email} (${stats.percentages.email_coverage}%)`);
         console.log(`  Phone: ${stats.data_quality.with_phone} (${stats.percentages.phone_coverage}%)`);
 
-        // Now sync candidates to Supabase
+        // Now sync ALL candidates to Supabase
         let syncedCount = 0;
         let errors: string[] = [];
         
-        console.log(`🔄 Syncing ${candidatesLoaded} candidates to Supabase...`);
+        console.log(`🔄 Syncing ${totalLoaded} candidates to Supabase...`);
         
         // Process in batches
         const syncBatchSize = 50;
@@ -239,7 +196,7 @@ serve(async (req) => {
               synced_data: {
                 action: 'load_all_candidates',
                 timestamp: new Date().toISOString(),
-                totalCandidates: candidatesLoaded,
+                totalCandidates: totalLoaded,
                 syncedCandidates: syncedCount,
                 errors: errors.length,
                 stats,
@@ -249,15 +206,15 @@ serve(async (req) => {
             .eq('id', syncLog.id);
         }
 
-        console.log(`🎯 Final Results: ${syncedCount}/${candidatesLoaded} candidates synced, ${errors.length} errors`);
+        console.log(`🎯 Final Results: ${syncedCount}/${totalLoaded} candidates synced, ${errors.length} errors`);
 
         return new Response(
           JSON.stringify({ 
             success: true,
-            totalCandidates: candidatesLoaded,
+            totalCandidates: totalLoaded,
             syncedCandidates: syncedCount,
             errors: errors.length,
-            message: `Successfully loaded ${candidatesLoaded} candidates from YOUR Workable jobs and synced ${syncedCount} to database`,
+            message: `Successfully loaded ${totalLoaded} candidates from Workable and synced ${syncedCount} to database`,
             stats
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -765,43 +722,44 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
     interview_stage: mapWorkableStatusToInterviewStage(candidate.state)
   }));
 
-  // Use upsert instead of delete + insert to avoid data loss
+  // Bulk insert with batch processing to handle large datasets
   try {
-    // Process candidates in smaller batches to avoid timeout/size limits
+    // First, delete existing workable candidates to ensure fresh data
+    console.log(`🗑️ Clearing existing Workable candidates...`);
+    const { error: deleteError } = await supabase
+      .from('candidates')
+      .delete()
+      .eq('source_platform', 'workable');
+
+    if (deleteError && deleteError.code !== 'PGRST116') { // Ignore "no rows deleted" error
+      console.error('Error clearing existing workable candidates:', deleteError);
+      results.errors.push(`Clear failed: ${deleteError.message}`);
+      return results;
+    } else {
+      console.log('✅ Cleared existing workable candidates');
+    }
+
+    // Insert candidates in smaller batches to avoid timeout/size limits
     const insertBatchSize = 25; // Smaller batches for better reliability
     for (let i = 0; i < candidateData.length; i += insertBatchSize) {
       const insertBatch = candidateData.slice(i, i + insertBatchSize);
       const batchNumber = Math.floor(i/insertBatchSize) + 1;
       const totalBatches = Math.ceil(candidateData.length / insertBatchSize);
       
-      console.log(`📥 Upserting batch ${batchNumber}/${totalBatches} (${insertBatch.length} candidates)`);
+      console.log(`📥 Inserting batch ${batchNumber}/${totalBatches} (${insertBatch.length} candidates)`);
       
-      // Try upsert first, fallback to insert if constraint doesn't exist
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('candidates')
-        .upsert(insertBatch, { 
-          onConflict: 'email',
-          ignoreDuplicates: false 
-        })
+        .insert(insertBatch)
         .select();
 
-      // If upsert fails due to missing constraint, use insert instead
-      if (error && error.message.includes('no unique or exclusion constraint')) {
-        console.log(`⚠️ No unique constraint on email yet, using insert for batch ${batchNumber}`);
-        ({ data, error } = await supabase
-          .from('candidates')
-          .insert(insertBatch)
-          .select());
-      }
-
       if (error) {
-        console.error(`Upsert batch ${batchNumber} error:`, error);
-        results.errors.push(`Upsert batch ${batchNumber} failed: ${error.message}`);
+        console.error(`Insert batch ${batchNumber} error:`, error);
+        results.errors.push(`Insert batch ${batchNumber} failed: ${error.message}`);
         // Continue with next batch instead of stopping
       } else {
-        const insertedCount = data?.length || 0;
-        results.created += insertedCount;
-        console.log(`✅ Batch ${batchNumber}: Upserted ${insertedCount} candidates (Total: ${results.created})`);
+        results.created += data?.length || 0;
+        console.log(`✅ Batch ${batchNumber}: Inserted ${data?.length || 0} candidates (Total: ${results.created})`);
       }
       
       // Small delay to prevent overwhelming the database
