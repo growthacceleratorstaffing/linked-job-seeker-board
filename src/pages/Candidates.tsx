@@ -30,6 +30,7 @@ interface Candidate {
   profile_completeness_score: number | null;
   interview_stage: InterviewStage | null;
   created_at: string;
+  applied_position?: string; // The job they applied for
 }
 
 const Candidates = () => {
@@ -50,54 +51,68 @@ const Candidates = () => {
     queryFn: async () => {
       console.log('Fetching candidates with search:', searchTerm, 'page:', currentPage, 'tab:', activeTab);
       
-      // For standard members, get their assigned jobs first
-      let assignedJobIds: string[] = [];
-      if (!permissions.admin && user?.id) {
+      // Get user's jobs (for admins get all jobs, for standard users get assigned jobs)
+      let userJobIds: string[] = [];
+      
+      if (permissions.admin) {
+        // Admin: get all jobs from the jobs table
+        const { data: allJobs } = await supabase
+          .from('jobs')
+          .select('id');
+        userJobIds = allJobs?.map(j => j.id) || [];
+      } else if (user?.id) {
+        // Standard user: get assigned jobs
         const { data: workableUser } = await supabase
           .from('workable_users')
           .select('assigned_jobs')
           .eq('user_id', user.id)
           .single();
           
-        assignedJobIds = workableUser?.assigned_jobs || [];
-        
-        // If no assigned jobs, return empty result
-        if (assignedJobIds.length === 0) {
-          return { candidates: [], totalCount: 0 };
-        }
+        userJobIds = workableUser?.assigned_jobs || [];
       }
       
+      // If no jobs available, return empty result
+      if (userJobIds.length === 0) {
+        return { candidates: [], totalCount: 0 };
+      }
+
+      // Get candidates who applied to user's jobs with job details
+      const { data: candidateResponses } = await supabase
+        .from('candidate_responses')
+        .select(`
+          candidate_id,
+          job_id,
+          jobs!inner(title)
+        `)
+        .in('job_id', userJobIds);
+
+      if (!candidateResponses || candidateResponses.length === 0) {
+        return { candidates: [], totalCount: 0 };
+      }
+
+      // Create map of candidate to job title they applied for
+      const candidateJobMap = new Map();
+      candidateResponses.forEach(response => {
+        if (!candidateJobMap.has(response.candidate_id)) {
+          candidateJobMap.set(response.candidate_id, (response.jobs as any)?.title || 'Unknown Position');
+        }
+      });
+
+      const candidateIds = Array.from(candidateJobMap.keys());
+
+      // Now get the actual candidates
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact' })
+        .in('id', candidateIds)
         .order("last_synced_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
 
-      // Filter by tab - Applicants vs Talent Pool (FINAL CORRECT VERSION)
+      // Filter by tab - Applicants vs Talent Pool
       if (activeTab === 'applicants') {
-        // Applicants shows advanced stage candidates (101 candidates)
         query = query.in('interview_stage', ['phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer', 'passed', 'hired', 'failed', 'rejected', 'withdrawn']);
       } else {
-        // Talent Pool shows early stage candidates (1 candidate)
         query = query.in('interview_stage', ['sourced', 'applied']);
-      }
-
-
-      // For standard members, filter candidates by job responses to assigned jobs
-      if (!permissions.admin && assignedJobIds.length > 0) {
-        // Get candidate IDs that have responses to assigned jobs
-        const { data: responses } = await supabase
-          .from('candidate_responses')
-          .select('candidate_id')
-          .in('job_id', assignedJobIds);
-          
-        const candidateIds = responses?.map(r => r.candidate_id) || [];
-        
-        if (candidateIds.length === 0) {
-          return { candidates: [], totalCount: 0 };
-        }
-        
-        query = query.in('id', candidateIds);
       }
 
       if (searchTerm) {
@@ -111,7 +126,13 @@ const Candidates = () => {
       const { data, error, count } = await query;
       if (error) throw error;
       
-      return { candidates: data as Candidate[], totalCount: count || 0 };
+      // Add the applied position to each candidate
+      const candidatesWithPosition = (data as Candidate[]).map(candidate => ({
+        ...candidate,
+        applied_position: candidateJobMap.get(candidate.id)
+      }));
+      
+      return { candidates: candidatesWithPosition, totalCount: count || 0 };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!user, // Only run when user is available
@@ -537,7 +558,7 @@ const Candidates = () => {
                             </div>
                           </TableCell>
                           <TableCell className="text-slate-400">
-                            {candidate.current_position || 'Not specified'}
+                            {candidate.applied_position || 'Not specified'}
                           </TableCell>
                           <TableCell>
                             <Badge className={getStageColor(candidate.interview_stage)}>
@@ -665,7 +686,7 @@ const Candidates = () => {
                             </div>
                           </TableCell>
                           <TableCell className="text-slate-400">
-                            {candidate.current_position || 'Not specified'}
+                            {candidate.applied_position || 'Not specified'}
                           </TableCell>
                           <TableCell>
                             <Badge className="bg-blue-500/20 text-blue-400 border-blue-400">
