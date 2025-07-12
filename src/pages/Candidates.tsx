@@ -77,8 +77,8 @@ const Candidates = () => {
         // Applicants are only sourced and applied candidates
         query = query.in('interview_stage', ['sourced', 'applied']);
       } else {
-        // Talent Pool is everyone except sourced and applied
-        query = query.not('interview_stage', 'in', '(sourced,applied)');
+        // Talent Pool is everyone except sourced and applied (including null values)
+        query = query.or('interview_stage.not.in.(sourced,applied),interview_stage.is.null');
       }
 
       // For standard members, filter candidates by job responses to assigned jobs
@@ -282,7 +282,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .not('interview_stage', 'in', '(sourced,applied)');
+        .or('interview_stage.not.in.(sourced,applied),interview_stage.is.null');
       
       const { count } = await query;
       return count || 0;
