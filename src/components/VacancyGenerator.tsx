@@ -115,7 +115,7 @@ export const VacancyGenerator = () => {
       
       console.log('Publishing job with data:', jobData);
       
-      // Note: Workable integration removed - just log the job data
+      // Note: Integration removed - just log the job data
       console.log('Publishing job with data:', jobData);
       
       const data = { success: true, message: 'Job would be published if integration was active' };

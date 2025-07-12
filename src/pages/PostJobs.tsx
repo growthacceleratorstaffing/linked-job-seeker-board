@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 
-interface WorkableJob {
+interface Job {
   id: string;
   title: string;
   full_title: string;
@@ -29,7 +29,7 @@ interface WorkableJob {
 }
 
 const PostJobs = () => {
-  const [jobs, setJobs] = useState<WorkableJob[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -58,14 +58,14 @@ const PostJobs = () => {
         console.error('Error fetching local jobs:', localError);
       }
 
-      // Transform local jobs to WorkableJob format
-      const localJobsFormatted: WorkableJob[] = (localJobs || []).map(job => ({
+      // Transform local jobs to Job format
+      const localJobsFormatted: Job[] = (localJobs || []).map(job => ({
         id: job.id,
         title: job.title,
         full_title: job.title,
         state: job.synced_to_jobadder ? 'published' : 'draft',
         created_at: job.created_at,
-        url: job.jobadder_job_id ? `https://workable.com/jobs/${job.jobadder_job_id}` : '#',
+        url: job.jobadder_job_id ? `https://integration.com/jobs/${job.jobadder_job_id}` : '#',
         location: {
           location_str: job.location_name || 'Not specified',
           workplace_type: job.work_type_name || 'onsite'
@@ -127,7 +127,7 @@ const PostJobs = () => {
       console.log('✅ Job saved to local database:', localJob.id);
 
       // Create a display job for the current view (temporary until refresh)
-      const createdJob: WorkableJob = {
+      const createdJob: Job = {
         id: localJob.id,
         title: newJob.title,
         full_title: newJob.title,

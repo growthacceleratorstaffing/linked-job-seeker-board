@@ -36,7 +36,7 @@ const Auth = () => {
     
     setIsValidatingEmail(true);
     try {
-      const { data, error } = await supabase.functions.invoke('validate-workable-email', {
+      const { data, error } = await supabase.functions.invoke('validate-email', {
         body: { email: emailToCheck }
       });
 

@@ -32,10 +32,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null);
         setIsLoading(false);
         
-        // Automatically sync Workable roles when user signs in
+        // Automatically sync roles when user signs in
         if (event === 'SIGNED_IN' && session?.user?.email) {
           setTimeout(() => {
-            syncWorkableRole(session.user.email);
+            syncRole(session.user.email);
           }, 0);
         }
       }
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Also sync for existing sessions on page load
       if (session?.user?.email) {
         setTimeout(() => {
-          syncWorkableRole(session.user.email);
+          syncRole(session.user.email);
         }, 1000); // Small delay to ensure user is fully loaded
       }
     });
@@ -58,11 +58,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const syncWorkableRole = async (email: string) => {
+  const syncRole = async (email: string) => {
     try {
-      console.log(`🔄 Auto-syncing Workable role for ${email}...`);
+      console.log(`🔄 Auto-syncing role for ${email}...`);
       
-      const result = await supabase.functions.invoke('workable-integration', {
+      const result = await supabase.functions.invoke('integration', {
         body: { 
           action: 'sync_single_user',
           email: email 
@@ -70,16 +70,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (result.error) {
-        console.log('⚠️ Workable sync failed:', result.error);
+        console.log('⚠️ Sync failed:', result.error);
         return;
       }
       
       const syncData = result.data;
       if (syncData.success) {
-        console.log(`✅ Auto-synced ${email}: ${syncData.user?.workable_role} role with ${syncData.user?.assigned_jobs || 0} jobs`);
+        console.log(`✅ Auto-synced ${email}: ${syncData.user?.role} role with ${syncData.user?.assigned_jobs || 0} jobs`);
       }
     } catch (error) {
-      console.log('⚠️ Background Workable sync failed:', error);
+      console.log('⚠️ Background sync failed:', error);
       // Silent fail - don't disrupt user experience
     }
   };

@@ -163,14 +163,14 @@ const Matching = () => {
         .select('*', { count: 'exact', head: true });
 
       // External jobs disabled
-      const workableJobs = 0;
+      const integrationJobs = 0;
 
       // Fetch app-posted jobs count
       const { count: appJobsCount } = await supabase
         .from('jobs')
         .select('*', { count: 'exact', head: true });
 
-      const totalOpenPositions = workableJobs + (appJobsCount || 0);
+      const totalOpenPositions = integrationJobs + (appJobsCount || 0);
 
       setStats({
         candidates: candidatesCount || 0,
@@ -248,7 +248,7 @@ const Matching = () => {
         if (jobError) throw jobError;
         jobId = jobData.id;
       } else {
-        // For existing Workable jobs, we need to create/find the corresponding crawled_jobs entry
+        // For existing integration jobs, we need to create/find the corresponding crawled_jobs entry
         const selectedJob = jobs.find(j => j.id === selectedJobId);
         if (!selectedJob) {
           toast({
@@ -260,12 +260,12 @@ const Matching = () => {
           return;
         }
 
-        // Check if this Workable job already exists in crawled_jobs
+        // Check if this integration job already exists in crawled_jobs
         const { data: existingJob, error: findError } = await supabase
           .from('crawled_jobs')
           .select('id')
-          .eq('source', 'workable')
-          .eq('url', `workable-${selectedJobId}`)
+          .eq('source', 'integration')
+          .eq('url', `integration-${selectedJobId}`)
           .single();
 
         if (findError && findError.code !== 'PGRST116') { // PGRST116 is "not found" error
@@ -275,16 +275,16 @@ const Matching = () => {
         if (existingJob) {
           jobId = existingJob.id;
         } else {
-          // Create new crawled_jobs entry for this Workable job
+          // Create new crawled_jobs entry for this integration job
           const { data: jobData, error: jobError } = await supabase
             .from('crawled_jobs')
             .insert([{
               title: selectedJob.title,
               company: selectedJob.company,
               location: selectedJob.location || '',
-              description: `Workable job: ${selectedJob.title}`,
-              source: 'workable',
-              url: `workable-${selectedJobId}`
+              description: `Integration job: ${selectedJob.title}`,
+              source: 'integration',
+              url: `integration-${selectedJobId}`
             }])
             .select()
             .single();

@@ -126,7 +126,7 @@ const Candidates = () => {
           .from("candidates")
           .select("*", { count: 'exact', head: true });
 
-        // Auto-sync removed - Workable integration disabled
+        // Auto-sync removed - integration disabled
       } catch (error: any) {
         console.error('Auto bulk load error:', error);
         toast({

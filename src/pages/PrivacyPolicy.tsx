@@ -73,7 +73,7 @@ const PrivacyPolicy = () => {
             <section>
               <h3 className="text-lg font-semibold text-white mb-3">6. Third-Party Services</h3>
               <p>
-                Our service may integrate with third-party services such as Workable and LinkedIn. 
+                Our service may integrate with third-party services such as CRM systems and LinkedIn. 
                 These services have their own privacy policies governing the use of your information.
               </p>
             </section>
