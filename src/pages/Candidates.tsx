@@ -159,17 +159,17 @@ const Candidates = () => {
 
         // Only bulk load if we have significantly fewer candidates than expected (~1600)
         if ((count || 0) < 1500) {
-          console.log('Auto-loading all candidates from Workable...');
+          console.log('Auto-loading all candidates from integration...');
           setIsBulkLoading(true);
           
-          // Load from Workable
+          // Load from integration
           const workableResult = await supabase.functions.invoke('workable-integration', {
             body: { action: 'load_all_candidates' }
           });
           
           if (workableResult.error) throw workableResult.error;
           const data = workableResult.data;
-          const platform = 'Workable';
+          const platform = 'Integration';
 
           if (data && data.success) {
             console.log('Auto bulk load completed:', data);
@@ -200,16 +200,16 @@ const Candidates = () => {
   const syncAllCandidates = async () => {
     setIsBulkLoading(true);
     try {
-      console.log('Starting candidate sync from Workable...');
+      console.log('Starting candidate sync from integration...');
       
-      // Load from Workable
+      // Load from integration
       const workableResult = await supabase.functions.invoke('workable-integration', {
         body: { action: 'load_all_candidates' }
       });
 
       if (workableResult.error) throw workableResult.error;
       const data = workableResult.data;
-      const platform = 'Workable';
+      const platform = 'Integration';
 
       if (data?.error) {
         console.error('Function returned error:', data.error);
@@ -232,7 +232,7 @@ const Candidates = () => {
       
       const errorMessage = error instanceof Error 
         ? error.message 
-        : 'Failed to sync candidates from Workable';
+        : 'Failed to sync candidates from integration';
         
       toast({
         title: "Sync failed",
@@ -255,7 +255,7 @@ const Candidates = () => {
 
   const getSourceBadge = (source: string | null) => {
     if (source === 'workable') {
-      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-400">Workable</Badge>;
+      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-400">Integration</Badge>;
     } else if (source === 'manual') {
       return <Badge className="bg-secondary-pink/20 text-secondary-pink border-secondary-pink">Manual</Badge>;
     }
@@ -436,7 +436,7 @@ const Candidates = () => {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-center gap-3">
                   <Loader2 className="w-5 h-5 animate-spin text-secondary-pink" />
-                  <p className="text-white">Loading all candidates from Workable...</p>
+                  <p className="text-white">Loading all candidates from integration...</p>
                 </div>
                 <p className="text-xs text-slate-400 text-center mt-2">
                   This may take a few minutes to complete. Please wait...

@@ -7,7 +7,7 @@ import { Briefcase, RefreshCw, ExternalLink, CheckCircle, Archive } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-interface WorkableJob {
+interface IntegrationJob {
   id: string;
   title: string;
   full_title: string;
@@ -23,7 +23,7 @@ interface JobsOverviewProps {
 }
 
 export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) => {
-  const [workableJobs, setWorkableJobs] = useState<WorkableJob[]>([]);
+  const [workableJobs, setWorkableJobs] = useState<IntegrationJob[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
 
@@ -42,7 +42,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
       console.error('Error syncing jobs:', error);
       toast({
         title: "Sync failed",
-        description: error instanceof Error ? error.message : "Failed to sync jobs from Workable.",
+        description: error instanceof Error ? error.message : "Failed to sync jobs from integration.",
         variant: "destructive",
       });
     } finally {
@@ -110,7 +110,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
         {workableJobs.length > 0 ? (
           <div className="space-y-4">
             <p className="text-slate-300 text-sm">
-              {workableJobs.length} total jobs in your Workable account
+              {workableJobs.length} total jobs in your integration account
             </p>
             <Table>
               <TableHeader>

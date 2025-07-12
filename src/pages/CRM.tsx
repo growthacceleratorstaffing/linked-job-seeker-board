@@ -51,7 +51,7 @@ const CRM = () => {
       };
       
       candidates.forEach(candidate => {
-        if (candidate.email && candidate.email.length > 5 && candidate.email !== '@workable.com') {
+        if (candidate.email && candidate.email.length > 5 && candidate.email !== '@integration.com') {
           qualityMetrics.withEmail++;
         }
         if (candidate.phone && candidate.phone.length > 5) {
@@ -104,7 +104,7 @@ const CRM = () => {
         (percentages.location * 0.10) +   // Location is helpful (10%)
         (percentages.company * 0.10) +    // Company is helpful (10%)
         (percentages.skills * 0.10) +     // Skills are helpful (10%)
-        (percentages.workableId * 0.05) + // Workable ID for tracking (5%)
+        (percentages.workableId * 0.05) + // Integration ID for tracking (5%)
         (percentages.linkedIn * 0.05) +   // LinkedIn for sourcing (5%)
         (percentages.photo * 0.05)        // Photo for identification (5%)
       ) : 0;

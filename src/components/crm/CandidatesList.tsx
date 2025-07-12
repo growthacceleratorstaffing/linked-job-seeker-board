@@ -143,7 +143,7 @@ export const CandidatesList = () => {
         (payload) => {
           const newData = payload.new as any;
           if (newData?.integration_type === 'workable' && newData?.status === 'success') {
-            console.log('Workable sync completed');
+            console.log('Integration sync completed');
             queryClient.invalidateQueries({ queryKey: ["candidates"] });
             queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
           }
