@@ -68,7 +68,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Onboarding email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify(emailResponse), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      data: emailResponse 
+    }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
