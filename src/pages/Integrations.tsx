@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,57 +6,189 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Settings, Check, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Settings, Check, ExternalLink, Unplug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const popularCRMs = [
   {
     name: "HubSpot",
     description: "Comprehensive CRM and marketing platform",
     logo: "🔶",
-    status: "available"
+    status: "available",
+    fields: [
+      { name: "api_key", label: "API Key", type: "password", placeholder: "pat-na1-..." },
+      { name: "portal_id", label: "Portal ID", type: "text", placeholder: "12345678" }
+    ]
   },
   {
     name: "Salesforce",
     description: "World's leading CRM platform",
     logo: "☁️",
-    status: "available"
+    status: "available",
+    fields: [
+      { name: "username", label: "Username", type: "text", placeholder: "user@company.com" },
+      { name: "password", label: "Password", type: "password", placeholder: "Password" },
+      { name: "security_token", label: "Security Token", type: "password", placeholder: "ABC123..." }
+    ]
   },
   {
     name: "LinkedIn Sales Navigator",
     description: "Professional networking and sales tool",
     logo: "💼",
-    status: "available"
+    status: "available",
+    fields: [
+      { name: "access_token", label: "Access Token", type: "password", placeholder: "AQV..." }
+    ]
   },
   {
     name: "Apollo",
     description: "Sales intelligence and engagement platform",
     logo: "🚀",
-    status: "available"
+    status: "available",
+    fields: [
+      { name: "api_key", label: "API Key", type: "password", placeholder: "api_key_..." }
+    ]
   },
   {
     name: "Pipedrive",
     description: "Sales-focused CRM software",
     logo: "📊",
-    status: "available"
+    status: "available",
+    fields: [
+      { name: "api_token", label: "API Token", type: "password", placeholder: "abc123..." },
+      { name: "company_domain", label: "Company Domain", type: "text", placeholder: "yourcompany" }
+    ]
   },
   {
     name: "Zoho CRM",
     description: "Complete customer relationship management",
     logo: "🏢",
-    status: "available"
+    status: "available",
+    fields: [
+      { name: "client_id", label: "Client ID", type: "text", placeholder: "1000.ABC123..." },
+      { name: "client_secret", label: "Client Secret", type: "password", placeholder: "abc123..." },
+      { name: "refresh_token", label: "Refresh Token", type: "password", placeholder: "1000.abc123..." }
+    ]
   }
 ];
 
 const Integrations = () => {
   const [customWebhook, setCustomWebhook] = useState("");
+  const [selectedCRM, setSelectedCRM] = useState<typeof popularCRMs[0] | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionForm, setConnectionForm] = useState<Record<string, string>>({});
+  const [connectedIntegrations, setConnectedIntegrations] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
-  const handleConnectCRM = (crmName: string) => {
-    toast({
-      title: "Integration Setup",
-      description: `${crmName} integration will be available soon. Contact support for early access.`,
-    });
+  useEffect(() => {
+    loadConnectedIntegrations();
+  }, []);
+
+  const loadConnectedIntegrations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('integration_settings')
+        .select('integration_type, is_enabled')
+        .eq('is_enabled', true);
+      
+      if (error) throw error;
+      
+      const connected = data.reduce((acc, integration) => {
+        acc[integration.integration_type] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+      
+      setConnectedIntegrations(connected);
+    } catch (error) {
+      console.error('Error loading integrations:', error);
+    }
+  };
+
+  const handleConnectCRM = (crm: typeof popularCRMs[0]) => {
+    setSelectedCRM(crm);
+    setConnectionForm({});
+  };
+
+  const handleDisconnectCRM = async (crmName: string) => {
+    try {
+      const { error } = await supabase
+        .from('integration_settings')
+        .update({ is_enabled: false })
+        .eq('integration_type', crmName.toLowerCase());
+
+      if (error) throw error;
+
+      setConnectedIntegrations(prev => ({
+        ...prev,
+        [crmName.toLowerCase()]: false
+      }));
+
+      toast({
+        title: "Integration Disconnected",
+        description: `${crmName} has been disconnected successfully.`,
+      });
+    } catch (error) {
+      console.error('Error disconnecting CRM:', error);
+      toast({
+        title: "Error",
+        description: "Failed to disconnect integration. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFormSubmit = async () => {
+    if (!selectedCRM) return;
+
+    // Validate required fields
+    const missingFields = selectedCRM.fields.filter(field => !connectionForm[field.name]);
+    if (missingFields.length > 0) {
+      toast({
+        title: "Missing Information",
+        description: `Please fill in: ${missingFields.map(f => f.label).join(', ')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+
+    try {
+      // Store integration settings
+      const { error } = await supabase
+        .from('integration_settings')
+        .upsert({
+          integration_type: selectedCRM.name.toLowerCase(),
+          is_enabled: true,
+          settings: connectionForm,
+        });
+
+      if (error) throw error;
+
+      setConnectedIntegrations(prev => ({
+        ...prev,
+        [selectedCRM.name.toLowerCase()]: true
+      }));
+
+      toast({
+        title: "Integration Connected",
+        description: `${selectedCRM.name} has been connected successfully!`,
+      });
+
+      setSelectedCRM(null);
+      setConnectionForm({});
+    } catch (error) {
+      console.error('Error connecting CRM:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect integration. Please check your credentials and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const handleSaveWebhook = () => {
@@ -95,37 +227,51 @@ const Integrations = () => {
 
           <TabsContent value="crm" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {popularCRMs.map((crm) => (
-                <Card key={crm.name} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-2xl">{crm.logo}</span>
-                        <div>
-                          <CardTitle className="text-lg">{crm.name}</CardTitle>
-                          <Badge variant="secondary" className="mt-1">
-                            {crm.status}
-                          </Badge>
+              {popularCRMs.map((crm) => {
+                const isConnected = connectedIntegrations[crm.name.toLowerCase()];
+                return (
+                  <Card key={crm.name} className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-2xl">{crm.logo}</span>
+                          <div>
+                            <CardTitle className="text-lg">{crm.name}</CardTitle>
+                            <Badge variant={isConnected ? "default" : "secondary"} className="mt-1">
+                              {isConnected ? "Connected" : crm.status}
+                            </Badge>
+                          </div>
                         </div>
+                        <Settings className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <Settings className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="mb-4">
-                      {crm.description}
-                    </CardDescription>
-                    <Button 
-                      onClick={() => handleConnectCRM(crm.name)}
-                      className="w-full"
-                      variant="outline"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Connect {crm.name}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="mb-4">
+                        {crm.description}
+                      </CardDescription>
+                      {isConnected ? (
+                        <Button 
+                          onClick={() => handleDisconnectCRM(crm.name)}
+                          className="w-full"
+                          variant="outline"
+                        >
+                          <Unplug className="h-4 w-4 mr-2" />
+                          Disconnect
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={() => handleConnectCRM(crm)}
+                          className="w-full"
+                          variant="outline"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Connect {crm.name}
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
             <Card>
@@ -241,6 +387,50 @@ const Integrations = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* CRM Connection Dialog */}
+        <Dialog open={!!selectedCRM} onOpenChange={() => setSelectedCRM(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Connect {selectedCRM?.name}</DialogTitle>
+              <DialogDescription>
+                Enter your {selectedCRM?.name} credentials to connect your CRM
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {selectedCRM?.fields.map((field) => (
+                <div key={field.name} className="space-y-2">
+                  <Label htmlFor={field.name}>{field.label}</Label>
+                  <Input
+                    id={field.name}
+                    type={field.type}
+                    placeholder={field.placeholder}
+                    value={connectionForm[field.name] || ""}
+                    onChange={(e) => setConnectionForm(prev => ({
+                      ...prev,
+                      [field.name]: e.target.value
+                    }))}
+                  />
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setSelectedCRM(null)}
+                disabled={isConnecting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleFormSubmit}
+                disabled={isConnecting}
+              >
+                {isConnecting ? "Connecting..." : "Connect"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
