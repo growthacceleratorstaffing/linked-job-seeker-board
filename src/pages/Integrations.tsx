@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Plus, Settings, Check, ExternalLink, Unplug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 const popularCRMs = [
   {
@@ -217,6 +218,11 @@ const Integrations = () => {
               Connect your CRM and sync candidate data seamlessly
             </p>
           </div>
+          <Link to="/data">
+            <Button className="bg-primary hover:bg-primary/90">
+              View Integration Data
+            </Button>
+          </Link>
         </div>
 
         <Tabs defaultValue="crm" className="w-full">

@@ -72,6 +72,7 @@ const AppSidebar = () => {
 
   const crmItems = [
     { path: '/integrations', label: 'Integrations', icon: Settings },
+    { path: '/data', label: 'Data', icon: Users },
   ];
 
   const contractingItems = [
