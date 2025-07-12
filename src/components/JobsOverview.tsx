@@ -118,7 +118,6 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
                   <TableHead className="text-slate-300">Job Title</TableHead>
                   <TableHead className="text-slate-300">Status</TableHead>
                   <TableHead className="text-slate-300">Created</TableHead>
-                  <TableHead className="text-slate-300 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -132,18 +131,6 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
                     </TableCell>
                     <TableCell className="text-slate-400">
                       {new Date(job.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        asChild
-                        className="text-secondary-pink hover:text-secondary-pink/80"
-                      >
-                        <a href={job.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

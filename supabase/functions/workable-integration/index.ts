@@ -227,15 +227,10 @@ serve(async (req) => {
         
         const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
         
-        // Build the jobs URL - include archived jobs for admins
+        // Build the jobs URL - try fetching ALL jobs first to debug
         let jobsUrl = `${spiBaseUrl}/jobs`;
-        if (include_archived) {
-          jobsUrl += '?state=all'; // This includes archived, published, draft, closed jobs
-          console.log('Admin access: Including archived/closed jobs');
-        } else {
-          jobsUrl += '?state=published'; // Only active published jobs for non-admins
-          console.log('Standard access: Only published jobs');
-        }
+        // Remove state filtering entirely to see what jobs exist
+        console.log('🔍 Fetching ALL jobs without state filter to debug...');
         
         console.log(`🔗 Making request to: ${jobsUrl}`);
         
