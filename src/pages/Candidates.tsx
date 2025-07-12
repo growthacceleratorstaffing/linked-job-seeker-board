@@ -77,8 +77,8 @@ const Candidates = () => {
         // Applicants are those with interview_stage in active hiring process
         query = query.in('interview_stage', ['applied', 'phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer']);
       } else {
-        // Talent Pool are those sourced, passed, or available for opportunities
-        query = query.or('interview_stage.in.(sourced,passed,hired),interview_stage.is.null');
+        // Talent Pool are those not in active hiring process (sourced, passed, hired, failed, rejected, withdrawn, or null)
+        query = query.or('interview_stage.in.(sourced,passed,hired,failed,rejected,withdrawn),interview_stage.is.null');
       }
 
       // For standard members, filter candidates by job responses to assigned jobs
@@ -282,7 +282,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .or('interview_stage.in.(sourced,passed,hired),interview_stage.is.null');
+        .or('interview_stage.in.(sourced,passed,hired,failed,rejected,withdrawn),interview_stage.is.null');
       
       const { count } = await query;
       return count || 0;
