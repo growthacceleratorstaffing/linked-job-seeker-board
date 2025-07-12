@@ -237,25 +237,87 @@ serve(async (req) => {
           console.log('Standard access: Only published jobs');
         }
         
+        console.log(`🔗 Making request to: ${jobsUrl}`);
+        
         const response = await fetch(jobsUrl, {
           method: 'GET',
           headers,
         });
 
+        console.log(`📡 Response status: ${response.status}`);
+
+        if (response.status === 429) {
+          console.log(`⚠️ Rate limit hit - waiting 2 seconds before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Retry once after rate limit
+          const retryResponse = await fetch(jobsUrl, {
+            method: 'GET',
+            headers,
+          });
+          
+          if (!retryResponse.ok) {
+            console.error(`❌ Retry failed: ${retryResponse.status} - ${retryResponse.statusText}`);
+            throw new Error(`Failed to sync jobs after retry: ${retryResponse.status} ${retryResponse.statusText} (Rate limited)`);
+          }
+          
+          const retryData = await retryResponse.json();
+          console.log(`✅ Retry successful: ${retryData.jobs?.length || 0} jobs fetched`);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              jobs: retryData.jobs || [],
+              include_archived,
+              total_found: retryData.jobs?.length || 0,
+              rate_limited: true,
+              retry_successful: true,
+              message: `Synced ${retryData.jobs?.length || 0} jobs from Workable${include_archived ? ' (including archived)' : ''} (recovered from rate limit)`
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         if (!response.ok) {
-          throw new Error(`Failed to sync jobs: ${response.status}`);
+          console.error(`❌ API Error: ${response.status} - ${response.statusText}`);
+          throw new Error(`Failed to sync jobs: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
         
+        console.log(`📊 Raw API response: ${JSON.stringify(data, null, 2).slice(0, 500)}...`);
         console.log(`📊 Fetched ${data.jobs?.length || 0} jobs from Workable (archived included: ${include_archived})`);
+        
+        // Log job details if we got jobs
+        if (data.jobs && data.jobs.length > 0) {
+          console.log(`✅ Jobs found:`);
+          data.jobs.slice(0, 3).forEach((job: any, index: number) => {
+            console.log(`  ${index + 1}. ${job.title} (${job.state}) - ${job.location?.location_str || 'No location'}`);
+          });
+          if (data.jobs.length > 3) {
+            console.log(`  ... and ${data.jobs.length - 3} more jobs`);
+          }
+        } else {
+          console.log(`⚠️ No jobs returned from API. This might be due to:`);
+          console.log(`   - All jobs are in non-matching states`);
+          console.log(`   - API rate limiting`);
+          console.log(`   - Temporary API issue`);
+          console.log(`   - No jobs exist in Workable`);
+        }
         
         return new Response(
           JSON.stringify({ 
             success: true, 
             jobs: data.jobs || [],
             include_archived,
-            message: `Synced ${data.jobs?.length || 0} jobs from Workable${include_archived ? ' (including archived)' : ''}`
+            total_found: data.jobs?.length || 0,
+            api_response_size: JSON.stringify(data).length,
+            message: `Synced ${data.jobs?.length || 0} jobs from Workable${include_archived ? ' (including archived)' : ''}`,
+            debug_info: {
+              url: jobsUrl,
+              status: response.status,
+              has_paging: !!data.paging
+            }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

@@ -85,9 +85,25 @@ const PostJobs = () => {
         if (workableResult.data && !workableResult.error) {
           workableJobs = workableResult.data.jobs || [];
           console.log(`📊 Loaded ${workableJobs.length} jobs from Workable API (Admin access: ${permissions.admin})`);
+          console.log(`🔍 Debug info:`, workableResult.data.debug_info);
+          
+          // Show rate limit recovery message if applicable
+          if (workableResult.data.rate_limited && workableResult.data.retry_successful) {
+            toast({
+              title: "Rate Limit Recovered! ✅",
+              description: `Successfully loaded ${workableJobs.length} jobs after API rate limit recovery.`,
+            });
+          }
+        } else {
+          console.error('Workable integration error:', workableResult.error);
         }
       } catch (workableError) {
-        console.log('Workable sync failed, showing local jobs only:', workableError);
+        console.error('Workable sync failed, showing local jobs only:', workableError);
+        toast({
+          title: "Workable Sync Warning",
+          description: "Could not fetch jobs from Workable. Showing local jobs only.",
+          variant: "destructive",
+        });
       }
 
       // Combine local and workable jobs, avoiding duplicates
