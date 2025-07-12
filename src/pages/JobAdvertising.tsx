@@ -178,24 +178,6 @@ const JobAdvertising = () => {
             </div>
           </div>
 
-          {/* API Setup Instructions */}
-          <Card className="bg-primary-blue border border-orange-400">
-            <CardHeader>
-              <CardTitle className="text-orange-400">🔑 Required API Setup</CardTitle>
-            </CardHeader>
-            <CardContent className="text-orange-300 space-y-2">
-              <p><strong>Required LinkedIn API credentials (set in Supabase secrets):</strong></p>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                <li><code>LINKEDIN_CLIENT_ID</code> - Your LinkedIn app client ID</li>
-                <li><code>LINKEDIN_CLIENT_SECRET</code> - Your LinkedIn app client secret</li>
-                <li><code>LINKEDIN_ACCESS_TOKEN</code> - Valid LinkedIn access token with job posting permissions</li>
-              </ul>
-              <p className="text-sm mt-2">
-                Get these from: <a href="https://developer.linkedin.com/" target="_blank" className="underline text-secondary-pink">LinkedIn Developer Portal</a>
-              </p>
-            </CardContent>
-          </Card>
-
           <Tabs defaultValue="job-posting" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-slate-700">
               <TabsTrigger value="job-posting" className="flex items-center gap-2 data-[state=active]:bg-secondary-pink">
