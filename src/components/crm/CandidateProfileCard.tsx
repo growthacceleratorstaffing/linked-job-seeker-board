@@ -41,7 +41,7 @@ export const CandidateProfileCard = ({
   const getSourceColor = (source: string | null) => {
     switch (source) {
       case 'linkedin': return 'bg-blue-100 text-blue-800';
-      
+      case 'workable': return 'bg-green-100 text-green-800';
       case 'manual': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }

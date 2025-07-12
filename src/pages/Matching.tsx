@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Users, Briefcase, User, Building2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import Layout from "@/components/Layout";
 
 interface Match {
@@ -70,7 +70,7 @@ const Matching = () => {
     phone: ''
   });
 
-  const permissions = { create_matches: true }; // Default permissions
+  const { permissions } = useWorkablePermissions();
   const { toast } = useToast();
 
   const fetchMatches = async () => {
@@ -119,10 +119,24 @@ const Matching = () => {
 
   const fetchJobs = async () => {
     try {
-      // External job integration disabled
-      setJobs([]);
+      // Fetch jobs directly from Workable
+      const { data, error } = await supabase.functions.invoke('workable-integration', {
+        body: { action: 'sync_jobs' }
+      });
+      
+      if (error) throw error;
+      
+      // Transform Workable jobs to match our interface
+      const workableJobs = (data?.jobs || []).map((job: any) => ({
+        id: job.id,
+        title: job.title,
+        company: job.department?.name || 'Unknown Company',
+        location: job.location?.city || job.location?.region || 'Remote'
+      }));
+      
+      setJobs(workableJobs);
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      console.error('Error fetching jobs from Workable:', error);
     }
   };
 
@@ -162,15 +176,19 @@ const Matching = () => {
         .from('candidate_responses')
         .select('*', { count: 'exact', head: true });
 
-      // External jobs disabled
-      const integrationJobs = 0;
+      // Fetch Workable jobs data
+      const { data: jobsData } = await supabase.functions.invoke('workable-integration', {
+        body: { action: 'sync_jobs' }
+      });
+
+      const workableJobs = jobsData?.jobs?.filter((job: any) => job.state === 'published').length || 0;
 
       // Fetch app-posted jobs count
       const { count: appJobsCount } = await supabase
         .from('jobs')
         .select('*', { count: 'exact', head: true });
 
-      const totalOpenPositions = integrationJobs + (appJobsCount || 0);
+      const totalOpenPositions = workableJobs + (appJobsCount || 0);
 
       setStats({
         candidates: candidatesCount || 0,
@@ -248,7 +266,7 @@ const Matching = () => {
         if (jobError) throw jobError;
         jobId = jobData.id;
       } else {
-        // For existing integration jobs, we need to create/find the corresponding crawled_jobs entry
+        // For existing Workable jobs, we need to create/find the corresponding crawled_jobs entry
         const selectedJob = jobs.find(j => j.id === selectedJobId);
         if (!selectedJob) {
           toast({
@@ -260,12 +278,12 @@ const Matching = () => {
           return;
         }
 
-        // Check if this integration job already exists in crawled_jobs
+        // Check if this Workable job already exists in crawled_jobs
         const { data: existingJob, error: findError } = await supabase
           .from('crawled_jobs')
           .select('id')
-          .eq('source', 'integration')
-          .eq('url', `integration-${selectedJobId}`)
+          .eq('source', 'workable')
+          .eq('url', `workable-${selectedJobId}`)
           .single();
 
         if (findError && findError.code !== 'PGRST116') { // PGRST116 is "not found" error
@@ -275,16 +293,16 @@ const Matching = () => {
         if (existingJob) {
           jobId = existingJob.id;
         } else {
-          // Create new crawled_jobs entry for this integration job
+          // Create new crawled_jobs entry for this Workable job
           const { data: jobData, error: jobError } = await supabase
             .from('crawled_jobs')
             .insert([{
               title: selectedJob.title,
               company: selectedJob.company,
               location: selectedJob.location || '',
-              description: `Integration job: ${selectedJob.title}`,
-              source: 'integration',
-              url: `integration-${selectedJobId}`
+              description: `Workable job: ${selectedJob.title}`,
+              source: 'workable',
+              url: `workable-${selectedJobId}`
             }])
             .select()
             .single();

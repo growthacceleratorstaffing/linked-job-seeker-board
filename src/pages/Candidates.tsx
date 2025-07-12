@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, ChevronRight, Loader2, Lock, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import { AddCandidateDialog } from "@/components/crm/AddCandidateDialog";
@@ -39,7 +39,7 @@ const Candidates = () => {
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('applicants');
-  const permissions = { admin: true, candidates: true }; // Default permissions
+  const { permissions } = useWorkablePermissions();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -50,7 +50,22 @@ const Candidates = () => {
     queryFn: async () => {
       console.log('Fetching candidates with search:', searchTerm, 'page:', currentPage, 'tab:', activeTab);
       
-      // No role restrictions - all users can see all candidates
+      // For standard members, get their assigned jobs first
+      let assignedJobIds: string[] = [];
+      if (!permissions.admin && user?.id) {
+        const { data: workableUser } = await supabase
+          .from('workable_users')
+          .select('assigned_jobs')
+          .eq('user_id', user.id)
+          .single();
+          
+        assignedJobIds = workableUser?.assigned_jobs || [];
+        
+        // If no assigned jobs, return empty result
+        if (assignedJobIds.length === 0) {
+          return { candidates: [], totalCount: 0 };
+        }
+      }
       
       let query = supabase
         .from("candidates")
@@ -67,6 +82,22 @@ const Candidates = () => {
         query = query.in('interview_stage', ['sourced', 'applied']);
       }
 
+      // For standard members, filter candidates by job responses to assigned jobs
+      if (!permissions.admin && assignedJobIds.length > 0) {
+        // Get candidate IDs that have responses to assigned jobs
+        const { data: responses } = await supabase
+          .from('candidate_responses')
+          .select('candidate_id')
+          .in('job_id', assignedJobIds);
+          
+        const candidateIds = responses?.map(r => r.candidate_id) || [];
+        
+        if (candidateIds.length === 0) {
+          return { candidates: [], totalCount: 0 };
+        }
+        
+        query = query.in('id', candidateIds);
+      }
 
       if (searchTerm) {
         query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,current_position.ilike.%${searchTerm}%`);
@@ -126,7 +157,31 @@ const Candidates = () => {
           .from("candidates")
           .select("*", { count: 'exact', head: true });
 
-        // Auto-sync removed - integration disabled
+        // Only bulk load if we have significantly fewer candidates than expected (~1600)
+        if ((count || 0) < 1500) {
+          console.log('Auto-loading all candidates from Workable...');
+          setIsBulkLoading(true);
+          
+          // Load from Workable
+          const workableResult = await supabase.functions.invoke('workable-integration', {
+            body: { action: 'load_all_candidates' }
+          });
+          
+          if (workableResult.error) throw workableResult.error;
+          const data = workableResult.data;
+          const platform = 'Workable';
+
+          if (data && data.success) {
+            console.log('Auto bulk load completed:', data);
+            toast({
+              title: "All candidates loaded! 🎉",
+              description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from ${platform}`,
+            });
+            
+            // Invalidate queries to refresh the UI
+            queryClient.invalidateQueries({ queryKey: ["all-candidates"] });
+          }
+        }
       } catch (error: any) {
         console.error('Auto bulk load error:', error);
         toast({
@@ -143,11 +198,50 @@ const Candidates = () => {
   }, [toast, queryClient]);
 
   const syncAllCandidates = async () => {
-    toast({
-      title: "Sync feature disabled",
-      description: "External integrations have been removed",
-      variant: "destructive",
-    });
+    setIsBulkLoading(true);
+    try {
+      console.log('Starting candidate sync from Workable...');
+      
+      // Load from Workable
+      const workableResult = await supabase.functions.invoke('workable-integration', {
+        body: { action: 'load_all_candidates' }
+      });
+
+      if (workableResult.error) throw workableResult.error;
+      const data = workableResult.data;
+      const platform = 'Workable';
+
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('Sync completed successfully:', data);
+      
+      toast({
+        title: "Sync completed! 🎉",
+        description: `Successfully loaded ${data.syncedCandidates} out of ${data.totalCandidates} candidates from ${platform}`,
+      });
+
+      // Refresh the candidates list
+      queryClient.invalidateQueries({ queryKey: ["all-candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["applicants-count"] });
+      queryClient.invalidateQueries({ queryKey: ["talent-pool-count"] });
+    } catch (error) {
+      console.error('Error syncing candidates:', error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to sync candidates from Workable';
+        
+      toast({
+        title: "Sync failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkLoading(false);
+    }
   };
 
   // Reset to first page when search changes or tab changes
@@ -160,7 +254,9 @@ const Candidates = () => {
   };
 
   const getSourceBadge = (source: string | null) => {
-    if (source === 'manual') {
+    if (source === 'workable') {
+      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-400">Workable</Badge>;
+    } else if (source === 'manual') {
       return <Badge className="bg-secondary-pink/20 text-secondary-pink border-secondary-pink">Manual</Badge>;
     }
     return <Badge variant="outline">Unknown</Badge>;
@@ -196,6 +292,7 @@ const Candidates = () => {
   });
 
   const activeCandidates = candidates.filter(c => c.interview_stage === 'pending' || c.interview_stage === 'in_progress').length;
+  const workableCandidates = candidates.filter(c => c.source_platform === 'workable').length;
 
   
   // Force refresh of count queries to show corrected numbers
@@ -241,8 +338,8 @@ const Candidates = () => {
                 variant="outline"
                 className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
               >
-                 <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh Candidates
+                <RefreshCw className={`mr-2 h-4 w-4 ${isBulkLoading ? 'animate-spin' : ''}`} />
+                Sync All Candidates
               </Button>
             )}
             {permissions.admin ? (
@@ -339,7 +436,7 @@ const Candidates = () => {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-center gap-3">
                   <Loader2 className="w-5 h-5 animate-spin text-secondary-pink" />
-                  <p className="text-white">Refreshing candidates...</p>
+                  <p className="text-white">Loading all candidates from Workable...</p>
                 </div>
                 <p className="text-xs text-slate-400 text-center mt-2">
                   This may take a few minutes to complete. Please wait...

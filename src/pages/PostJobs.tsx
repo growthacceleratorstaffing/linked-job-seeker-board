@@ -11,11 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Briefcase, Plus, RefreshCw, ExternalLink, CheckCircle, Archive, Lock, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 
-interface Job {
+interface WorkableJob {
   id: string;
   title: string;
   full_title: string;
@@ -29,7 +29,7 @@ interface Job {
 }
 
 const PostJobs = () => {
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<WorkableJob[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -41,7 +41,7 @@ const PostJobs = () => {
     salary: '',
     company: 'Growth Accelerator'
   });
-  const permissions = { admin: true }; // Default permissions
+  const { permissions } = useWorkablePermissions();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -58,28 +58,66 @@ const PostJobs = () => {
         console.error('Error fetching local jobs:', localError);
       }
 
-      // Transform local jobs to Job format
-      const localJobsFormatted: Job[] = (localJobs || []).map(job => ({
+      // Transform local jobs to WorkableJob format
+      const localJobsFormatted: WorkableJob[] = (localJobs || []).map(job => ({
         id: job.id,
         title: job.title,
         full_title: job.title,
         state: job.synced_to_jobadder ? 'published' : 'draft',
         created_at: job.created_at,
-        url: job.jobadder_job_id ? `https://integration.com/jobs/${job.jobadder_job_id}` : '#',
+        url: job.jobadder_job_id ? `https://workable.com/jobs/${job.jobadder_job_id}` : '#',
         location: {
           location_str: job.location_name || 'Not specified',
           workplace_type: job.work_type_name || 'onsite'
         }
       }));
 
-      // External job sync disabled - only show local jobs
-      const finalJobs = localJobsFormatted;
+      // Then try to load from Workable (if available)
+      let workableJobs: WorkableJob[] = [];
+      try {
+        const workableResult = await supabase.functions.invoke('workable-integration', {
+          body: { action: 'sync_jobs' }
+        });
+
+        if (workableResult.data && !workableResult.error) {
+          workableJobs = workableResult.data.jobs || [];
+        }
+      } catch (workableError) {
+        console.log('Workable sync failed, showing local jobs only:', workableError);
+      }
+
+      // Combine local and workable jobs, avoiding duplicates
+      const workableJobIds = new Set(workableJobs.map(job => job.id));
+      const localOnlyJobs = localJobsFormatted.filter(job => 
+        !job.url.includes('workable.com') || !workableJobIds.has(job.id)
+      );
+      
+      const combinedJobs = [...localOnlyJobs, ...workableJobs];
+      
+      // Filter jobs for standard members - only show assigned jobs
+      let finalJobs = combinedJobs;
+      if (!permissions.admin && user?.id) {
+        const { data: workableUser } = await supabase
+          .from('workable_users')
+          .select('assigned_jobs')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (workableUser?.assigned_jobs) {
+          finalJobs = combinedJobs.filter((job: WorkableJob) => 
+            workableUser.assigned_jobs.includes(job.id) || localOnlyJobs.includes(job)
+          );
+        } else {
+          // No assigned jobs = only show local jobs they created or have admin access
+          finalJobs = localOnlyJobs;
+        }
+      }
       
       setJobs(finalJobs);
       
       toast({
         title: "Jobs Loaded! 🎉",
-        description: `Found ${finalJobs.length} local jobs`,
+        description: `Found ${finalJobs.length} jobs (${localOnlyJobs.length} local, ${workableJobs.length} from Workable)`,
       });
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -127,7 +165,7 @@ const PostJobs = () => {
       console.log('✅ Job saved to local database:', localJob.id);
 
       // Create a display job for the current view (temporary until refresh)
-      const createdJob: Job = {
+      const createdJob: WorkableJob = {
         id: localJob.id,
         title: newJob.title,
         full_title: newJob.title,

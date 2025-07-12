@@ -8,7 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Auth from "@/pages/Auth";
 
-
+import WorkableCallback from "@/pages/WorkableCallback";
 import Index from "./pages/Index";
 import CRM from "./pages/CRM";
 import Matching from "./pages/Matching";
@@ -38,7 +38,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             
-            
+            <Route path="/auth/workable/callback" element={<WorkableCallback />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <Index />

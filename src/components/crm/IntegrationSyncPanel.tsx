@@ -19,11 +19,11 @@ export const IntegrationSyncPanel = () => {
 
       const stats = {
         linkedin: { success: 0, failed: 0, pending: 0, lastSync: null as string | null },
-        external: { success: 0, failed: 0, pending: 0, lastSync: null as string | null }
+        workable: { success: 0, failed: 0, pending: 0, lastSync: null as string | null }
       };
 
       data?.forEach(log => {
-        const type = log.integration_type as 'linkedin' | 'external';
+        const type = log.integration_type as 'linkedin' | 'workable';
         if (stats[type]) {
           if (log.status === 'in_progress') {
             stats[type].pending++;
@@ -60,7 +60,7 @@ export const IntegrationSyncPanel = () => {
 
       // Check what's missing and create defaults
       const linkedinSettings = existingSettings?.find(s => s.integration_type === 'linkedin');
-      const externalSettings = existingSettings?.find(s => s.integration_type === 'external');
+      const workableSettings = existingSettings?.find(s => s.integration_type === 'workable');
 
       const settingsToCreate = [];
 
@@ -73,12 +73,12 @@ export const IntegrationSyncPanel = () => {
         });
       }
 
-      if (!externalSettings) {
+      if (!workableSettings) {
         settingsToCreate.push({
-          integration_type: 'external',
-          is_enabled: false,
+          integration_type: 'workable',
+          is_enabled: true,
           sync_frequency_hours: 2,
-          settings: { auto_sync_enabled: false, sync_jobs: false, sync_candidates: false }
+          settings: { auto_sync_enabled: true, sync_jobs: true, sync_candidates: true }
         });
       }
 
@@ -145,28 +145,28 @@ export const IntegrationSyncPanel = () => {
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center gap-3">
                 {syncStats && (
-                  syncStats.external.pending > 0 ? 
+                  syncStats.workable.pending > 0 ? 
                     <Clock className="h-4 w-4 text-yellow-500 animate-pulse" /> :
                     <CheckCircle className="h-4 w-4 text-green-500" />
                 )}
                 <div>
-                  <div className="font-medium">External Integration</div>
+                  <div className="font-medium">Data Integration</div>
                   <div className="text-sm text-muted-foreground">
-                    {syncStats?.external.lastSync ? 
-                      `Last sync: ${new Date(syncStats.external.lastSync).toLocaleDateString()}` :
+                    {syncStats?.workable.lastSync ? 
+                      `Last sync: ${new Date(syncStats.workable.lastSync).toLocaleDateString()}` :
                       'No sync data'
-                    } • External sync disabled
+                    } • Syncs every 2 hours
                   </div>
                   {syncStats && (
                     <div className="text-xs text-muted-foreground">
-                      Success: {syncStats.external.success} | Failed: {syncStats.external.failed}
+                      Success: {syncStats.workable.success} | Failed: {syncStats.workable.failed}
                     </div>
                   )}
                 </div>
               </div>
-              <Badge variant="secondary" className="bg-red-100 text-red-800">
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
                 <Zap className="h-3 w-3 mr-1" />
-                Disabled
+                Auto-Enabled
               </Badge>
             </div>
           </div>

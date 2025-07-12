@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Wand2, Copy, Download, Sparkles, Upload, Edit, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-
+import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { EmploymentDetailsForm, EmploymentDetails } from './EmploymentDetailsForm';
 
 export const VacancyGenerator = () => {
@@ -23,7 +23,7 @@ export const VacancyGenerator = () => {
     officeLocation: '',
     workplace: 'on_site',
   });
-  const permissions = { publish_jobs: true }; // Default permissions
+  const { permissions } = useWorkablePermissions();
   const { toast } = useToast();
 
   const generateVacancy = async () => {
@@ -115,11 +115,12 @@ export const VacancyGenerator = () => {
       
       console.log('Publishing job with data:', jobData);
       
-      // Note: Integration removed - just log the job data
-      console.log('Publishing job with data:', jobData);
-      
-      const data = { success: true, message: 'Job would be published if integration was active' };
-      const error = null;
+      const { data, error } = await supabase.functions.invoke('workable-integration', {
+        body: { 
+          action: 'publish_job',
+          jobData
+        }
+      });
 
       console.log('Edge function response:', { data, error });
 
@@ -129,8 +130,8 @@ export const VacancyGenerator = () => {
       }
 
       // Check if the response indicates success
-      if (data && !data.success) {
-        throw new Error(data.message || 'Job creation failed');
+      if (data && !data.success && data.error) {
+        throw new Error(data.message || data.error || 'Job creation failed');
       }
 
       toast({

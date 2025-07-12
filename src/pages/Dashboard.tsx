@@ -61,7 +61,7 @@ const Dashboard = () => {
 
       setStats({
         totalCandidates: candidatesCount || 0,
-        activeJobs: 12, // Placeholder - could fetch from integration
+        activeJobs: 12, // Placeholder - could fetch from Workable
         newApplications: responsesCount || 0,
         activeInterviews: interviewsCount || 0,
         completedOnboarding: stageCount.completed || 0,

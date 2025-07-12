@@ -9,12 +9,12 @@ import {
   FileText 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
+import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
 
 const WorkflowHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const permissions = { publish_jobs: true, create_matches: true }; // Default permissions
+  const { permissions } = useWorkablePermissions();
 
   const allWorkflowSteps = [
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },

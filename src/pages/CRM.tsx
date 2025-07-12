@@ -15,7 +15,7 @@ const CRM = () => {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["crm-stats"],
     queryFn: async () => {
-      const [candidatesCount, integrationStats, allCandidatesData] = await Promise.all([
+      const [candidatesCount, workableStats, allCandidatesData] = await Promise.all([
         supabase
           .from("candidates")
           .select("*", { count: 'exact', head: true }),
@@ -23,7 +23,7 @@ const CRM = () => {
         supabase
           .from("integration_sync_logs")
           .select("*")
-          .eq("integration_type", "integration")
+          .eq("integration_type", "workable")
           .eq("status", "success")
           .order("completed_at", { ascending: false })
           .limit(1),
@@ -31,7 +31,7 @@ const CRM = () => {
         // Fetch actual candidate data for quality analysis
         supabase
           .from("candidates")
-          .select("name, email, phone, location, current_position, company, skills, profile_picture_url, linkedin_profile_url")
+          .select("name, email, phone, location, current_position, company, skills, workable_candidate_id, profile_picture_url, linkedin_profile_url")
       ]);
 
       // Calculate actual data quality metrics
@@ -45,13 +45,13 @@ const CRM = () => {
         withPosition: 0,
         withCompany: 0,
         withSkills: 0,
-        withIntegrationId: 0,
+        withWorkableId: 0,
         withLinkedIn: 0,
         withPhoto: 0
       };
       
       candidates.forEach(candidate => {
-        if (candidate.email && candidate.email.length > 5 && candidate.email !== '@integration.com') {
+        if (candidate.email && candidate.email.length > 5 && candidate.email !== '@workable.com') {
           qualityMetrics.withEmail++;
         }
         if (candidate.phone && candidate.phone.length > 5) {
@@ -69,8 +69,9 @@ const CRM = () => {
         if (candidate.skills && Array.isArray(candidate.skills) && candidate.skills.length > 0) {
           qualityMetrics.withSkills++;
         }
-        // All candidates have IDs
-        qualityMetrics.withIntegrationId++;
+        if (candidate.workable_candidate_id) {
+          qualityMetrics.withWorkableId++;
+        }
         if (candidate.linkedin_profile_url) {
           qualityMetrics.withLinkedIn++;
         }
@@ -87,12 +88,12 @@ const CRM = () => {
         position: Math.round((qualityMetrics.withPosition / totalCandidates) * 100),
         company: Math.round((qualityMetrics.withCompany / totalCandidates) * 100),
         skills: Math.round((qualityMetrics.withSkills / totalCandidates) * 100),
-        integrationId: Math.round((qualityMetrics.withIntegrationId / totalCandidates) * 100),
+        workableId: Math.round((qualityMetrics.withWorkableId / totalCandidates) * 100),
         linkedIn: Math.round((qualityMetrics.withLinkedIn / totalCandidates) * 100),
         photo: Math.round((qualityMetrics.withPhoto / totalCandidates) * 100)
       } : {
         email: 0, phone: 0, location: 0, position: 0, company: 0, 
-        skills: 0, integrationId: 0, linkedIn: 0, photo: 0
+        skills: 0, workableId: 0, linkedIn: 0, photo: 0
       };
       
       // Calculate overall data quality score (weighted average of key fields)
@@ -103,14 +104,14 @@ const CRM = () => {
         (percentages.location * 0.10) +   // Location is helpful (10%)
         (percentages.company * 0.10) +    // Company is helpful (10%)
         (percentages.skills * 0.10) +     // Skills are helpful (10%)
-        (percentages.integrationId * 0.05) + // Integration ID for tracking (5%)
+        (percentages.workableId * 0.05) + // Workable ID for tracking (5%)
         (percentages.linkedIn * 0.05) +   // LinkedIn for sourcing (5%)
         (percentages.photo * 0.05)        // Photo for identification (5%)
       ) : 0;
 
       return {
         totalCandidates: candidatesCount.count || 0,
-        lastSyncLog: integrationStats.data?.[0],
+        lastSyncLog: workableStats.data?.[0],
         qualityMetrics,
         percentages,
         overallDataQuality: overallScore
@@ -133,7 +134,7 @@ const CRM = () => {
           console.log('Auto-loading all candidates...');
           setIsBulkLoading(true);
           
-          const { data, error } = await supabase.functions.invoke('integration', {
+          const { data, error } = await supabase.functions.invoke('workable-integration', {
             body: { action: 'load_all_candidates' }
           });
 
@@ -303,7 +304,7 @@ const CRM = () => {
                       </div>
                        <div className="flex justify-between">
                          <span className="text-slate-400">System ID:</span>
-                         <span className="text-blue-400">{stats.qualityMetrics?.withIntegrationId || 0} ({stats.percentages?.integrationId || 0}%)</span>
+                         <span className="text-blue-400">{stats.qualityMetrics?.withWorkableId || 0} ({stats.percentages?.workableId || 0}%)</span>
                        </div>
                     </div>
                   </div>

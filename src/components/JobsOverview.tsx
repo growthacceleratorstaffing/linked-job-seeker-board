@@ -7,9 +7,10 @@ import { Briefcase, RefreshCw, ExternalLink, CheckCircle, Archive } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-interface Job {
+interface WorkableJob {
   id: string;
   title: string;
+  full_title: string;
   description: string;
   state: string;
   created_at: string;
@@ -22,38 +23,26 @@ interface JobsOverviewProps {
 }
 
 export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) => {
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [workableJobs, setWorkableJobs] = useState<WorkableJob[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
 
   const syncJobs = async () => {
     setIsSyncing(true);
     try {
-      // Load local jobs only
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.functions.invoke('workable-integration', {
+        body: { action: 'sync_jobs' }
+      });
 
       if (error) throw error;
-      
-      const localJobs: Job[] = (data || []).map(job => ({
-        id: job.id,
-        title: job.title,
-        description: job.job_description || '',
-        state: job.synced_to_jobadder ? 'published' : 'draft',
-        created_at: job.created_at,
-        url: '#',
-        application_url: '#'
-      }));
-      
-      setJobs(localJobs);
+
+      setWorkableJobs(data.jobs || []);
       
     } catch (error) {
       console.error('Error syncing jobs:', error);
       toast({
         title: "Sync failed",
-        description: error instanceof Error ? error.message : "Failed to load jobs.",
+        description: error instanceof Error ? error.message : "Failed to sync jobs from Workable.",
         variant: "destructive",
       });
     } finally {
@@ -118,10 +107,10 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {jobs.length > 0 ? (
+        {workableJobs.length > 0 ? (
           <div className="space-y-4">
             <p className="text-slate-300 text-sm">
-              {jobs.length} total jobs in your account
+              {workableJobs.length} total jobs in your Workable account
             </p>
             <Table>
               <TableHeader>
@@ -133,7 +122,7 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobs.map((job) => (
+                {workableJobs.map((job) => (
                   <TableRow key={job.id} className="border-slate-600 hover:bg-slate-700">
                     <TableCell className="text-white font-medium">
                       {job.title}
