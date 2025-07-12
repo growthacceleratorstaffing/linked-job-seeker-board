@@ -13,7 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const { action, jobData, jobId, candidateData, email } = await req.json();
+    const requestBody = await req.json();
+    const { action, jobData, jobId, candidateData, email, include_archived = false } = requestBody;
     
     const workableApiToken = Deno.env.get('WORKABLE_API_TOKEN');
     const workableSubdomain = Deno.env.get('WORKABLE_SUBDOMAIN');
@@ -225,7 +226,18 @@ serve(async (req) => {
         console.log('Syncing jobs from Workable...');
         
         const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
-        const response = await fetch(`${spiBaseUrl}/jobs`, {
+        
+        // Build the jobs URL - include archived jobs for admins
+        let jobsUrl = `${spiBaseUrl}/jobs`;
+        if (include_archived) {
+          jobsUrl += '?state=all'; // This includes archived, published, draft, closed jobs
+          console.log('Admin access: Including archived/closed jobs');
+        } else {
+          jobsUrl += '?state=published'; // Only active published jobs for non-admins
+          console.log('Standard access: Only published jobs');
+        }
+        
+        const response = await fetch(jobsUrl, {
           method: 'GET',
           headers,
         });
@@ -236,11 +248,14 @@ serve(async (req) => {
 
         const data = await response.json();
         
+        console.log(`📊 Fetched ${data.jobs?.length || 0} jobs from Workable (archived included: ${include_archived})`);
+        
         return new Response(
           JSON.stringify({ 
             success: true, 
             jobs: data.jobs || [],
-            message: `Synced ${data.jobs?.length || 0} jobs from Workable`
+            include_archived,
+            message: `Synced ${data.jobs?.length || 0} jobs from Workable${include_archived ? ' (including archived)' : ''}`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
