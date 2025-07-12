@@ -59,7 +59,7 @@ serve(async (req) => {
           .select()
           .single();
 
-        // Load ALL candidates directly from /candidates endpoint
+        // Load ALL candidates directly from /candidates endpoint INCLUDING archived jobs
         const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
         let allCandidates: any[] = [];
         let page = 1;
@@ -67,12 +67,13 @@ serve(async (req) => {
         let totalLoaded = 0;
         const pageSize = 100;
 
-        console.log(`📊 Starting to load from: ${spiBaseUrl}/candidates`);
+        console.log(`📊 Starting to load from: ${spiBaseUrl}/candidates (including archived jobs)`);
 
-        while (hasMorePages && page <= 100) { // Safety limit increased for all candidates
+        while (hasMorePages && page <= 200) { // Increased safety limit for all 900+ candidates
           try {
             const offset = (page - 1) * pageSize;
-            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${pageSize}&offset=${offset}`;
+            // Include candidates from ALL job states including archived/closed jobs
+            const candidatesUrl = `${spiBaseUrl}/candidates?limit=${pageSize}&offset=${offset}&state=all`;
             
             console.log(`📄 Loading page ${page} (offset: ${offset})`);
             
