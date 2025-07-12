@@ -22,14 +22,10 @@ const Data = () => {
 
   const loadConnectedIntegrations = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data, error } = await supabase
         .from('integration_settings')
         .select('*')
-        .eq('is_enabled', true)
-        .eq('user_id', user.id);
+        .eq('is_enabled', true);
       
       if (error) throw error;
       

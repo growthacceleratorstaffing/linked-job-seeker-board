@@ -290,7 +290,6 @@ export type Database = {
           settings: Json | null
           sync_frequency_hours: number | null
           updated_at: string
-          user_id: string
         }
         Insert: {
           api_rate_limit_remaining?: number | null
@@ -303,7 +302,6 @@ export type Database = {
           settings?: Json | null
           sync_frequency_hours?: number | null
           updated_at?: string
-          user_id: string
         }
         Update: {
           api_rate_limit_remaining?: number | null
@@ -316,7 +314,6 @@ export type Database = {
           settings?: Json | null
           sync_frequency_hours?: number | null
           updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }

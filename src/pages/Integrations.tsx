@@ -89,14 +89,10 @@ const Integrations = () => {
 
   const loadConnectedIntegrations = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data, error } = await supabase
         .from('integration_settings')
         .select('integration_type, is_enabled')
-        .eq('is_enabled', true)
-        .eq('user_id', user.id);
+        .eq('is_enabled', true);
       
       if (error) throw error;
       
@@ -118,14 +114,10 @@ const Integrations = () => {
 
   const handleDisconnectCRM = async (crmName: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { error } = await supabase
         .from('integration_settings')
         .update({ is_enabled: false })
-        .eq('integration_type', crmName.toLowerCase())
-        .eq('user_id', user.id);
+        .eq('integration_type', crmName.toLowerCase());
 
       if (error) throw error;
 
@@ -165,16 +157,6 @@ const Integrations = () => {
     setIsConnecting(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to connect integrations.",
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Store integration settings
       const { error } = await supabase
         .from('integration_settings')
@@ -182,7 +164,6 @@ const Integrations = () => {
           integration_type: selectedCRM.name.toLowerCase(),
           is_enabled: true,
           settings: connectionForm,
-          user_id: user.id,
         });
 
       if (error) throw error;

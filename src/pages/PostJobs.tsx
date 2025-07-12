@@ -15,7 +15,7 @@ import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 
-interface IntegrationJob {
+interface WorkableJob {
   id: string;
   title: string;
   full_title: string;
@@ -29,7 +29,7 @@ interface IntegrationJob {
 }
 
 const PostJobs = () => {
-  const [jobs, setJobs] = useState<IntegrationJob[]>([]);
+  const [jobs, setJobs] = useState<WorkableJob[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -58,8 +58,8 @@ const PostJobs = () => {
         console.error('Error fetching local jobs:', localError);
       }
 
-      // Transform local jobs to IntegrationJob format
-      const localJobsFormatted: IntegrationJob[] = (localJobs || []).map(job => ({
+      // Transform local jobs to WorkableJob format
+      const localJobsFormatted: WorkableJob[] = (localJobs || []).map(job => ({
         id: job.id,
         title: job.title,
         full_title: job.title,
@@ -72,8 +72,8 @@ const PostJobs = () => {
         }
       }));
 
-      // Then try to load from integration (if available)
-      let workableJobs: IntegrationJob[] = [];
+      // Then try to load from Workable (if available)
+      let workableJobs: WorkableJob[] = [];
       try {
         const workableResult = await supabase.functions.invoke('workable-integration', {
           body: { action: 'sync_jobs' }
@@ -104,7 +104,7 @@ const PostJobs = () => {
           .single();
           
         if (workableUser?.assigned_jobs) {
-          finalJobs = combinedJobs.filter((job: IntegrationJob) => 
+          finalJobs = combinedJobs.filter((job: WorkableJob) => 
             workableUser.assigned_jobs.includes(job.id) || localOnlyJobs.includes(job)
           );
         } else {
@@ -117,7 +117,7 @@ const PostJobs = () => {
       
       toast({
         title: "Jobs Loaded! 🎉",
-        description: `Found ${finalJobs.length} jobs (${localOnlyJobs.length} local, ${workableJobs.length} from integration)`,
+        description: `Found ${finalJobs.length} jobs (${localOnlyJobs.length} local, ${workableJobs.length} from Workable)`,
       });
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -165,7 +165,7 @@ const PostJobs = () => {
       console.log('✅ Job saved to local database:', localJob.id);
 
       // Create a display job for the current view (temporary until refresh)
-      const createdJob: IntegrationJob = {
+      const createdJob: WorkableJob = {
         id: localJob.id,
         title: newJob.title,
         full_title: newJob.title,

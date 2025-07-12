@@ -119,24 +119,24 @@ const Matching = () => {
 
   const fetchJobs = async () => {
     try {
-      // Fetch jobs directly from integration
+      // Fetch jobs directly from Workable
       const { data, error } = await supabase.functions.invoke('workable-integration', {
         body: { action: 'sync_jobs' }
       });
       
       if (error) throw error;
       
-      // Transform integration jobs to match our interface
-      const integrationJobs = (data?.jobs || []).map((job: any) => ({
+      // Transform Workable jobs to match our interface
+      const workableJobs = (data?.jobs || []).map((job: any) => ({
         id: job.id,
         title: job.title,
         company: job.department?.name || 'Unknown Company',
         location: job.location?.city || job.location?.region || 'Remote'
       }));
       
-      setJobs(integrationJobs);
+      setJobs(workableJobs);
     } catch (error) {
-      console.error('Error fetching jobs from integration:', error);
+      console.error('Error fetching jobs from Workable:', error);
     }
   };
 
@@ -176,19 +176,19 @@ const Matching = () => {
         .from('candidate_responses')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch integration jobs data
+      // Fetch Workable jobs data
       const { data: jobsData } = await supabase.functions.invoke('workable-integration', {
         body: { action: 'sync_jobs' }
       });
 
-      const integrationJobs = jobsData?.jobs?.filter((job: any) => job.state === 'published').length || 0;
+      const workableJobs = jobsData?.jobs?.filter((job: any) => job.state === 'published').length || 0;
 
       // Fetch app-posted jobs count
       const { count: appJobsCount } = await supabase
         .from('jobs')
         .select('*', { count: 'exact', head: true });
 
-      const totalOpenPositions = integrationJobs + (appJobsCount || 0);
+      const totalOpenPositions = workableJobs + (appJobsCount || 0);
 
       setStats({
         candidates: candidatesCount || 0,
@@ -266,7 +266,7 @@ const Matching = () => {
         if (jobError) throw jobError;
         jobId = jobData.id;
       } else {
-        // For existing integration jobs, we need to create/find the corresponding crawled_jobs entry
+        // For existing Workable jobs, we need to create/find the corresponding crawled_jobs entry
         const selectedJob = jobs.find(j => j.id === selectedJobId);
         if (!selectedJob) {
           toast({
@@ -278,7 +278,7 @@ const Matching = () => {
           return;
         }
 
-        // Check if this integration job already exists in crawled_jobs
+        // Check if this Workable job already exists in crawled_jobs
         const { data: existingJob, error: findError } = await supabase
           .from('crawled_jobs')
           .select('id')
@@ -293,14 +293,14 @@ const Matching = () => {
         if (existingJob) {
           jobId = existingJob.id;
         } else {
-          // Create new crawled_jobs entry for this integration job
+          // Create new crawled_jobs entry for this Workable job
           const { data: jobData, error: jobError } = await supabase
             .from('crawled_jobs')
             .insert([{
               title: selectedJob.title,
               company: selectedJob.company,
               location: selectedJob.location || '',
-              description: `Integration job: ${selectedJob.title}`,
+              description: `Workable job: ${selectedJob.title}`,
               source: 'workable',
               url: `workable-${selectedJobId}`
             }])

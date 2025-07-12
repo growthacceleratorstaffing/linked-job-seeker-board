@@ -96,7 +96,7 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
   const syncWithExternalPlatforms = async (candidateData: any) => {
     const syncPromises = [];
 
-    // Try to sync with integration
+    // Try to sync with Workable
 
     // Try to sync with external platforms
     syncPromises.push(
