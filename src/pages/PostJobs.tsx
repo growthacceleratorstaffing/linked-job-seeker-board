@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Briefcase, Plus, RefreshCw, ExternalLink, CheckCircle, Archive, Lock, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
+
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 
@@ -41,7 +41,7 @@ const PostJobs = () => {
     salary: '',
     company: 'Growth Accelerator'
   });
-  const { permissions } = useWorkablePermissions();
+  const permissions = { admin: true }; // Default permissions
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -72,52 +72,14 @@ const PostJobs = () => {
         }
       }));
 
-      // Then try to load from Workable (if available)
-      let workableJobs: WorkableJob[] = [];
-      try {
-        const workableResult = await supabase.functions.invoke('workable-integration', {
-          body: { action: 'sync_jobs' }
-        });
-
-        if (workableResult.data && !workableResult.error) {
-          workableJobs = workableResult.data.jobs || [];
-        }
-      } catch (workableError) {
-        console.log('Workable sync failed, showing local jobs only:', workableError);
-      }
-
-      // Combine local and workable jobs, avoiding duplicates
-      const workableJobIds = new Set(workableJobs.map(job => job.id));
-      const localOnlyJobs = localJobsFormatted.filter(job => 
-        !job.url.includes('workable.com') || !workableJobIds.has(job.id)
-      );
-      
-      const combinedJobs = [...localOnlyJobs, ...workableJobs];
-      
-      // Filter jobs for standard members - only show assigned jobs
-      let finalJobs = combinedJobs;
-      if (!permissions.admin && user?.id) {
-        const { data: workableUser } = await supabase
-          .from('workable_users')
-          .select('assigned_jobs')
-          .eq('user_id', user.id)
-          .single();
-          
-        if (workableUser?.assigned_jobs) {
-          finalJobs = combinedJobs.filter((job: WorkableJob) => 
-            workableUser.assigned_jobs.includes(job.id) || localOnlyJobs.includes(job)
-          );
-        } else {
-          // No assigned jobs = only show local jobs they created or have admin access
-          finalJobs = localOnlyJobs;
-        }
-      }
+      // External job sync disabled - only show local jobs
+      const finalJobs = localJobsFormatted;
       
       setJobs(finalJobs);
       
       toast({
         title: "Jobs Loaded! 🎉",
-        description: `Found ${finalJobs.length} jobs (${localOnlyJobs.length} local, ${workableJobs.length} from Workable)`,
+        description: `Found ${finalJobs.length} local jobs`,
       });
     } catch (error) {
       console.error('Error fetching jobs:', error);

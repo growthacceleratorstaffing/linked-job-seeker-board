@@ -67,24 +67,10 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
 
   const fetchJobs = async () => {
     try {
-      // Fetch jobs directly from Workable
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_jobs' }
-      });
-      
-      if (error) throw error;
-      
-      // Transform Workable jobs to match our interface
-      const workableJobs = (data?.jobs || []).map((job: any) => ({
-        id: job.id,
-        title: job.title,
-        company: job.department?.name || 'Unknown Company',
-        location: job.location?.city || job.location?.region || 'Remote'
-      }));
-      
-      setJobs(workableJobs);
+      // External job integration disabled
+      setJobs([]);
     } catch (error) {
-      console.error('Error fetching jobs from Workable:', error);
+      console.error('Error fetching jobs:', error);
     }
   };
 
@@ -165,7 +151,7 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
         if (jobError) throw jobError;
         jobId = jobData.id;
       } else {
-        // For existing Workable jobs, we need to create/find the corresponding crawled_jobs entry
+        // For existing external jobs, we need to create/find the corresponding crawled_jobs entry
         const selectedJob = jobs.find(j => j.id === selectedJobId);
         if (!selectedJob) {
           toast({
@@ -177,12 +163,12 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
           return;
         }
 
-        // Check if this Workable job already exists in crawled_jobs
+        // Check if this external job already exists in crawled_jobs
         const { data: existingJob, error: findError } = await supabase
           .from('crawled_jobs')
           .select('id')
-          .eq('source', 'workable')
-          .eq('url', `workable-${selectedJobId}`)
+          .eq('source', 'external')
+          .eq('url', `external-${selectedJobId}`)
           .single();
 
         if (findError && findError.code !== 'PGRST116') { // PGRST116 is "not found" error
@@ -192,16 +178,16 @@ const OnboardMatchDialog: React.FC<OnboardMatchDialogProps> = ({ open, onOpenCha
         if (existingJob) {
           jobId = existingJob.id;
         } else {
-          // Create new crawled_jobs entry for this Workable job
+          // Create new crawled_jobs entry for this external job
           const { data: jobData, error: jobError } = await supabase
             .from('crawled_jobs')
             .insert([{
               title: selectedJob.title,
               company: selectedJob.company,
               location: selectedJob.location || '',
-              description: `Workable job: ${selectedJob.title}`,
-              source: 'workable',
-              url: `workable-${selectedJobId}`
+              description: `External job: ${selectedJob.title}`,
+              source: 'external',
+              url: `external-${selectedJobId}`
             }])
             .select()
             .single();

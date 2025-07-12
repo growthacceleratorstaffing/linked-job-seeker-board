@@ -21,7 +21,7 @@ type Candidate = {
   phone: string | null;
   linkedin_profile_url: string | null;
   linkedin_id: string | null;
-  workable_candidate_id: string | null;
+  
   profile_picture_url: string | null;
   location: string | null;
   current_position: string | null;
@@ -142,8 +142,8 @@ export const CandidatesList = () => {
         },
         (payload) => {
           const newData = payload.new as any;
-          if (newData?.integration_type === 'workable' && newData?.status === 'success') {
-            console.log('Workable sync completed');
+          if (newData?.integration_type === 'external' && newData?.status === 'success') {
+            console.log('External sync completed');
             queryClient.invalidateQueries({ queryKey: ["candidates"] });
             queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
           }
@@ -180,7 +180,7 @@ export const CandidatesList = () => {
   const getSourceBadgeColor = useCallback((source: string | null) => {
     switch (source) {
       case 'linkedin': return 'bg-blue-100 text-blue-800';
-      case 'workable': return 'bg-green-100 text-green-800';
+      
       case 'manual': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -306,11 +306,6 @@ export const CandidatesList = () => {
                         <div className="font-medium text-white text-base leading-tight">
                           {candidate.name}
                         </div>
-                        {candidate.workable_candidate_id && (
-                          <div className="text-xs text-slate-400 truncate">
-                            ID: {candidate.workable_candidate_id}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </TableCell>

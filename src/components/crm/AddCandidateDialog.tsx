@@ -96,20 +96,7 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
   const syncWithExternalPlatforms = async (candidateData: any) => {
     const syncPromises = [];
 
-    // Try to sync with Workable
-
-    // Try to sync with external platforms
-    syncPromises.push(
-      supabase.functions.invoke('workable-integration', {
-        body: { 
-          action: 'create_candidate',
-          candidateData: candidateData
-        }
-      }).catch(error => {
-        console.warn('External platform sync failed:', error);
-        return { success: false, platform: 'External Platform 2', error };
-      })
-    );
+    // External sync disabled - no external platform integration
 
     // Wait for all sync attempts (but don't fail if they don't work)
     const results = await Promise.allSettled(syncPromises);

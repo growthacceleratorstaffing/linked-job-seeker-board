@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Users, Briefcase, User, Building2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
+
 import Layout from "@/components/Layout";
 
 interface Match {
@@ -70,7 +70,7 @@ const Matching = () => {
     phone: ''
   });
 
-  const { permissions } = useWorkablePermissions();
+  const permissions = { create_matches: true }; // Default permissions
   const { toast } = useToast();
 
   const fetchMatches = async () => {
@@ -119,24 +119,10 @@ const Matching = () => {
 
   const fetchJobs = async () => {
     try {
-      // Fetch jobs directly from Workable
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_jobs' }
-      });
-      
-      if (error) throw error;
-      
-      // Transform Workable jobs to match our interface
-      const workableJobs = (data?.jobs || []).map((job: any) => ({
-        id: job.id,
-        title: job.title,
-        company: job.department?.name || 'Unknown Company',
-        location: job.location?.city || job.location?.region || 'Remote'
-      }));
-      
-      setJobs(workableJobs);
+      // External job integration disabled
+      setJobs([]);
     } catch (error) {
-      console.error('Error fetching jobs from Workable:', error);
+      console.error('Error fetching jobs:', error);
     }
   };
 
@@ -176,12 +162,8 @@ const Matching = () => {
         .from('candidate_responses')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch Workable jobs data
-      const { data: jobsData } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_jobs' }
-      });
-
-      const workableJobs = jobsData?.jobs?.filter((job: any) => job.state === 'published').length || 0;
+      // External jobs disabled
+      const workableJobs = 0;
 
       // Fetch app-posted jobs count
       const { count: appJobsCount } = await supabase

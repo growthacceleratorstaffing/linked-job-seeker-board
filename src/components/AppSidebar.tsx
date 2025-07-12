@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
+
 import {
   Sidebar,
   SidebarContent,
@@ -35,7 +35,8 @@ const AppSidebar = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { state } = useSidebar();
-  const { permissions, role } = useWorkablePermissions();
+  const permissions = { admin: true, jobs: true, candidates: true, simple: true }; // Default permissions
+  const role = 'user';
   const [userProfile, setUserProfile] = useState<{ email: string; role: string } | null>(null);
 
   useEffect(() => {
@@ -44,13 +45,13 @@ const AppSidebar = () => {
       if (user) {
         setUserProfile({
           email: user.email || '',
-          role: role || 'user'
+          role: 'user'
         });
       }
     };
 
     fetchUserProfile();
-  }, [role]);
+  }, []);
 
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
