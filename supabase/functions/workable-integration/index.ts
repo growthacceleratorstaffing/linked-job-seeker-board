@@ -767,14 +767,23 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
       
       console.log(`📥 Upserting batch ${batchNumber}/${totalBatches} (${insertBatch.length} candidates)`);
       
-      // Use upsert with email as the conflict resolution key
-      const { data, error } = await supabase
+      // Try upsert first, fallback to insert if constraint doesn't exist
+      let { data, error } = await supabase
         .from('candidates')
         .upsert(insertBatch, { 
           onConflict: 'email',
           ignoreDuplicates: false 
         })
         .select();
+
+      // If upsert fails due to missing constraint, use insert instead
+      if (error && error.message.includes('no unique or exclusion constraint')) {
+        console.log(`⚠️ No unique constraint on email yet, using insert for batch ${batchNumber}`);
+        ({ data, error } = await supabase
+          .from('candidates')
+          .insert(insertBatch)
+          .select());
+      }
 
       if (error) {
         console.error(`Upsert batch ${batchNumber} error:`, error);
