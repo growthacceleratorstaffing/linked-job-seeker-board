@@ -82,8 +82,6 @@ const Candidates = () => {
         query = query.in('interview_stage', ['sourced', 'applied']);
       }
 
-      // Filter candidates from the Netherlands only
-      query = query.or(`location.ilike.%Netherlands%,location.ilike.%Amsterdam%,location.ilike.%Rotterdam%,location.ilike.%Eindhoven%,location.ilike.%Utrecht%,location.ilike.%Groningen%,location.ilike.%Maastricht%,location.ilike.%Tilburg%,location.ilike.%Almere%,location.ilike.%Breda%,location.ilike.%Nijmegen%,location.ilike.%Apeldoorn%,location.ilike.%Haarlem%,location.ilike.%Arnhem%,location.ilike.%Zaanstad%,location.ilike.%Haarlemmermeer%,location.ilike.%Den Haag%,location.ilike.%The Hague%,location.ilike.%s-Hertogenbosch%,location.ilike.%Zoetermeer%,location.ilike.%Zwolle%,location.ilike.%Maastricht%,location.ilike.%Leiden%,location.ilike.%Dordrecht%,location.ilike.%Alphen aan den Rijn%,location.ilike.%Westland%,location.ilike.%Alkmaar%,location.ilike.%Leeuwarden%,location.ilike.%Hilversum%,location.ilike.%Enschede%,location.ilike.%Purmerend%,location.ilike.%Roosendaal%,location.ilike.%Schiedam%,location.ilike.%Emmen%,location.ilike.%Delft%,location.ilike.%Venlo%,location.ilike.%Amstelveen%,location.ilike.%Deventer%,location.ilike.%Vlissingen%,location.ilike.%Helmond%,location.ilike.%Hengelo%,location.ilike.%Sittard-Geleen%`);
 
       // For standard members, filter candidates by job responses to assigned jobs
       if (!permissions.admin && assignedJobIds.length > 0) {
@@ -265,15 +263,14 @@ const Candidates = () => {
     return <Badge variant="outline">Unknown</Badge>;
   };
 
-  // Get counts for both tabs (FINAL CORRECT VERSION) - Netherlands only
+  // Get counts for both tabs
   const { data: applicantsCount } = useQuery({
     queryKey: ["applicants-count", user?.id],
     queryFn: async () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .in('interview_stage', ['phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer', 'passed', 'hired', 'failed', 'rejected', 'withdrawn'])
-        .or(`location.ilike.%Netherlands%,location.ilike.%Amsterdam%,location.ilike.%Rotterdam%,location.ilike.%Eindhoven%,location.ilike.%Utrecht%,location.ilike.%Groningen%,location.ilike.%Maastricht%,location.ilike.%Tilburg%,location.ilike.%Almere%,location.ilike.%Breda%,location.ilike.%Nijmegen%,location.ilike.%Apeldoorn%,location.ilike.%Haarlem%,location.ilike.%Arnhem%,location.ilike.%Zaanstad%,location.ilike.%Haarlemmermeer%,location.ilike.%Den Haag%,location.ilike.%The Hague%,location.ilike.%s-Hertogenbosch%,location.ilike.%Zoetermeer%,location.ilike.%Zwolle%,location.ilike.%Maastricht%,location.ilike.%Leiden%,location.ilike.%Dordrecht%,location.ilike.%Alphen aan den Rijn%,location.ilike.%Westland%,location.ilike.%Alkmaar%,location.ilike.%Leeuwarden%,location.ilike.%Hilversum%,location.ilike.%Enschede%,location.ilike.%Purmerend%,location.ilike.%Roosendaal%,location.ilike.%Schiedam%,location.ilike.%Emmen%,location.ilike.%Delft%,location.ilike.%Venlo%,location.ilike.%Amstelveen%,location.ilike.%Deventer%,location.ilike.%Vlissingen%,location.ilike.%Helmond%,location.ilike.%Hengelo%,location.ilike.%Sittard-Geleen%`);
+        .in('interview_stage', ['phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer', 'passed', 'hired', 'failed', 'rejected', 'withdrawn']);
       
       const { count } = await query;
       return count || 0;
@@ -287,8 +284,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .in('interview_stage', ['sourced', 'applied'])
-        .or(`location.ilike.%Netherlands%,location.ilike.%Amsterdam%,location.ilike.%Rotterdam%,location.ilike.%Eindhoven%,location.ilike.%Utrecht%,location.ilike.%Groningen%,location.ilike.%Maastricht%,location.ilike.%Tilburg%,location.ilike.%Almere%,location.ilike.%Breda%,location.ilike.%Nijmegen%,location.ilike.%Apeldoorn%,location.ilike.%Haarlem%,location.ilike.%Arnhem%,location.ilike.%Zaanstad%,location.ilike.%Haarlemmermeer%,location.ilike.%Den Haag%,location.ilike.%The Hague%,location.ilike.%s-Hertogenbosch%,location.ilike.%Zoetermeer%,location.ilike.%Zwolle%,location.ilike.%Maastricht%,location.ilike.%Leiden%,location.ilike.%Dordrecht%,location.ilike.%Alphen aan den Rijn%,location.ilike.%Westland%,location.ilike.%Alkmaar%,location.ilike.%Leeuwarden%,location.ilike.%Hilversum%,location.ilike.%Enschede%,location.ilike.%Purmerend%,location.ilike.%Roosendaal%,location.ilike.%Schiedam%,location.ilike.%Emmen%,location.ilike.%Delft%,location.ilike.%Venlo%,location.ilike.%Amstelveen%,location.ilike.%Deventer%,location.ilike.%Vlissingen%,location.ilike.%Helmond%,location.ilike.%Hengelo%,location.ilike.%Sittard-Geleen%`);
+        .in('interview_stage', ['sourced', 'applied']);
       
       const { count } = await query;
       return count || 0;
