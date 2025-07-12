@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, ChevronRight, Loader2, Lock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Users, Search, Filter, Plus, RefreshCw, Mail, Phone, ChevronLeft, ChevronRight, Loader2, Lock, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import { AddCandidateDialog } from "@/components/crm/AddCandidateDialog";
+import type { Database } from "@/integrations/supabase/types";
+
+type InterviewStage = Database["public"]["Enums"]["interview_stage"];
 
 interface Candidate {
   id: string;
@@ -23,7 +28,7 @@ interface Candidate {
   company: string | null;
   source_platform: string | null;
   profile_completeness_score: number | null;
-  interview_stage: string | null;
+  interview_stage: InterviewStage | null;
   created_at: string;
 }
 
@@ -33,6 +38,7 @@ const Candidates = () => {
   const [candidatesPerPage] = useState(50);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState('applicants');
   const { permissions } = useWorkablePermissions();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -40,9 +46,9 @@ const Candidates = () => {
 
   // Fetch candidates with React Query
   const { data: candidatesData, isLoading } = useQuery({
-    queryKey: ["all-candidates", searchTerm, currentPage, user?.id],
+    queryKey: ["all-candidates", searchTerm, currentPage, activeTab, user?.id],
     queryFn: async () => {
-      console.log('Fetching candidates with search:', searchTerm, 'page:', currentPage);
+      console.log('Fetching candidates with search:', searchTerm, 'page:', currentPage, 'tab:', activeTab);
       
       // For standard members, get their assigned jobs first
       let assignedJobIds: string[] = [];
@@ -65,6 +71,15 @@ const Candidates = () => {
         .from("candidates")
         .select("*", { count: 'exact' })
         .order("created_at", { ascending: false });
+
+      // Filter by tab - Applicants vs Talent Pool
+      if (activeTab === 'applicants') {
+        // Applicants are those with interview_stage in hiring process
+        query = query.in('interview_stage', ['pending', 'in_progress', 'completed', 'passed']);
+      } else {
+        // Talent Pool are those not in active hiring process
+        query = query.not('interview_stage', 'in', '(pending,in_progress,completed,passed)');
+      }
 
       // For standard members, filter candidates by job responses to assigned jobs
       if (!permissions.admin && assignedJobIds.length > 0) {
@@ -103,6 +118,34 @@ const Candidates = () => {
   const candidates = candidatesData?.candidates || [];
   const totalCount = candidatesData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / candidatesPerPage);
+
+  // Update stage mutation
+  const updateStageMutation = useMutation({
+    mutationFn: async ({ candidateId, newStage }: { candidateId: string, newStage: InterviewStage }) => {
+      const { error } = await supabase
+        .from('candidates')
+        .update({ interview_stage: newStage })
+        .eq('id', candidateId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["applicants-count"] });
+      queryClient.invalidateQueries({ queryKey: ["talent-pool-count"] });
+      toast({
+        title: "Stage updated",
+        description: "Candidate stage has been updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Auto-sync candidates when component mounts if no candidates exist
   useEffect(() => {
@@ -181,6 +224,8 @@ const Candidates = () => {
 
       // Refresh the candidates list
       queryClient.invalidateQueries({ queryKey: ["all-candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["applicants-count"] });
+      queryClient.invalidateQueries({ queryKey: ["talent-pool-count"] });
     } catch (error) {
       console.error('Error syncing candidates:', error);
       
@@ -198,10 +243,10 @@ const Candidates = () => {
     }
   };
 
-  // Reset to first page when search changes
+  // Reset to first page when search changes or tab changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, activeTab]);
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -216,15 +261,55 @@ const Candidates = () => {
     return <Badge variant="outline">Unknown</Badge>;
   };
 
+  // Get counts for both tabs
+  const { data: applicantsCount } = useQuery({
+    queryKey: ["applicants-count", user?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from("candidates")
+        .select("*", { count: 'exact', head: true })
+        .in('interview_stage', ['pending', 'in_progress', 'completed', 'passed']);
+      
+      const { count } = await query;
+      return count || 0;
+    },
+    enabled: !!user,
+  });
+
+  const { data: talentPoolCount } = useQuery({
+    queryKey: ["talent-pool-count", user?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from("candidates")
+        .select("*", { count: 'exact', head: true })
+        .not('interview_stage', 'in', '(pending,in_progress,completed,passed)');
+      
+      const { count } = await query;
+      return count || 0;
+    },
+    enabled: !!user,
+  });
+
   const activeCandidates = candidates.filter(c => c.interview_stage === 'pending' || c.interview_stage === 'in_progress').length;
   const workableCandidates = candidates.filter(c => c.source_platform === 'workable').length;
+
+  const getStageColor = (stage: InterviewStage | null) => {
+    switch (stage) {
+      case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-400';
+      case 'in_progress': return 'bg-blue-500/20 text-blue-400 border-blue-400';
+      case 'completed': return 'bg-green-500/20 text-green-400 border-green-400';
+      case 'passed': return 'bg-emerald-500/20 text-emerald-400 border-emerald-400';
+      case 'failed': return 'bg-red-500/20 text-red-400 border-red-400';
+      default: return 'bg-slate-500/20 text-slate-400 border-slate-400';
+    }
+  };
 
   return (
     <Layout>
       <div className="container mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Candidates</h1>
-          <p className="text-slate-300">Manage and track all candidates</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Applications & Talent Pool</h1>
+          <p className="text-slate-300">Manage job applications and talent pipeline</p>
         </div>
 
         <div className="flex items-center justify-between mb-6">
@@ -266,7 +351,7 @@ const Candidates = () => {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Input 
-                placeholder="Search candidates..." 
+                placeholder="Search by candidate name, job title, or company..." 
                 className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -288,28 +373,28 @@ const Candidates = () => {
               <CardTitle className="text-sm font-medium text-white">Total Candidates</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{totalCount}</div>
+              <div className="text-2xl font-bold text-white">{(applicantsCount || 0) + (talentPoolCount || 0)}</div>
               <p className="text-xs text-slate-400">All time</p>
             </CardContent>
           </Card>
 
           <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">Active</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Active Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{activeCandidates}</div>
-              <p className="text-xs text-slate-400">In process</p>
+              <div className="text-2xl font-bold text-white">{applicantsCount || 0}</div>
+              <p className="text-xs text-slate-400">In hiring process</p>
             </CardContent>
           </Card>
 
           <Card className="bg-primary-blue border border-white/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">From Integrations</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Talent Pool</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{workableCandidates}</div>
-              <p className="text-xs text-slate-400">Workable</p>
+              <div className="text-2xl font-bold text-white">{talentPoolCount || 0}</div>
+              <p className="text-xs text-slate-400">Available candidates</p>
             </CardContent>
           </Card>
 
@@ -345,119 +430,256 @@ const Candidates = () => {
           </div>
         )}
 
-        <Card className="bg-primary-blue border border-white/20">
-          <CardHeader>
-            <CardTitle className="flex items-center text-white">
-              <Users className="mr-2 h-5 w-5 text-secondary-pink" />
-              Candidate List
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              {totalCount} candidates from Workable integration
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center p-4 text-white">Loading candidates...</div>
-            ) : candidates.length > 0 ? (
-              <>
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="text-sm text-slate-400">
-                    Showing {((currentPage - 1) * candidatesPerPage) + 1} to {Math.min(currentPage * candidatesPerPage, totalCount)} of {totalCount} candidates
-                    {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="border-slate-600 text-slate-400 hover:bg-slate-700"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-slate-400">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="border-slate-600 text-slate-400 hover:bg-slate-700"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-slate-600">
-                      <TableHead className="text-slate-300">Name</TableHead>
-                      <TableHead className="text-slate-300">Contact</TableHead>
-                      <TableHead className="text-slate-300">Position</TableHead>
-                      <TableHead className="text-slate-300">Source</TableHead>
-                      <TableHead className="text-slate-300">Score</TableHead>
-                      <TableHead className="text-slate-300">Added</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {candidates.map((candidate) => (
-                    <TableRow key={candidate.id} className="border-slate-600 hover:bg-slate-700">
-                      <TableCell className="text-white font-medium">
-                        <div>
-                          <div>{candidate.name}</div>
-                          {candidate.company && (
-                            <div className="text-sm text-slate-400">{candidate.company}</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-slate-400">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-3 h-3" />
-                            <span className="text-xs">{candidate.email}</span>
-                          </div>
-                          {candidate.phone && (
-                            <div className="flex items-center gap-2">
-                              <Phone className="w-3 h-3" />
-                              <span className="text-xs">{candidate.phone}</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <TabsList className="bg-slate-800 border-slate-600">
+            <TabsTrigger 
+              value="applicants" 
+              className="data-[state=active]:bg-secondary-pink data-[state=active]:text-white"
+            >
+              Applicants ({applicantsCount || 0})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="talent-pool"
+              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white"
+            >
+              Talent Pool ({talentPoolCount || 0})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="applicants">
+            <Card className="bg-primary-blue border border-white/20">
+              <CardContent className="pt-6">
+                {isLoading ? (
+                  <div className="flex justify-center p-4 text-white">Loading applicants...</div>
+                ) : candidates.length > 0 ? (
+                  <>
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="text-sm text-slate-400">
+                        Showing {((currentPage - 1) * candidatesPerPage) + 1} to {Math.min(currentPage * candidatesPerPage, totalCount)} of {totalCount} applicants
+                        {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm text-slate-400">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-slate-600">
+                          <TableHead className="text-slate-300">Name</TableHead>
+                          <TableHead className="text-slate-300">Contact</TableHead>
+                          <TableHead className="text-slate-300">Position</TableHead>
+                          <TableHead className="text-slate-300">Current Stage</TableHead>
+                          <TableHead className="text-slate-300">Source</TableHead>
+                          <TableHead className="text-slate-300">Added</TableHead>
+                          {permissions.admin && <TableHead className="text-slate-300">Update Stage</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {candidates.map((candidate) => (
+                        <TableRow key={candidate.id} className="border-slate-600 hover:bg-slate-700">
+                          <TableCell className="text-white font-medium">
+                            <div>
+                              <div>{candidate.name}</div>
+                              {candidate.company && (
+                                <div className="text-sm text-slate-400">{candidate.company}</div>
+                              )}
                             </div>
+                          </TableCell>
+                          <TableCell className="text-slate-400">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-3 h-3" />
+                                <span className="text-xs">{candidate.email}</span>
+                              </div>
+                              {candidate.phone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-3 h-3" />
+                                  <span className="text-xs">{candidate.phone}</span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-400">
+                            {candidate.current_position || 'Not specified'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStageColor(candidate.interview_stage)}>
+                              {candidate.interview_stage || 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {getSourceBadge(candidate.source_platform)}
+                          </TableCell>
+                          <TableCell className="text-slate-400">
+                            {new Date(candidate.created_at).toLocaleDateString()}
+                          </TableCell>
+                          {permissions.admin && (
+                            <TableCell>
+                              <Select
+                                value={candidate.interview_stage || 'pending'}
+                                onValueChange={(value) => updateStageMutation.mutate({ candidateId: candidate.id, newStage: value as InterviewStage })}
+                              >
+                                <SelectTrigger className="w-32 bg-slate-800 border-slate-600">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="in_progress">In Progress</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="passed">Passed</SelectItem>
+                                  <SelectItem value="failed">Failed</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-slate-400">
-                        {candidate.current_position || 'Not specified'}
-                      </TableCell>
-                      <TableCell>
-                        {getSourceBadge(candidate.source_platform)}
-                      </TableCell>
-                      <TableCell className="text-slate-400">
-                        {candidate.profile_completeness_score || 0}%
-                      </TableCell>
-                      <TableCell className="text-slate-400">
-                        {new Date(candidate.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-                </Table>
-              </>
-            ) : (
-              <div className="text-center py-12 text-slate-400">
-                <Users className="mx-auto h-12 w-12 mb-4 text-secondary-pink" />
-                <h3 className="text-lg font-semibold mb-2 text-white">
-                  {searchTerm ? 'No matching candidates found' : 'No candidates yet'}
-                </h3>
-                <p>
-                  {searchTerm 
-                    ? "Try adjusting your search criteria" 
-                    : "Click \"Sync All Candidates\" to import from Workable or add them manually"
-                  }
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                        </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-slate-400">
+                    No applicants found
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="talent-pool">
+            <Card className="bg-primary-blue border border-white/20">
+              <CardContent className="pt-6">
+                {isLoading ? (
+                  <div className="flex justify-center p-4 text-white">Loading talent pool...</div>
+                ) : candidates.length > 0 ? (
+                  <>
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="text-sm text-slate-400">
+                        Showing {((currentPage - 1) * candidatesPerPage) + 1} to {Math.min(currentPage * candidatesPerPage, totalCount)} of {totalCount} candidates
+                        {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm text-slate-400">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-slate-600">
+                          <TableHead className="text-slate-300">Name</TableHead>
+                          <TableHead className="text-slate-300">Contact</TableHead>
+                          <TableHead className="text-slate-300">Position</TableHead>
+                          <TableHead className="text-slate-300">Status</TableHead>
+                          <TableHead className="text-slate-300">Source</TableHead>
+                          <TableHead className="text-slate-300">Added</TableHead>
+                          {permissions.admin && <TableHead className="text-slate-300">Actions</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {candidates.map((candidate) => (
+                        <TableRow key={candidate.id} className="border-slate-600 hover:bg-slate-700">
+                          <TableCell className="text-white font-medium">
+                            <div>
+                              <div>{candidate.name}</div>
+                              {candidate.company && (
+                                <div className="text-sm text-slate-400">{candidate.company}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-400">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-3 h-3" />
+                                <span className="text-xs">{candidate.email}</span>
+                              </div>
+                              {candidate.phone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-3 h-3" />
+                                  <span className="text-xs">{candidate.phone}</span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-400">
+                            {candidate.current_position || 'Not specified'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-400">
+                              Available for opportunities
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {getSourceBadge(candidate.source_platform)}
+                          </TableCell>
+                          <TableCell className="text-slate-400">
+                            {new Date(candidate.created_at).toLocaleDateString()}
+                          </TableCell>
+                          {permissions.admin && (
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
+                                onClick={() => updateStageMutation.mutate({ candidateId: candidate.id, newStage: 'pending' })}
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Move to Applicants
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-slate-400">
+                    No candidates in talent pool
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Add Candidate Dialog */}
         <AddCandidateDialog 
@@ -465,6 +687,8 @@ const Candidates = () => {
           onOpenChange={setShowAddDialog}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ["all-candidates"] });
+            queryClient.invalidateQueries({ queryKey: ["applicants-count"] });
+            queryClient.invalidateQueries({ queryKey: ["talent-pool-count"] });
           }}
         />
       </div>
