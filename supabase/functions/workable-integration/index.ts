@@ -74,19 +74,27 @@ serve(async (req) => {
         while (hasMoreJobPages && jobPage <= 10) {
           try {
             const jobsUrl = `${spiBaseUrl}/jobs?limit=100&offset=${(jobPage - 1) * 100}&state=all`;
+            console.log(`📋 Fetching jobs from: ${jobsUrl}`);
             const jobsResponse = await fetch(jobsUrl, { method: 'GET', headers });
             
+            console.log(`Jobs API Response Status: ${jobsResponse.status}`);
+            
             if (!jobsResponse.ok) {
-              throw new Error(`Jobs API Error ${jobsResponse.status}: ${jobsResponse.statusText}`);
+              const errorText = await jobsResponse.text();
+              console.error(`Jobs API Error ${jobsResponse.status}: ${jobsResponse.statusText}`, errorText);
+              throw new Error(`Jobs API Error ${jobsResponse.status}: ${jobsResponse.statusText} - ${errorText}`);
             }
             
             const jobsData = await jobsResponse.json();
+            console.log(`📊 Jobs API Response:`, JSON.stringify(jobsData, null, 2));
+            
             if (jobsData.jobs && jobsData.jobs.length > 0) {
               allJobs.push(...jobsData.jobs);
               console.log(`📋 Loaded ${jobsData.jobs.length} jobs from page ${jobPage}`);
               hasMoreJobPages = jobsData.paging && jobsData.paging.next;
               jobPage++;
             } else {
+              console.log(`No jobs found on page ${jobPage}`);
               hasMoreJobPages = false;
             }
             await new Promise(resolve => setTimeout(resolve, 200));
@@ -97,10 +105,11 @@ serve(async (req) => {
         }
         
         console.log(`✅ Total jobs in YOUR Workable: ${allJobs.length}`);
+        console.log(`📋 Job details:`, allJobs.map(job => ({ id: job.id, title: job.title, state: job.state })));
         const jobIds = allJobs.map(job => job.id);
         
         if (jobIds.length === 0) {
-          throw new Error('No jobs found in your Workable instance');
+          throw new Error(`No jobs found in your Workable instance. API URL: ${spiBaseUrl}/jobs - Check if you have any jobs in Workable and verify API permissions.`);
         }
 
         // Now load candidates ONLY from YOUR specific jobs
