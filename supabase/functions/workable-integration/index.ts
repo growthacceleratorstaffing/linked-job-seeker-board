@@ -722,32 +722,48 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
     interview_stage: mapWorkableStatusToInterviewStage(candidate.state)
   }));
 
-  // Bulk upsert for better performance - use workable_candidate_id for uniqueness
+  // Bulk insert with batch processing to handle large datasets
   try {
     // First, delete existing workable candidates to ensure fresh data
+    console.log(`🗑️ Clearing existing Workable candidates...`);
     const { error: deleteError } = await supabase
       .from('candidates')
       .delete()
       .eq('source_platform', 'workable');
 
-    if (deleteError) {
+    if (deleteError && deleteError.code !== 'PGRST116') { // Ignore "no rows deleted" error
       console.error('Error clearing existing workable candidates:', deleteError);
+      results.errors.push(`Clear failed: ${deleteError.message}`);
+      return results;
     } else {
       console.log('✅ Cleared existing workable candidates');
     }
 
-    // Insert all candidates as new records
-    const { data, error } = await supabase
-      .from('candidates')
-      .insert(candidateData)
-      .select();
+    // Insert candidates in smaller batches to avoid timeout/size limits
+    const insertBatchSize = 25; // Smaller batches for better reliability
+    for (let i = 0; i < candidateData.length; i += insertBatchSize) {
+      const insertBatch = candidateData.slice(i, i + insertBatchSize);
+      const batchNumber = Math.floor(i/insertBatchSize) + 1;
+      const totalBatches = Math.ceil(candidateData.length / insertBatchSize);
+      
+      console.log(`📥 Inserting batch ${batchNumber}/${totalBatches} (${insertBatch.length} candidates)`);
+      
+      const { data, error } = await supabase
+        .from('candidates')
+        .insert(insertBatch)
+        .select();
 
-    if (error) {
-      console.error(`Batch insert error:`, error);
-      results.errors.push(`Bulk insert failed: ${error.message}`);
-    } else {
-      results.created += data?.length || 0;
-      console.log(`✅ Batch inserted ${data?.length || 0} candidates`);
+      if (error) {
+        console.error(`Insert batch ${batchNumber} error:`, error);
+        results.errors.push(`Insert batch ${batchNumber} failed: ${error.message}`);
+        // Continue with next batch instead of stopping
+      } else {
+        results.created += data?.length || 0;
+        console.log(`✅ Batch ${batchNumber}: Inserted ${data?.length || 0} candidates (Total: ${results.created})`);
+      }
+      
+      // Small delay to prevent overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   } catch (batchError) {
     console.error(`Batch processing failed:`, batchError);
