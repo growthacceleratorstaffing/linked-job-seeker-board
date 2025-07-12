@@ -21,6 +21,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!workableApiToken || !workableSubdomain) {
+      console.error('Missing Workable configuration:', { 
+        hasToken: !!workableApiToken, 
+        hasSubdomain: !!workableSubdomain 
+      });
       return new Response(
         JSON.stringify({ error: 'Workable API configuration missing' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -752,44 +756,34 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
     interview_stage: mapWorkableStatusToInterviewStage(candidate.state)
   }));
 
-  // Bulk insert with batch processing to handle large datasets
+  // Use upsert instead of delete + insert to avoid data loss
   try {
-    // First, delete existing workable candidates to ensure fresh data
-    console.log(`🗑️ Clearing existing Workable candidates...`);
-    const { error: deleteError } = await supabase
-      .from('candidates')
-      .delete()
-      .eq('source_platform', 'workable');
-
-    if (deleteError && deleteError.code !== 'PGRST116') { // Ignore "no rows deleted" error
-      console.error('Error clearing existing workable candidates:', deleteError);
-      results.errors.push(`Clear failed: ${deleteError.message}`);
-      return results;
-    } else {
-      console.log('✅ Cleared existing workable candidates');
-    }
-
-    // Insert candidates in smaller batches to avoid timeout/size limits
+    // Process candidates in smaller batches to avoid timeout/size limits
     const insertBatchSize = 25; // Smaller batches for better reliability
     for (let i = 0; i < candidateData.length; i += insertBatchSize) {
       const insertBatch = candidateData.slice(i, i + insertBatchSize);
       const batchNumber = Math.floor(i/insertBatchSize) + 1;
       const totalBatches = Math.ceil(candidateData.length / insertBatchSize);
       
-      console.log(`📥 Inserting batch ${batchNumber}/${totalBatches} (${insertBatch.length} candidates)`);
+      console.log(`📥 Upserting batch ${batchNumber}/${totalBatches} (${insertBatch.length} candidates)`);
       
+      // Use upsert with email as the conflict resolution key
       const { data, error } = await supabase
         .from('candidates')
-        .insert(insertBatch)
+        .upsert(insertBatch, { 
+          onConflict: 'email',
+          ignoreDuplicates: false 
+        })
         .select();
 
       if (error) {
-        console.error(`Insert batch ${batchNumber} error:`, error);
-        results.errors.push(`Insert batch ${batchNumber} failed: ${error.message}`);
+        console.error(`Upsert batch ${batchNumber} error:`, error);
+        results.errors.push(`Upsert batch ${batchNumber} failed: ${error.message}`);
         // Continue with next batch instead of stopping
       } else {
-        results.created += data?.length || 0;
-        console.log(`✅ Batch ${batchNumber}: Inserted ${data?.length || 0} candidates (Total: ${results.created})`);
+        const insertedCount = data?.length || 0;
+        results.created += insertedCount;
+        console.log(`✅ Batch ${batchNumber}: Upserted ${insertedCount} candidates (Total: ${results.created})`);
       }
       
       // Small delay to prevent overwhelming the database
