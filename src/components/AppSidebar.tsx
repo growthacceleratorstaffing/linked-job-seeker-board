@@ -9,7 +9,8 @@ import {
   CheckSquare, 
   FileText, 
   LogOut,
-  User
+  User,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,6 +70,10 @@ const AppSidebar = () => {
     { path: '/onboarding', label: 'Preboarding', icon: CheckSquare, permission: 'simple' },
   ];
 
+  const crmItems = [
+    { path: '/integrations', label: 'Integrations', icon: Settings },
+  ];
+
   const contractingItems = [
     { path: 'https://mijn.cootje.com/recruiter/kandidaten/b50e2506-9644-40be-8e87-08b2046ca3ee?view=Vacatures&tab=Koppelen', label: 'Onboarding', icon: FileText, external: true, permission: 'simple' },
     { path: 'https://mijn.cootje.com/urenregistraties', label: 'Backoffice', icon: FileText, external: true, permission: 'admin' },
@@ -81,6 +86,7 @@ const AppSidebar = () => {
   const filteredStaffingItems = staffingItems.filter(item => 
     !item.permission || permissions[item.permission as keyof typeof permissions]
   );
+  const filteredCrmItems = crmItems;
   const filteredContractingItems = contractingItems.filter(item => 
     !item.permission || permissions[item.permission as keyof typeof permissions]
   );
@@ -183,6 +189,22 @@ const AppSidebar = () => {
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredStaffingItems.map((item) => (
+                  <NavItem key={item.path} {...item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* CRM Section */}
+        {filteredCrmItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+              CRM
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredCrmItems.map((item) => (
                   <NavItem key={item.path} {...item} />
                 ))}
               </SidebarMenu>
