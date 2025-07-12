@@ -293,6 +293,13 @@ const Candidates = () => {
   const activeCandidates = candidates.filter(c => c.interview_stage === 'pending' || c.interview_stage === 'in_progress').length;
   const workableCandidates = candidates.filter(c => c.source_platform === 'workable').length;
 
+  
+  // Force refresh of count queries to show corrected numbers
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["applicants-count"] });
+    queryClient.invalidateQueries({ queryKey: ["talent-pool-count"] });
+  }, [queryClient]);
+
   const getStageColor = (stage: InterviewStage | null) => {
     switch (stage) {
       case 'sourced': return 'bg-purple-500/20 text-purple-400 border-purple-400';
