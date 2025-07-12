@@ -13,7 +13,6 @@ import { CandidateProfileCard } from "./CandidateProfileCard";
 import { Search, Mail, Phone, ExternalLink, Users, MapPin, Building, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useAuth } from "@/hooks/useAuth";
 
 type Candidate = {
   id: string;
@@ -38,22 +37,12 @@ type Candidate = {
 };
 
 export const CandidatesList = () => {
-  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 50;
   const queryClient = useQueryClient();
-
-  // Return early if no user
-  if (!user) {
-    return (
-      <div className="text-center p-8">
-        <p className="text-slate-300">Please log in to view candidates.</p>
-      </div>
-    );
-  }
 
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -154,7 +143,7 @@ export const CandidatesList = () => {
         (payload) => {
           const newData = payload.new as any;
           if (newData?.integration_type === 'workable' && newData?.status === 'success') {
-            console.log('Workable sync completed');
+            console.log('Integration sync completed');
             queryClient.invalidateQueries({ queryKey: ["candidates"] });
             queryClient.invalidateQueries({ queryKey: ["crm-stats"] });
           }

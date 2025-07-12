@@ -5,25 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building, Clock, Loader2 } from "lucide-react";
 import { CandidatesList } from "@/components/crm/CandidatesList";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 
 const CRM = () => {
-  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isBulkLoading, setIsBulkLoading] = useState(false);
-
-  // Check if user is authenticated
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-primary-blue text-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Authentication Required</h1>
-          <p className="text-slate-300">Please log in to access the CRM dashboard.</p>
-        </div>
-      </div>
-    );
-  }
 
   // Fetch stats with actual data quality calculation
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -65,7 +51,7 @@ const CRM = () => {
       };
       
       candidates.forEach(candidate => {
-        if (candidate.email && candidate.email.length > 5 && candidate.email !== '@workable.com') {
+        if (candidate.email && candidate.email.length > 5 && candidate.email !== '@integration.com') {
           qualityMetrics.withEmail++;
         }
         if (candidate.phone && candidate.phone.length > 5) {
@@ -118,7 +104,7 @@ const CRM = () => {
         (percentages.location * 0.10) +   // Location is helpful (10%)
         (percentages.company * 0.10) +    // Company is helpful (10%)
         (percentages.skills * 0.10) +     // Skills are helpful (10%)
-        (percentages.workableId * 0.05) + // Workable ID for tracking (5%)
+        (percentages.workableId * 0.05) + // Integration ID for tracking (5%)
         (percentages.linkedIn * 0.05) +   // LinkedIn for sourcing (5%)
         (percentages.photo * 0.05)        // Photo for identification (5%)
       ) : 0;
