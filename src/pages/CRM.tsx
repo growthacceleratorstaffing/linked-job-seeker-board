@@ -29,7 +29,7 @@ const CRM = () => {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["crm-stats"],
     queryFn: async () => {
-      const [candidatesCount, workableStats, allCandidatesData] = await Promise.all([
+        const [candidatesCount, workableStats, allCandidatesData] = await Promise.all([
         supabase
           .from("candidates")
           .select("*", { count: 'exact', head: true })
@@ -143,8 +143,7 @@ const CRM = () => {
         // Check if we have candidates first
         const { count } = await supabase
           .from("candidates")
-          .select("*", { count: 'exact', head: true })
-          .eq("user_id", user.id);
+          .select("*", { count: 'exact', head: true });
 
         // Only bulk load if we have significantly fewer candidates than expected (~1600)
         if ((count || 0) < 1500) {
