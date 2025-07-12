@@ -65,6 +65,7 @@ const JobAdvertising = () => {
     try {
       const { data, error } = await supabase.functions.invoke('linkedin-integration', {
         body: {
+          action: 'linkedin_job_advertisement',
           type: 'job-posting',
           jobTitle: jobFormData.jobTitle,
           jobDescription: jobFormData.jobDescription,
@@ -125,6 +126,7 @@ const JobAdvertising = () => {
     try {
       const { data, error } = await supabase.functions.invoke('linkedin-integration', {
         body: {
+          action: 'linkedin_job_advertisement',
           type: 'sponsored-content',
           jobTitle: adFormData.jobTitle,
           jobDescription: adFormData.jobDescription,

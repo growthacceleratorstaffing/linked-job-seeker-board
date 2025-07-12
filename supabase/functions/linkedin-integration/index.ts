@@ -14,10 +14,11 @@ serve(async (req) => {
   }
 
   try {
-    const { action, candidateData, accessToken } = await req.json();
+    const { action, candidateData, accessToken, type, ...jobData } = await req.json();
     
     const linkedinClientId = Deno.env.get('LINKEDIN_CLIENT_ID');
     const linkedinClientSecret = Deno.env.get('LINKEDIN_CLIENT_SECRET');
+    const linkedinAccessToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -169,6 +170,22 @@ serve(async (req) => {
         );
       }
 
+      case 'linkedin_job_advertisement': {
+        console.log('LinkedIn job advertisement request:', { type, jobData });
+        
+        if (!linkedinAccessToken) {
+          throw new Error('LinkedIn access token not configured');
+        }
+
+        if (type === 'job-posting') {
+          return await createJobPosting(linkedinAccessToken, jobData, supabase);
+        } else if (type === 'sponsored-content') {
+          return await createSponsoredContent(linkedinAccessToken, jobData, supabase);
+        } else {
+          throw new Error('Invalid advertisement type. Use "job-posting" or "sponsored-content"');
+        }
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
@@ -184,6 +201,190 @@ serve(async (req) => {
     );
   }
 });
+
+async function createJobPosting(accessToken: string, jobData: any, supabase: any) {
+  console.log('Creating LinkedIn job posting:', jobData);
+
+  try {
+    // First, get the organization ID (company page)
+    const orgResponse = await fetch('https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+    });
+
+    if (!orgResponse.ok) {
+      const errorText = await orgResponse.text();
+      console.error('Organization fetch error:', errorText);
+      throw new Error(`Failed to get organization: ${orgResponse.status} ${errorText}`);
+    }
+
+    const orgData = await orgResponse.json();
+    console.log('Organization data:', orgData);
+    
+    if (!orgData.elements || orgData.elements.length === 0) {
+      throw new Error('No organization found. Make sure you have admin access to a LinkedIn company page.');
+    }
+
+    const organizationId = orgData.elements[0].organizationalTarget;
+    console.log('Using organization ID:', organizationId);
+
+    // Create job posting payload
+    const jobPayload = {
+      companyApplyUrl: `${Deno.env.get('SUPABASE_URL')?.replace('supabase.co', 'supabase.app')}/jobs/apply`,
+      description: jobData.jobDescription,
+      employmentStatus: jobData.employmentType || 'FULL_TIME',
+      externalJobPostingId: `job_${Date.now()}`,
+      listedAt: Date.now(),
+      jobPostingOperationType: 'CREATE',
+      integrationContext: organizationId,
+      title: jobData.jobTitle,
+      location: jobData.city ? {
+        countryCode: 'US', // Default to US, should be made configurable
+        city: jobData.city
+      } : undefined,
+      workplaceTypes: [jobData.workplaceType || 'REMOTE']
+    };
+
+    console.log('Job posting payload:', jobPayload);
+
+    const response = await fetch('https://api.linkedin.com/v2/jobPostings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+      body: JSON.stringify(jobPayload)
+    });
+
+    const responseText = await response.text();
+    console.log('LinkedIn API response:', responseText);
+
+    if (!response.ok) {
+      throw new Error(`LinkedIn job posting failed: ${response.status} ${responseText}`);
+    }
+
+    const result = responseText ? JSON.parse(responseText) : { id: 'created' };
+    
+    // Save job to local database
+    const { data: savedJob, error: jobError } = await supabase
+      .from('jobs')
+      .insert({
+        title: jobData.jobTitle,
+        job_description: jobData.jobDescription,
+        location_name: jobData.city,
+        work_type_name: jobData.workplaceType,
+        category_name: jobData.jobFunction,
+        source: 'LinkedIn API',
+        created_by: null // Could be set to current user if available
+      })
+      .select()
+      .single();
+
+    if (jobError) {
+      console.error('Failed to save job locally:', jobError);
+    }
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Job posted to LinkedIn and saved locally!',
+      jobId: result.id,
+      localJobId: savedJob?.id,
+      linkedinJobUrl: result.id ? `https://www.linkedin.com/jobs/view/${result.id}` : undefined
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Job posting error:', error);
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: error.message,
+      linkedinError: true
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+async function createSponsoredContent(accessToken: string, adData: any, supabase: any) {
+  console.log('Creating LinkedIn sponsored content:', adData);
+
+  try {
+    // Get organization for sponsored content
+    const orgResponse = await fetch('https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+    });
+
+    if (!orgResponse.ok) {
+      throw new Error(`Failed to get organization: ${orgResponse.status}`);
+    }
+
+    const orgData = await orgResponse.json();
+    if (!orgData.elements || orgData.elements.length === 0) {
+      throw new Error('No organization found for sponsored content.');
+    }
+
+    const organizationId = orgData.elements[0].organizationalTarget;
+
+    // Create campaign first
+    const campaignPayload = {
+      name: adData.campaignName || `${adData.jobTitle} Campaign`,
+      status: 'ACTIVE',
+      type: 'SPONSORED_CONTENT',
+      costType: 'CPM',
+      dailyBudget: {
+        amount: Math.round((adData.budget / adData.duration) * 100), // Convert to cents
+        currencyCode: 'USD'
+      },
+      account: `urn:li:sponsoredAccount:${organizationId}`
+    };
+
+    const campaignResponse = await fetch('https://api.linkedin.com/v2/adCampaignsV2', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+      body: JSON.stringify(campaignPayload)
+    });
+
+    if (!campaignResponse.ok) {
+      const errorText = await campaignResponse.text();
+      throw new Error(`LinkedIn campaign creation failed: ${campaignResponse.status} ${errorText}`);
+    }
+
+    const campaign = await campaignResponse.json();
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'LinkedIn advertisement campaign created successfully!',
+      campaignId: campaign.id,
+      campaignUrl: `https://www.linkedin.com/campaignmanager/accounts/${organizationId}/campaigns/${campaign.id}`
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Sponsored content error:', error);
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: error.message 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+}
 
 function calculateCompletenessScore(candidate: any): number {
   let score = 0;
