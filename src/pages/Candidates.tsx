@@ -288,12 +288,41 @@ const Candidates = () => {
   const { data: applicantsCount } = useQuery({
     queryKey: ["applicants-count", user?.id],
     queryFn: async () => {
-      let query = supabase
+      // Get user's jobs (same logic as main query)
+      let userJobIds: string[] = [];
+      
+      if (permissions.admin) {
+        const { data: allJobs } = await supabase
+          .from('jobs')
+          .select('id');
+        userJobIds = allJobs?.map(j => j.id) || [];
+      } else if (user?.id) {
+        const { data: workableUser } = await supabase
+          .from('workable_users')
+          .select('assigned_jobs')
+          .eq('user_id', user.id)
+          .single();
+        userJobIds = workableUser?.assigned_jobs || [];
+      }
+      
+      if (userJobIds.length === 0) return 0;
+
+      // Get candidates who applied to user's jobs
+      const { data: candidateResponses } = await supabase
+        .from('candidate_responses')
+        .select('candidate_id')
+        .in('job_id', userJobIds);
+
+      if (!candidateResponses || candidateResponses.length === 0) return 0;
+
+      const candidateIds = candidateResponses.map(r => r.candidate_id);
+
+      const { count } = await supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
+        .in('id', candidateIds)
         .in('interview_stage', ['phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer', 'passed', 'hired', 'failed', 'rejected', 'withdrawn']);
       
-      const { count } = await query;
       return count || 0;
     },
     enabled: !!user,
@@ -302,12 +331,41 @@ const Candidates = () => {
   const { data: talentPoolCount } = useQuery({
     queryKey: ["talent-pool-count", user?.id],
     queryFn: async () => {
-      let query = supabase
+      // Get user's jobs (same logic as main query)
+      let userJobIds: string[] = [];
+      
+      if (permissions.admin) {
+        const { data: allJobs } = await supabase
+          .from('jobs')
+          .select('id');
+        userJobIds = allJobs?.map(j => j.id) || [];
+      } else if (user?.id) {
+        const { data: workableUser } = await supabase
+          .from('workable_users')
+          .select('assigned_jobs')
+          .eq('user_id', user.id)
+          .single();
+        userJobIds = workableUser?.assigned_jobs || [];
+      }
+      
+      if (userJobIds.length === 0) return 0;
+
+      // Get candidates who applied to user's jobs
+      const { data: candidateResponses } = await supabase
+        .from('candidate_responses')
+        .select('candidate_id')
+        .in('job_id', userJobIds);
+
+      if (!candidateResponses || candidateResponses.length === 0) return 0;
+
+      const candidateIds = candidateResponses.map(r => r.candidate_id);
+
+      const { count } = await supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
+        .in('id', candidateIds)
         .in('interview_stage', ['sourced', 'applied']);
       
-      const { count } = await query;
       return count || 0;
     },
     enabled: !!user,
