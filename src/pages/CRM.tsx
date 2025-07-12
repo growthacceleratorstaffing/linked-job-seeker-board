@@ -5,11 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building, Clock, Loader2 } from "lucide-react";
 import { CandidatesList } from "@/components/crm/CandidatesList";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const CRM = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-primary-blue text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Authentication Required</h1>
+          <p className="text-slate-300">Please log in to access the CRM dashboard.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Fetch stats with actual data quality calculation
   const { data: stats, isLoading: statsLoading } = useQuery({
