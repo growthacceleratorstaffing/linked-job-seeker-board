@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AddCandidateDialogProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface AddCandidateDialogProps {
 }
 
 export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandidateDialogProps) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,6 +31,8 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
 
   const addCandidateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      if (!user?.id) throw new Error("User not authenticated");
+      
       // First, add to local database
       const candidateData = {
         name: data.name,
@@ -40,7 +44,8 @@ export const AddCandidateDialog = ({ open, onOpenChange, onSuccess }: AddCandida
         skills: data.skills ? data.skills.split(',').map(s => s.trim()).filter(s => s) : [],
         source_platform: 'manual',
         profile_completeness_score: calculateCompletenessScore(data),
-        interview_stage: 'pending' as const
+        interview_stage: 'pending' as const,
+        user_id: user.id
       };
 
       const { data: insertResult, error } = await supabase

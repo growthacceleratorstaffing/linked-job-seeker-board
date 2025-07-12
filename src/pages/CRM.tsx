@@ -5,20 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building, Clock, Loader2 } from "lucide-react";
 import { CandidatesList } from "@/components/crm/CandidatesList";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const CRM = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const { user } = useAuth();
 
   // Fetch stats with actual data quality calculation
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["crm-stats"],
     queryFn: async () => {
+      if (!user?.id) return { totalCandidates: 0, lastSyncLog: null, qualityMetrics: {}, percentages: {}, overallDataQuality: 0 };
       const [candidatesCount, workableStats, allCandidatesData] = await Promise.all([
         supabase
           .from("candidates")
-          .select("*", { count: 'exact', head: true }),
+          .select("*", { count: 'exact', head: true })
+          .eq("user_id", user?.id),
         
         supabase
           .from("integration_sync_logs")
@@ -32,6 +36,7 @@ const CRM = () => {
         supabase
           .from("candidates")
           .select("name, email, phone, location, current_position, company, skills, workable_candidate_id, profile_picture_url, linkedin_profile_url")
+          .eq("user_id", user?.id)
       ]);
 
       // Calculate actual data quality metrics
@@ -122,12 +127,14 @@ const CRM = () => {
 
   // Auto-sync candidates when component mounts if no candidates exist
   useEffect(() => {
-    const autoSyncCandidates = async () => {
+  const autoSyncCandidates = async () => {
+      if (!user?.id) return;
       try {
         // Check if we have candidates first
         const { count } = await supabase
           .from("candidates")
-          .select("*", { count: 'exact', head: true });
+          .select("*", { count: 'exact', head: true })
+          .eq("user_id", user?.id);
 
         // Only bulk load if we have significantly fewer candidates than expected (~1600)
         if ((count || 0) < 1500) {
@@ -181,7 +188,7 @@ const CRM = () => {
     };
 
     autoSyncCandidates();
-  }, [toast, queryClient]);
+  }, [toast, queryClient, user?.id]);
 
   return (
     <div className="min-h-screen bg-primary-blue text-white">
@@ -284,27 +291,27 @@ const CRM = () => {
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-400">With Email:</span>
-                        <span className="text-white">{stats.qualityMetrics?.withEmail || 0} ({stats.percentages?.email || 0}%)</span>
+                        <span className="text-white">{(stats?.qualityMetrics as any)?.withEmail || 0} ({(stats?.percentages as any)?.email || 0}%)</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">With Phone:</span>
-                        <span className="text-white">{stats.qualityMetrics?.withPhone || 0} ({stats.percentages?.phone || 0}%)</span>
+                        <span className="text-white">{(stats?.qualityMetrics as any)?.withPhone || 0} ({(stats?.percentages as any)?.phone || 0}%)</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">With Location:</span>
-                        <span className="text-white">{stats.qualityMetrics?.withLocation || 0} ({stats.percentages?.location || 0}%)</span>
+                        <span className="text-white">{(stats?.qualityMetrics as any)?.withLocation || 0} ({(stats?.percentages as any)?.location || 0}%)</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">With Position:</span>
-                        <span className="text-green-400">{stats.qualityMetrics?.withPosition || 0} ({stats.percentages?.position || 0}%)</span>
+                        <span className="text-green-400">{(stats?.qualityMetrics as any)?.withPosition || 0} ({(stats?.percentages as any)?.position || 0}%)</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">With Company:</span>
-                        <span className="text-white">{stats.qualityMetrics?.withCompany || 0} ({stats.percentages?.company || 0}%)</span>
+                        <span className="text-white">{(stats?.qualityMetrics as any)?.withCompany || 0} ({(stats?.percentages as any)?.company || 0}%)</span>
                       </div>
                        <div className="flex justify-between">
                          <span className="text-slate-400">System ID:</span>
-                         <span className="text-blue-400">{stats.qualityMetrics?.withWorkableId || 0} ({stats.percentages?.workableId || 0}%)</span>
+                         <span className="text-blue-400">{(stats?.qualityMetrics as any)?.withWorkableId || 0} ({(stats?.percentages as any)?.workableId || 0}%)</span>
                        </div>
                     </div>
                   </div>
@@ -336,15 +343,15 @@ const CRM = () => {
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-400">With Skills:</span>
-                        <span className="text-white">{stats?.qualityMetrics?.withSkills || 0} ({stats?.percentages?.skills || 0}%)</span>
+                        <span className="text-white">{(stats?.qualityMetrics as any)?.withSkills || 0} ({(stats?.percentages as any)?.skills || 0}%)</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">With LinkedIn:</span>
-                        <span className="text-blue-400">{stats?.qualityMetrics?.withLinkedIn || 0} ({stats?.percentages?.linkedIn || 0}%)</span>
+                        <span className="text-blue-400">{(stats?.qualityMetrics as any)?.withLinkedIn || 0} ({(stats?.percentages as any)?.linkedIn || 0}%)</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">With Photo:</span>
-                        <span className="text-white">{stats?.qualityMetrics?.withPhoto || 0} ({stats?.percentages?.photo || 0}%)</span>
+                        <span className="text-white">{(stats?.qualityMetrics as any)?.withPhoto || 0} ({(stats?.percentages as any)?.photo || 0}%)</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Overall Score:</span>

@@ -13,6 +13,7 @@ import { CandidateProfileCard } from "./CandidateProfileCard";
 import { Search, Mail, Phone, ExternalLink, Users, MapPin, Building, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useAuth } from "@/hooks/useAuth";
 
 type Candidate = {
   id: string;
@@ -43,6 +44,7 @@ export const CandidatesList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 50;
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -56,11 +58,14 @@ export const CandidatesList = () => {
   const { data: candidatesData, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
+      if (!user?.id) return { candidates: [], totalCount: 0 };
+      
       console.log('Fetching candidates with search:', debouncedSearchTerm, 'page:', currentPage);
       
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact' })
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (debouncedSearchTerm) {
@@ -80,6 +85,7 @@ export const CandidatesList = () => {
       console.log('Fetched candidates:', data?.length, 'candidates, total:', count);
       return { candidates: data as Candidate[], totalCount: count || 0 };
     },
+    enabled: !!user?.id,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -96,9 +102,23 @@ export const CandidatesList = () => {
   const { data: responseCounts } = useQuery({
     queryKey: ["candidate-response-counts"],
     queryFn: async () => {
+      if (!user?.id) return {};
+      
+      // Get all candidate IDs for this user first
+      const { data: userCandidates, error: candidatesError } = await supabase
+        .from("candidates")
+        .select("id")
+        .eq("user_id", user.id);
+      
+      if (candidatesError) throw candidatesError;
+      if (!userCandidates?.length) return {};
+      
+      const candidateIds = userCandidates.map(c => c.id);
+      
       const { data, error } = await supabase
         .from("candidate_responses")
-        .select("candidate_id");
+        .select("candidate_id")
+        .in("candidate_id", candidateIds);
       
       if (error) throw error;
       
@@ -109,6 +129,7 @@ export const CandidatesList = () => {
       
       return counts;
     },
+    enabled: !!user?.id,
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
   });

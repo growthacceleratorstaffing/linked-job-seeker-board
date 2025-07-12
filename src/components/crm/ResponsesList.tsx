@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddResponseDialog } from "./AddResponseDialog";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 type CandidateResponse = {
   id: string;
@@ -40,10 +41,23 @@ export const ResponsesList = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: responses, isLoading } = useQuery({
     queryKey: ["candidate-responses", statusFilter],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
+      // First get all candidate IDs for this user
+      const { data: userCandidates } = await supabase
+        .from("candidates")
+        .select("id")
+        .eq("user_id", user.id);
+      
+      if (!userCandidates?.length) return [];
+      
+      const candidateIds = userCandidates.map(c => c.id);
+      
       let query = supabase
         .from("candidate_responses")
         .select(`
@@ -51,6 +65,7 @@ export const ResponsesList = () => {
           candidates (name, email),
           crawled_jobs (title, company)
         `)
+        .in("candidate_id", candidateIds)
         .order("responded_at", { ascending: false });
 
       if (statusFilter !== "all") {
@@ -60,7 +75,8 @@ export const ResponsesList = () => {
       const { data, error } = await query;
       if (error) throw error;
       return data as CandidateResponse[];
-    }
+    },
+    enabled: !!user?.id
   });
 
   const updateStatusMutation = useMutation({
