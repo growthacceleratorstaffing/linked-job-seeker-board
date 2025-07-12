@@ -1,0 +1,9 @@
+-- Add missing interview stages to match Workable API
+ALTER TYPE interview_stage ADD VALUE IF NOT EXISTS 'sourced';
+ALTER TYPE interview_stage ADD VALUE IF NOT EXISTS 'applied';
+ALTER TYPE interview_stage ADD VALUE IF NOT EXISTS 'phone_screen';
+ALTER TYPE interview_stage ADD VALUE IF NOT EXISTS 'interview';
+ALTER TYPE interview_stage ADD VALUE IF NOT EXISTS 'offer';
+ALTER TYPE interview_stage ADD VALUE IF NOT EXISTS 'hired';
+ALTER TYPE interview_stage ADD VALUE IF NOT EXISTS 'rejected';
+ALTER TYPE interview_stage ADD VALUE IF NOT EXISTS 'withdrawn';

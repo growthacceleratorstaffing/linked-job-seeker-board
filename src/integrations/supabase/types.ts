@@ -989,6 +989,14 @@ export type Database = {
         | "completed"
         | "passed"
         | "failed"
+        | "sourced"
+        | "applied"
+        | "phone_screen"
+        | "interview"
+        | "offer"
+        | "hired"
+        | "rejected"
+        | "withdrawn"
       jobadder_scope:
         | "read"
         | "write"
@@ -1155,6 +1163,14 @@ export const Constants = {
         "completed",
         "passed",
         "failed",
+        "sourced",
+        "applied",
+        "phone_screen",
+        "interview",
+        "offer",
+        "hired",
+        "rejected",
+        "withdrawn",
       ],
       jobadder_scope: [
         "read",

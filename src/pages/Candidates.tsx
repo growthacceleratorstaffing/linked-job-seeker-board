@@ -74,11 +74,11 @@ const Candidates = () => {
 
       // Filter by tab - Applicants vs Talent Pool
       if (activeTab === 'applicants') {
-        // Applicants are those with interview_stage in hiring process
-        query = query.in('interview_stage', ['pending', 'in_progress', 'completed', 'passed']);
+        // Applicants are those with interview_stage in active hiring process
+        query = query.in('interview_stage', ['applied', 'phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer']);
       } else {
-        // Talent Pool are those not in active hiring process
-        query = query.not('interview_stage', 'in', '(pending,in_progress,completed,passed)');
+        // Talent Pool are those sourced, passed, or available for opportunities
+        query = query.or('interview_stage.in.(sourced,passed,hired),interview_stage.is.null');
       }
 
       // For standard members, filter candidates by job responses to assigned jobs
@@ -268,7 +268,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .in('interview_stage', ['pending', 'in_progress', 'completed', 'passed']);
+        .in('interview_stage', ['applied', 'phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer']);
       
       const { count } = await query;
       return count || 0;
@@ -282,7 +282,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .not('interview_stage', 'in', '(pending,in_progress,completed,passed)');
+        .or('interview_stage.in.(sourced,passed,hired),interview_stage.is.null');
       
       const { count } = await query;
       return count || 0;
@@ -295,11 +295,19 @@ const Candidates = () => {
 
   const getStageColor = (stage: InterviewStage | null) => {
     switch (stage) {
+      case 'sourced': return 'bg-purple-500/20 text-purple-400 border-purple-400';
+      case 'applied': return 'bg-blue-500/20 text-blue-400 border-blue-400';
+      case 'phone_screen': return 'bg-cyan-500/20 text-cyan-400 border-cyan-400';
+      case 'interview': return 'bg-orange-500/20 text-orange-400 border-orange-400';
       case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-400';
-      case 'in_progress': return 'bg-blue-500/20 text-blue-400 border-blue-400';
+      case 'in_progress': return 'bg-blue-600/20 text-blue-600 border-blue-600';
       case 'completed': return 'bg-green-500/20 text-green-400 border-green-400';
-      case 'passed': return 'bg-emerald-500/20 text-emerald-400 border-emerald-400';
+      case 'offer': return 'bg-emerald-500/20 text-emerald-400 border-emerald-400';
+      case 'passed': return 'bg-emerald-600/20 text-emerald-600 border-emerald-600';
+      case 'hired': return 'bg-green-600/20 text-green-600 border-green-600';
       case 'failed': return 'bg-red-500/20 text-red-400 border-red-400';
+      case 'rejected': return 'bg-red-600/20 text-red-600 border-red-600';
+      case 'withdrawn': return 'bg-gray-500/20 text-gray-400 border-gray-400';
       default: return 'bg-slate-500/20 text-slate-400 border-slate-400';
     }
   };
@@ -543,11 +551,19 @@ const Candidates = () => {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="sourced">Sourced</SelectItem>
+                                  <SelectItem value="applied">Applied</SelectItem>
+                                  <SelectItem value="phone_screen">Phone Screen</SelectItem>
+                                  <SelectItem value="interview">Interview</SelectItem>
                                   <SelectItem value="pending">Pending</SelectItem>
                                   <SelectItem value="in_progress">In Progress</SelectItem>
                                   <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="offer">Offer</SelectItem>
                                   <SelectItem value="passed">Passed</SelectItem>
+                                  <SelectItem value="hired">Hired</SelectItem>
                                   <SelectItem value="failed">Failed</SelectItem>
+                                  <SelectItem value="rejected">Rejected</SelectItem>
+                                  <SelectItem value="withdrawn">Withdrawn</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
@@ -659,7 +675,7 @@ const Candidates = () => {
                                 size="sm"
                                 variant="outline"
                                 className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
-                                onClick={() => updateStageMutation.mutate({ candidateId: candidate.id, newStage: 'pending' })}
+                                onClick={() => updateStageMutation.mutate({ candidateId: candidate.id, newStage: 'applied' })}
                               >
                                 <Edit className="w-3 h-3 mr-1" />
                                 Move to Applicants
