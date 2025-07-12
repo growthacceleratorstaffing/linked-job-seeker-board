@@ -230,29 +230,29 @@ const Integrations = () => {
               {popularCRMs.map((crm) => {
                 const isConnected = connectedIntegrations[crm.name.toLowerCase()];
                 return (
-                  <Card key={crm.name} className="hover:shadow-md transition-shadow">
+                  <Card key={crm.name} className="hover:shadow-md transition-shadow bg-primary-blue border-white/20" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <span className="text-2xl">{crm.logo}</span>
                           <div>
-                            <CardTitle className="text-lg">{crm.name}</CardTitle>
+                            <CardTitle className="text-lg text-white">{crm.name}</CardTitle>
                             <Badge variant={isConnected ? "default" : "secondary"} className="mt-1">
                               {isConnected ? "Connected" : crm.status}
                             </Badge>
                           </div>
                         </div>
-                        <Settings className="h-4 w-4 text-muted-foreground" />
+                        <Settings className="h-4 w-4 text-white/70" />
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <CardDescription className="mb-4">
+                      <CardDescription className="mb-4 text-white/80">
                         {crm.description}
                       </CardDescription>
                       {isConnected ? (
                         <Button 
                           onClick={() => handleDisconnectCRM(crm.name)}
-                          className="w-full"
+                          className="w-full bg-white/10 text-white border-white/20 hover:bg-white/20"
                           variant="outline"
                         >
                           <Unplug className="h-4 w-4 mr-2" />
@@ -261,7 +261,7 @@ const Integrations = () => {
                       ) : (
                         <Button 
                           onClick={() => handleConnectCRM(crm)}
-                          className="w-full"
+                          className="w-full bg-white/10 text-white border-white/20 hover:bg-white/20"
                           variant="outline"
                         >
                           <Plus className="h-4 w-4 mr-2" />
@@ -274,47 +274,47 @@ const Integrations = () => {
               })}
             </div>
 
-            <Card>
+            <Card className="bg-primary-blue border-white/20 text-white" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
               <CardHeader>
-                <CardTitle>Integration Benefits</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white">Integration Benefits</CardTitle>
+                <CardDescription className="text-white/80">
                   What you get when you connect your CRM
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-start space-x-3">
-                    <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                    <Check className="h-5 w-5 text-green-400 mt-0.5" />
                     <div>
-                      <h4 className="font-medium">Automatic Sync</h4>
-                      <p className="text-sm text-muted-foreground">
+                      <h4 className="font-medium text-white">Automatic Sync</h4>
+                      <p className="text-sm text-white/70">
                         Candidate data syncs automatically between platforms
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
-                    <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                    <Check className="h-5 w-5 text-green-400 mt-0.5" />
                     <div>
-                      <h4 className="font-medium">Unified Pipeline</h4>
-                      <p className="text-sm text-muted-foreground">
+                      <h4 className="font-medium text-white">Unified Pipeline</h4>
+                      <p className="text-sm text-white/70">
                         Manage your entire recruitment pipeline in one place
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
-                    <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                    <Check className="h-5 w-5 text-green-400 mt-0.5" />
                     <div>
-                      <h4 className="font-medium">Real-time Updates</h4>
-                      <p className="text-sm text-muted-foreground">
+                      <h4 className="font-medium text-white">Real-time Updates</h4>
+                      <p className="text-sm text-white/70">
                         Get instant notifications on candidate status changes
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
-                    <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                    <Check className="h-5 w-5 text-green-400 mt-0.5" />
                     <div>
-                      <h4 className="font-medium">Advanced Analytics</h4>
-                      <p className="text-sm text-muted-foreground">
+                      <h4 className="font-medium text-white">Advanced Analytics</h4>
+                      <p className="text-sm text-white/70">
                         Track performance across all connected platforms
                       </p>
                     </div>
@@ -325,23 +325,24 @@ const Integrations = () => {
           </TabsContent>
 
           <TabsContent value="custom" className="space-y-6">
-            <Card>
+            <Card className="bg-primary-blue border-white/20 text-white" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
               <CardHeader>
-                <CardTitle>Custom Webhook Integration</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white">Custom Webhook Integration</CardTitle>
+                <CardDescription className="text-white/80">
                   Connect any CRM or system using webhooks for real-time data sync
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="webhook-url">Webhook URL</Label>
+                  <Label htmlFor="webhook-url" className="text-white">Webhook URL</Label>
                   <Input
                     id="webhook-url"
                     placeholder="https://your-crm.com/webhook/endpoint"
                     value={customWebhook}
                     onChange={(e) => setCustomWebhook(e.target.value)}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                   />
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-white/70">
                     We'll send candidate data to this endpoint when changes occur
                   </p>
                 </div>
@@ -351,18 +352,18 @@ const Integrations = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-primary-blue border-white/20 text-white" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
               <CardHeader>
-                <CardTitle>Webhook Documentation</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white">Webhook Documentation</CardTitle>
+                <CardDescription className="text-white/80">
                   Learn how to set up custom integrations
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="border rounded p-4 bg-muted/50">
-                    <h4 className="font-medium mb-2">Payload Structure</h4>
-                    <pre className="text-sm bg-background p-2 rounded border overflow-x-auto">
+                  <div className="border rounded p-4 bg-white/5 border-white/20">
+                    <h4 className="font-medium mb-2 text-white">Payload Structure</h4>
+                    <pre className="text-sm bg-black/20 p-2 rounded border border-white/10 overflow-x-auto text-white/90">
 {`{
   "event": "candidate.updated",
   "candidate": {
@@ -377,8 +378,8 @@ const Integrations = () => {
                     </pre>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <ExternalLink className="h-4 w-4" />
-                    <a href="#" className="text-primary hover:underline">
+                    <ExternalLink className="h-4 w-4 text-white/70" />
+                    <a href="#" className="text-white hover:text-white/80 hover:underline">
                       View full API documentation
                     </a>
                   </div>
