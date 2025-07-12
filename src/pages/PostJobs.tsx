@@ -85,25 +85,9 @@ const PostJobs = () => {
         if (workableResult.data && !workableResult.error) {
           workableJobs = workableResult.data.jobs || [];
           console.log(`📊 Loaded ${workableJobs.length} jobs from Workable API (Admin access: ${permissions.admin})`);
-          console.log(`🔍 Debug info:`, workableResult.data.debug_info);
-          
-          // Show rate limit recovery message if applicable
-          if (workableResult.data.rate_limited && workableResult.data.retry_successful) {
-            toast({
-              title: "Rate Limit Recovered! ✅",
-              description: `Successfully loaded ${workableJobs.length} jobs after API rate limit recovery.`,
-            });
-          }
-        } else {
-          console.error('Workable integration error:', workableResult.error);
         }
       } catch (workableError) {
-        console.error('Workable sync failed, showing local jobs only:', workableError);
-        toast({
-          title: "Workable Sync Warning",
-          description: "Could not fetch jobs from Workable. Showing local jobs only.",
-          variant: "destructive",
-        });
+        console.log('Workable sync failed, showing local jobs only:', workableError);
       }
 
       // Combine local and workable jobs, avoiding duplicates
@@ -390,6 +374,7 @@ const PostJobs = () => {
                       <TableHead className="text-slate-300">Status</TableHead>
                       <TableHead className="text-slate-300">Location</TableHead>
                       <TableHead className="text-slate-300">Created</TableHead>
+                      <TableHead className="text-slate-300 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -411,6 +396,18 @@ const PostJobs = () => {
                         </TableCell>
                         <TableCell className="text-slate-400">
                           {new Date(job.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            asChild
+                            className="text-secondary-pink hover:text-secondary-pink/80"
+                          >
+                            <a href={job.url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
