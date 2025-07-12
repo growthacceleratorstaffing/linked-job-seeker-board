@@ -76,15 +76,11 @@ const PostJobs = () => {
       let workableJobs: IntegrationJob[] = [];
       try {
         const workableResult = await supabase.functions.invoke('workable-integration', {
-          body: { 
-            action: 'sync_jobs',
-            include_archived: permissions.admin // Admins get archived jobs too
-          }
+          body: { action: 'sync_jobs' }
         });
 
         if (workableResult.data && !workableResult.error) {
           workableJobs = workableResult.data.jobs || [];
-          console.log(`📊 Loaded ${workableJobs.length} jobs from Workable API (Admin access: ${permissions.admin})`);
         }
       } catch (workableError) {
         console.log('Workable sync failed, showing local jobs only:', workableError);
@@ -98,14 +94,9 @@ const PostJobs = () => {
       
       const combinedJobs = [...localOnlyJobs, ...workableJobs];
       
-      // Admins see ALL jobs, non-admins only see assigned jobs
+      // Filter jobs for standard members - only show assigned jobs
       let finalJobs = combinedJobs;
-      if (permissions.admin) {
-        // Admins get full access to all jobs (no filtering)
-        finalJobs = combinedJobs;
-        console.log(`👑 Admin access: Showing all ${combinedJobs.length} jobs (${localOnlyJobs.length} local + ${workableJobs.length} Workable)`);
-      } else if (user?.id) {
-        // Non-admins only see assigned jobs
+      if (!permissions.admin && user?.id) {
         const { data: workableUser } = await supabase
           .from('workable_users')
           .select('assigned_jobs')
@@ -116,11 +107,9 @@ const PostJobs = () => {
           finalJobs = combinedJobs.filter((job: IntegrationJob) => 
             workableUser.assigned_jobs.includes(job.id) || localOnlyJobs.includes(job)
           );
-          console.log(`🔒 Standard user: Showing ${finalJobs.length} assigned jobs out of ${combinedJobs.length} total`);
         } else {
-          // No assigned jobs = only show local jobs they created
+          // No assigned jobs = only show local jobs they created or have admin access
           finalJobs = localOnlyJobs;
-          console.log(`🔒 Standard user: No assignments, showing ${localOnlyJobs.length} local jobs only`);
         }
       }
       
@@ -128,9 +117,7 @@ const PostJobs = () => {
       
       toast({
         title: "Jobs Loaded! 🎉",
-        description: permissions.admin 
-          ? `Admin view: ${finalJobs.length} total jobs (${localOnlyJobs.length} local, ${workableJobs.length} Workable)`
-          : `Found ${finalJobs.length} assigned jobs (${localOnlyJobs.length} local, ${workableJobs.length - (combinedJobs.length - finalJobs.length)} Workable)`,
+        description: `Found ${finalJobs.length} jobs (${localOnlyJobs.length} local, ${workableJobs.length} from integration)`,
       });
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -262,20 +249,8 @@ const PostJobs = () => {
       <div className="min-h-screen bg-primary-blue text-white">
         <div className="container mx-auto px-6 py-8">
           <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-white">Vacancies</h1>
-              {permissions.admin && (
-                <Badge className="bg-secondary-pink/20 text-secondary-pink border-secondary-pink">
-                  👑 Admin View
-                </Badge>
-              )}
-            </div>
-            <p className="text-slate-300">
-              {permissions.admin 
-                ? "Admin access: View all job postings across external platforms including archived positions"
-                : "Manage your assigned job postings across external platforms"
-              }
-            </p>
+            <h1 className="text-3xl font-bold text-white mb-2">Vacancies</h1>
+            <p className="text-slate-300">Manage your job postings across external platforms</p>
           </div>
 
           <div className="flex items-center justify-between mb-6">
