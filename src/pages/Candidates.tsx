@@ -70,6 +70,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact' })
+        .order("last_synced_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
 
       // Filter by tab - Applicants vs Talent Pool (FINAL CORRECT VERSION)
