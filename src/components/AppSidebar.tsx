@@ -68,8 +68,8 @@ const AppSidebar = () => {
   ];
 
   const contractingItems = [
-    { path: 'https://mijn.cootje.com/urenregistraties', label: 'Backoffice', icon: FileText, external: true, permission: 'admin' },
     { path: 'https://mijn.cootje.com/recruiter/kandidaten/b50e2506-9644-40be-8e87-08b2046ca3ee?view=Vacatures&tab=Koppelen', label: 'Onboarding', icon: FileText, external: true, permission: 'simple' },
+    { path: 'https://mijn.cootje.com/urenregistraties', label: 'Backoffice', icon: FileText, external: true, permission: 'admin' },
   ];
 
   // Filter navigation items based on permissions
