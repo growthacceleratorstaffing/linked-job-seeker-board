@@ -13,6 +13,7 @@ import { CandidateProfileCard } from "./CandidateProfileCard";
 import { Search, Mail, Phone, ExternalLink, Users, MapPin, Building, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useAuth } from "@/hooks/useAuth";
 
 type Candidate = {
   id: string;
@@ -37,12 +38,18 @@ type Candidate = {
 };
 
 export const CandidatesList = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 50;
   const queryClient = useQueryClient();
+
+  // Return early if no user
+  if (!user) {
+    return <div className="text-white text-center p-4">Please log in to view candidates.</div>;
+  }
 
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -61,6 +68,7 @@ export const CandidatesList = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact' })
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (debouncedSearchTerm) {
@@ -94,11 +102,26 @@ export const CandidatesList = () => {
   }, [debouncedSearchTerm]);
 
   const { data: responseCounts } = useQuery({
-    queryKey: ["candidate-response-counts"],
+    queryKey: ["candidate-response-counts", user.id],
     queryFn: async () => {
+      // First get user's candidates, then get responses for those candidates
+      const { data: userCandidates, error: candidatesError } = await supabase
+        .from("candidates")
+        .select("id")
+        .eq("user_id", user.id);
+      
+      if (candidatesError) throw candidatesError;
+      
+      if (!userCandidates || userCandidates.length === 0) {
+        return {};
+      }
+      
+      const candidateIds = userCandidates.map(c => c.id);
+      
       const { data, error } = await supabase
         .from("candidate_responses")
-        .select("candidate_id");
+        .select("candidate_id")
+        .in("candidate_id", candidateIds);
       
       if (error) throw error;
       

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AddResponseDialogProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface AddResponseDialogProps {
 }
 
 export const AddResponseDialog = ({ open, onOpenChange, onSuccess }: AddResponseDialogProps) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     candidate_id: "",
     job_id: "",
@@ -25,12 +27,18 @@ export const AddResponseDialog = ({ open, onOpenChange, onSuccess }: AddResponse
     source: ""
   });
 
+  // Return early if no user
+  if (!user) {
+    return null;
+  }
+
   const { data: candidates } = useQuery({
-    queryKey: ["candidates-for-response"],
+    queryKey: ["candidates-for-response", user.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("candidates")
         .select("id, name, email")
+        .eq("user_id", user.id)
         .order("name");
       if (error) throw error;
       return data;

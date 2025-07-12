@@ -142,6 +142,7 @@ export type Database = {
           skills: Json | null
           source_platform: string | null
           updated_at: string
+          user_id: string | null
           workable_candidate_id: string | null
         }
         Insert: {
@@ -166,6 +167,7 @@ export type Database = {
           skills?: Json | null
           source_platform?: string | null
           updated_at?: string
+          user_id?: string | null
           workable_candidate_id?: string | null
         }
         Update: {
@@ -190,6 +192,7 @@ export type Database = {
           skills?: Json | null
           source_platform?: string | null
           updated_at?: string
+          user_id?: string | null
           workable_candidate_id?: string | null
         }
         Relationships: []

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddResponseDialog } from "./AddResponseDialog";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 type CandidateResponse = {
   id: string;
@@ -37,13 +38,34 @@ const statusOptions = [
 ];
 
 export const ResponsesList = () => {
+  const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const queryClient = useQueryClient();
 
+  // Return early if no user
+  if (!user) {
+    return <div className="text-center p-4">Please log in to view responses.</div>;
+  }
+
   const { data: responses, isLoading } = useQuery({
-    queryKey: ["candidate-responses", statusFilter],
+    queryKey: ["candidate-responses", statusFilter, user.id],
     queryFn: async () => {
+      // First get user's candidates
+      const { data: userCandidates, error: candidatesError } = await supabase
+        .from("candidates")
+        .select("id")
+        .eq("user_id", user.id);
+      
+      if (candidatesError) throw candidatesError;
+      
+      if (!userCandidates || userCandidates.length === 0) {
+        return [];
+      }
+      
+      const candidateIds = userCandidates.map(c => c.id);
+      
+      // Then get responses for those candidates only
       let query = supabase
         .from("candidate_responses")
         .select(`
@@ -51,6 +73,7 @@ export const ResponsesList = () => {
           candidates (name, email),
           crawled_jobs (title, company)
         `)
+        .in("candidate_id", candidateIds)
         .order("responded_at", { ascending: false });
 
       if (statusFilter !== "all") {
