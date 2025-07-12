@@ -74,11 +74,11 @@ const Candidates = () => {
 
       // Filter by tab - Applicants vs Talent Pool
       if (activeTab === 'applicants') {
-        // Applicants are those with interview_stage in active hiring process
-        query = query.in('interview_stage', ['applied', 'phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer']);
+        // Applicants are only sourced and applied candidates
+        query = query.in('interview_stage', ['sourced', 'applied']);
       } else {
-        // Talent Pool are those not in active hiring process (sourced, passed, hired, failed, rejected, withdrawn, or null)
-        query = query.or('interview_stage.in.(sourced,passed,hired,failed,rejected,withdrawn),interview_stage.is.null');
+        // Talent Pool is everyone except sourced and applied
+        query = query.not('interview_stage', 'in', '(sourced,applied)');
       }
 
       // For standard members, filter candidates by job responses to assigned jobs
@@ -268,7 +268,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .in('interview_stage', ['applied', 'phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer']);
+        .in('interview_stage', ['sourced', 'applied']);
       
       const { count } = await query;
       return count || 0;
@@ -282,7 +282,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .or('interview_stage.in.(sourced,passed,hired,failed,rejected,withdrawn),interview_stage.is.null');
+        .not('interview_stage', 'in', '(sourced,applied)');
       
       const { count } = await query;
       return count || 0;
@@ -675,7 +675,7 @@ const Candidates = () => {
                                 size="sm"
                                 variant="outline"
                                 className="border-secondary-pink text-secondary-pink hover:bg-secondary-pink hover:text-white"
-                                onClick={() => updateStageMutation.mutate({ candidateId: candidate.id, newStage: 'applied' })}
+                                onClick={() => updateStageMutation.mutate({ candidateId: candidate.id, newStage: 'sourced' })}
                               >
                                 <Edit className="w-3 h-3 mr-1" />
                                 Move to Applicants
