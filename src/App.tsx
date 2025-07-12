@@ -20,6 +20,7 @@ import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import JobAdvertising from "./pages/JobAdvertising";
 
 import NotFound from "./pages/NotFound";
 
@@ -74,6 +75,11 @@ const App = () => (
             <Route path="/job-board" element={
               <ProtectedRoute>
                 <JobBoard />
+              </ProtectedRoute>
+            } />
+            <Route path="/job-advertising" element={
+              <ProtectedRoute>
+                <JobAdvertising />
               </ProtectedRoute>
             } />
             <Route path="/onboarding" element={
