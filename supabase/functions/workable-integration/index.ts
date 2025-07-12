@@ -548,7 +548,10 @@ serve(async (req) => {
         console.log('Publishing job to Workable and local database...');
         
         if (!supabaseUrl || !supabaseServiceKey) {
-          throw new Error('Supabase configuration missing');
+          return new Response(
+            JSON.stringify({ error: 'Supabase configuration missing' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -563,9 +566,8 @@ serve(async (req) => {
               location_name: jobData.location,
               work_type_name: jobData.employment_type,
               company_name: jobData.department || 'Growth Accelerator',
-              source: 'AI Generator', // Track source
-              category_name: jobData.department,
-              workplace: jobData.workplace,
+              source: jobData.source || 'AI Generator',
+              category_name: jobData.department || 'General',
               skill_tags: jobData.skills || []
             }])
             .select()
@@ -573,76 +575,96 @@ serve(async (req) => {
 
           if (localError) {
             console.error('Error saving to local database:', localError);
-            throw new Error(`Failed to save job locally: ${localError.message}`);
+            return new Response(
+              JSON.stringify({ 
+                success: false,
+                error: 'Failed to save job to local database',
+                message: localError.message 
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
           }
 
           console.log('✅ Job saved to local database:', localJob.id);
-        } catch (localSaveError) {
-          console.error('Local save failed:', localSaveError);
-          return new Response(
-            JSON.stringify({ 
-              success: false,
-              error: 'Failed to save job to local database',
-              message: localSaveError.message 
-            }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+          
+          // Then try to publish to Workable (optional) - create as draft
+          try {
+            const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
+            const workableJobData = {
+              title: jobData.title,
+              full_title: jobData.title,
+              description: jobData.description,
+              location: {
+                location_str: jobData.location,
+                workplace_type: jobData.workplace === 'remote' ? 'remote' : 'onsite'
+              },
+              employment_type: jobData.employment_type || 'full_time',
+              department: jobData.department || 'General',
+              state: 'draft' // Create as draft initially
+            };
 
-        // Then try to publish to Workable (optional)
-        try {
-          const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
-          const workableJobData = {
-            title: jobData.title,
-            full_title: jobData.title,
-            description: jobData.description,
-            location: {
-              location_str: jobData.location,
-              workplace_type: jobData.workplace || 'onsite'
-            },
-            employment_type: jobData.employment_type,
-            department: jobData.department,
-            state: 'draft' // Create as draft initially
-          };
+            const response = await fetch(`${spiBaseUrl}/jobs`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(workableJobData)
+            });
 
-          const response = await fetch(`${spiBaseUrl}/jobs`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(workableJobData)
-          });
-
-          if (response.ok) {
-            const workableJob = await response.json();
-            console.log('✅ Job also published to Workable:', workableJob.shortcode);
-            
+            if (response.ok) {
+              const workableJob = await response.json();
+              console.log('✅ Job also published to Workable as draft:', workableJob.shortcode);
+              
+              // Update local job with Workable job ID
+              await supabase
+                .from('jobs')
+                .update({ 
+                  jobadder_job_id: workableJob.shortcode,
+                  synced_to_jobadder: true 
+                })
+                .eq('id', localJob.id);
+              
+              return new Response(
+                JSON.stringify({ 
+                  success: true,
+                  message: `Job "${jobData.title}" created successfully as draft in both local database and Workable!`,
+                  workable_job_id: workableJob.shortcode,
+                  local_job_id: localJob.id
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            } else {
+              const errorText = await response.text();
+              console.log('⚠️ Failed to publish to Workable, but job saved locally:', errorText);
+              return new Response(
+                JSON.stringify({ 
+                  success: true,
+                  message: `Job "${jobData.title}" created successfully in local database. Workable sync failed but job is still available.`,
+                  workable_error: errorText,
+                  local_job_id: localJob.id
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          } catch (workableError) {
+            console.log('⚠️ Workable publishing failed, but job saved locally:', workableError);
             return new Response(
               JSON.stringify({ 
                 success: true,
-                message: `Job "${jobData.title}" created successfully in both local database and Workable (as draft)`,
-                workable_job_id: workableJob.shortcode
-              }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          } else {
-            console.log('⚠️ Failed to publish to Workable, but job saved locally');
-            return new Response(
-              JSON.stringify({ 
-                success: true,
-                message: `Job "${jobData.title}" created successfully in local database. Workable sync failed but job is still available.`,
-                workable_error: await response.text()
+                message: `Job "${jobData.title}" created successfully in local database. Workable publishing failed but job is still available.`,
+                workable_error: workableError.message,
+                local_job_id: localJob.id
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
-        } catch (workableError) {
-          console.log('⚠️ Workable publishing failed, but job saved locally:', workableError);
+        } catch (error) {
+          console.error('Error in publish_job:', error);
           return new Response(
             JSON.stringify({ 
-              success: true,
-              message: `Job "${jobData.title}" created successfully in local database. Workable publishing failed but job is still available.`,
-              workable_error: workableError.message
+              success: false,
+              error: 'Failed to create job',
+              message: error.message
             }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
       }
