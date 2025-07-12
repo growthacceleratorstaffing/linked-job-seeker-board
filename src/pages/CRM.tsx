@@ -5,35 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building, Clock, Loader2 } from "lucide-react";
 import { CandidatesList } from "@/components/crm/CandidatesList";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 
 const CRM = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isBulkLoading, setIsBulkLoading] = useState(false);
-
-  // Redirect to login if not authenticated
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-primary-blue text-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl mb-4">Please log in to access the CRM</h1>
-          <p className="text-slate-300">You need to be authenticated to view candidate data.</p>
-        </div>
-      </div>
-    );
-  }
 
   // Fetch stats with actual data quality calculation
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["crm-stats"],
     queryFn: async () => {
-        const [candidatesCount, workableStats, allCandidatesData] = await Promise.all([
+      const [candidatesCount, workableStats, allCandidatesData] = await Promise.all([
         supabase
           .from("candidates")
-          .select("*", { count: 'exact', head: true })
-          .eq("user_id", user.id),
+          .select("*", { count: 'exact', head: true }),
         
         supabase
           .from("integration_sync_logs")
@@ -47,7 +32,6 @@ const CRM = () => {
         supabase
           .from("candidates")
           .select("name, email, phone, location, current_position, company, skills, workable_candidate_id, profile_picture_url, linkedin_profile_url")
-          .eq("user_id", user.id)
       ]);
 
       // Calculate actual data quality metrics
