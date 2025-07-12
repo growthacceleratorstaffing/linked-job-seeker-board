@@ -72,13 +72,13 @@ const Candidates = () => {
         .select("*", { count: 'exact' })
         .order("created_at", { ascending: false });
 
-      // Filter by tab - Applicants vs Talent Pool
+      // Filter by tab - Applicants vs Talent Pool (REVERSED)
       if (activeTab === 'applicants') {
-        // Applicants are only sourced and applied candidates
-        query = query.in('interview_stage', ['sourced', 'applied']);
-      } else {
-        // Talent Pool is everyone with a defined stage that's NOT sourced or applied
+        // Applicants are now advanced stage candidates
         query = query.in('interview_stage', ['phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer', 'passed', 'hired', 'failed', 'rejected', 'withdrawn']);
+      } else {
+        // Talent Pool is now early stage candidates (sourced and applied)
+        query = query.in('interview_stage', ['sourced', 'applied']);
       }
 
       // For standard members, filter candidates by job responses to assigned jobs
@@ -261,14 +261,14 @@ const Candidates = () => {
     return <Badge variant="outline">Unknown</Badge>;
   };
 
-  // Get counts for both tabs
+  // Get counts for both tabs (REVERSED to match filter logic)
   const { data: applicantsCount } = useQuery({
     queryKey: ["applicants-count", user?.id],
     queryFn: async () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .in('interview_stage', ['sourced', 'applied']);
+        .in('interview_stage', ['phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer', 'passed', 'hired', 'failed', 'rejected', 'withdrawn']);
       
       const { count } = await query;
       return count || 0;
@@ -282,7 +282,7 @@ const Candidates = () => {
       let query = supabase
         .from("candidates")
         .select("*", { count: 'exact', head: true })
-        .in('interview_stage', ['phone_screen', 'interview', 'pending', 'in_progress', 'completed', 'offer', 'passed', 'hired', 'failed', 'rejected', 'withdrawn']);
+        .in('interview_stage', ['sourced', 'applied']);
       
       const { count } = await query;
       return count || 0;
