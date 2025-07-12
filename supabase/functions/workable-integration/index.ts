@@ -722,22 +722,32 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
     interview_stage: mapWorkableStatusToInterviewStage(candidate.state)
   }));
 
-  // Bulk upsert for better performance
+  // Bulk upsert for better performance - use workable_candidate_id for uniqueness
   try {
+    // First, delete existing workable candidates to ensure fresh data
+    const { error: deleteError } = await supabase
+      .from('candidates')
+      .delete()
+      .eq('source_platform', 'workable');
+
+    if (deleteError) {
+      console.error('Error clearing existing workable candidates:', deleteError);
+    } else {
+      console.log('✅ Cleared existing workable candidates');
+    }
+
+    // Insert all candidates as new records
     const { data, error } = await supabase
       .from('candidates')
-      .upsert(candidateData, { 
-        onConflict: 'email',
-        ignoreDuplicates: false 
-      })
+      .insert(candidateData)
       .select();
 
     if (error) {
-      console.error(`Batch upsert error:`, error);
-      results.errors.push(`Bulk upsert failed: ${error.message}`);
+      console.error(`Batch insert error:`, error);
+      results.errors.push(`Bulk insert failed: ${error.message}`);
     } else {
       results.created += data?.length || 0;
-      console.log(`✅ Batch upserted ${data?.length || 0} candidates`);
+      console.log(`✅ Batch inserted ${data?.length || 0} candidates`);
     }
   } catch (batchError) {
     console.error(`Batch processing failed:`, batchError);
