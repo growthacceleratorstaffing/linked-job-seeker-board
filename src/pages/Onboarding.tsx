@@ -81,7 +81,7 @@ const Onboarding = () => {
   const fetchCandidates = async () => {
     setIsLoading(true);
     try {
-      // Only fetch candidates that have been matched
+      // Fetch all candidates from talent pool
       const { data, error } = await supabase
         .from('candidates')
         .select(`
@@ -89,19 +89,17 @@ const Onboarding = () => {
           name, 
           email, 
           current_position, 
-          company,
-          candidate_responses!inner(status)
+          company
         `)
-        .eq('candidate_responses.status', 'matched')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       setCandidates(data || []);
     } catch (error) {
-      console.error('Error fetching matched candidates:', error);
+      console.error('Error fetching candidates:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch matched candidates",
+        description: "Failed to fetch candidates",
         variant: "destructive",
       });
     } finally {
