@@ -15,6 +15,7 @@ import Matching from "./pages/Matching";
 import Candidates from "./pages/Candidates";
 import PostJobs from "./pages/PostJobs";
 import Jobs from "./pages/Jobs";
+import JobBoard from "./pages/JobBoard";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
 import TermsOfService from "./pages/TermsOfService";
@@ -68,6 +69,11 @@ const App = () => (
             <Route path="/jobs" element={
               <ProtectedRoute>
                 <Jobs />
+              </ProtectedRoute>
+            } />
+            <Route path="/job-board" element={
+              <ProtectedRoute>
+                <JobBoard />
               </ProtectedRoute>
             } />
             <Route path="/onboarding" element={
