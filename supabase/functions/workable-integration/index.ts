@@ -222,25 +222,52 @@ serve(async (req) => {
       }
 
       case 'sync_jobs': {
-        console.log('Syncing jobs from Workable...');
+        console.log('🔍 Starting jobs sync from Workable...');
         
         const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
-        const response = await fetch(`${spiBaseUrl}/jobs`, {
+        const jobsUrl = `${spiBaseUrl}/jobs`;
+        
+        console.log(`📍 Making request to: ${jobsUrl}`);
+        console.log(`🔑 Using headers:`, { ...headers, 'Authorization': 'Bearer [REDACTED]' });
+        
+        const response = await fetch(jobsUrl, {
           method: 'GET',
           headers,
         });
 
+        console.log(`📊 Response status: ${response.status} ${response.statusText}`);
+        console.log(`📋 Response headers:`, Object.fromEntries(response.headers.entries()));
+
         if (!response.ok) {
-          throw new Error(`Failed to sync jobs: ${response.status}`);
+          const errorText = await response.text();
+          console.error(`❌ API Error Response:`, errorText);
+          throw new Error(`Failed to sync jobs: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+        console.log(`📦 Raw API response:`, JSON.stringify(data, null, 2));
+        console.log(`📊 Jobs count in response: ${data.jobs?.length || 0}`);
+        
+        if (data.jobs && data.jobs.length > 0) {
+          console.log(`✅ Sample job data:`, JSON.stringify(data.jobs[0], null, 2));
+        } else {
+          console.log(`⚠️ No jobs found in response`);
+          console.log(`🔍 Full response structure:`, Object.keys(data));
+        }
         
         return new Response(
           JSON.stringify({ 
             success: true, 
             jobs: data.jobs || [],
-            message: `Synced ${data.jobs?.length || 0} jobs from Workable`
+            totalJobs: data.jobs?.length || 0,
+            message: `Synced ${data.jobs?.length || 0} jobs from Workable`,
+            debugInfo: {
+              url: jobsUrl,
+              responseStatus: response.status,
+              responseKeys: Object.keys(data),
+              hasJobs: !!data.jobs,
+              jobsLength: data.jobs?.length || 0
+            }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
