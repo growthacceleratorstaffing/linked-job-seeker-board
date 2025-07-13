@@ -743,29 +743,25 @@ async function processCandidateBatchEnhanced(supabase: any, candidates: any[]): 
       updated_at: new Date().toISOString()
     }));
 
-    // Delete existing Workable candidates to avoid conflicts
-    const candidateIds = candidates.map(c => c.id);
-    await supabase
-      .from('candidates')
-      .delete()
-      .in('workable_candidate_id', candidateIds);
-
-    // Insert in smaller batches to avoid timeout
+    // Use upsert with the new unique constraint for enhanced processing
     const batchSize = 25;
     for (let i = 0; i < candidateData.length; i += batchSize) {
       const batch = candidateData.slice(i, i + batchSize);
       
       const { data, error } = await supabase
         .from('candidates')
-        .insert(batch)
+        .upsert(batch, { 
+          onConflict: 'workable_candidate_id',
+          ignoreDuplicates: false 
+        })
         .select('id');
 
       if (error) {
-        console.error('Enhanced batch insert error:', error);
+        console.error('Enhanced batch upsert error:', error);
         results.errors.push(`Batch ${i}-${i + batch.length}: ${error.message}`);
       } else {
         results.created += data?.length || 0;
-        console.log(`✅ Enhanced batch inserted: ${data?.length || 0} candidates`);
+        console.log(`✅ Enhanced batch upserted: ${data?.length || 0} candidates`);
       }
     }
 
@@ -818,23 +814,21 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
       updated_at: new Date().toISOString()
     }));
 
-    const candidateIds = candidates.map(c => c.id);
-    await supabase
-      .from('candidates')
-      .delete()
-      .in('workable_candidate_id', candidateIds);
-
+    // Use upsert with the new unique constraint instead of delete + insert
     const batchSize = 25;
     for (let i = 0; i < candidateData.length; i += batchSize) {
       const batch = candidateData.slice(i, i + batchSize);
       
       const { data, error } = await supabase
         .from('candidates')
-        .insert(batch)
+        .upsert(batch, { 
+          onConflict: 'workable_candidate_id',
+          ignoreDuplicates: false 
+        })
         .select('id');
 
       if (error) {
-        console.error('Batch insert error:', error);
+        console.error('Batch upsert error:', error);
         results.errors.push(`Batch ${i}-${i + batch.length}: ${error.message}`);
       } else {
         results.created += data?.length || 0;
