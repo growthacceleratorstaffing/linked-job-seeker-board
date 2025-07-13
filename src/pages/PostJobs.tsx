@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
+import { CompleteWorkableImporter } from "@/components/CompleteWorkableImporter";
 
 interface IntegrationJob {
   id: string;
@@ -328,6 +329,13 @@ const PostJobs = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Complete Workable Importer */}
+          {permissions.admin && (
+            <div className="mb-6">
+              <CompleteWorkableImporter />
+            </div>
+          )}
 
           {/* Jobs Overview Table */}
           <Card className="bg-primary-blue border border-white/20 mb-6">

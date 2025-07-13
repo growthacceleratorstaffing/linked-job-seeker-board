@@ -2,3 +2,6 @@ project_id = "doulsumepjfihqowzheq"
 
 [functions.send-login-email]
 verify_jwt = false
+
+[functions.workable-importer-complete]
+verify_jwt = false
