@@ -63,7 +63,9 @@ export const CompleteWorkableImporter: React.FC = () => {
         setProgress(prev => Math.min(prev + 1, 95));
       }, 1000);
 
-      const { data, error } = await supabase.functions.invoke('workable-importer-complete');
+      const { data, error } = await supabase.functions.invoke('workable-integration-enhanced', {
+        body: { action: 'load_all_candidates_enhanced', includeEnrichment: true, exportFormat: 'json' }
+      });
 
       clearInterval(progressInterval);
       setProgress(100);

@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.workable-importer-complete]
 verify_jwt = false
+
+[functions.workable-integration-enhanced]
+verify_jwt = false
