@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
-import { CompleteWorkableImporter } from "@/components/CompleteWorkableImporter";
 
 interface IntegrationJob {
   id: string;
@@ -45,6 +44,7 @@ const PostJobs = () => {
   const { permissions } = useWorkablePermissions();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [autoImportTriggered, setAutoImportTriggered] = useState(false);
 
   const fetchJobs = async () => {
     setIsLoading(true);
@@ -208,8 +208,36 @@ const PostJobs = () => {
     }
   };
 
+  // Automatic enhanced import on component mount
+  const runAutoImport = async () => {
+    if (autoImportTriggered || !permissions.admin) return;
+    
+    setAutoImportTriggered(true);
+    console.log('🚀 Auto-triggering enhanced candidate import...');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('workable-integration-enhanced', {
+        body: { action: 'load_all_candidates_enhanced', includeEnrichment: true, exportFormat: 'json' }
+      });
+
+      if (error) {
+        console.error('Auto import failed:', error);
+      } else {
+        console.log('✅ Auto import completed:', data);
+        toast({
+          title: "Background Import Complete! 🎉",
+          description: `Successfully synced ${data.syncedCandidates || 0} candidates automatically`,
+        });
+      }
+    } catch (error) {
+      console.error('Auto import error:', error);
+    }
+  };
+
   useEffect(() => {
     fetchJobs();
+    // Trigger auto import after jobs are loaded
+    setTimeout(() => runAutoImport(), 1000);
   }, []);
 
   const getStatusBadge = (state: string) => {
@@ -329,13 +357,6 @@ const PostJobs = () => {
               </CardContent>
             </Card>
           </div>
-
-          {/* Complete Workable Importer */}
-          {permissions.admin && (
-            <div className="mb-6">
-              <CompleteWorkableImporter />
-            </div>
-          )}
 
           {/* Jobs Overview Table */}
           <Card className="bg-primary-blue border border-white/20 mb-6">
