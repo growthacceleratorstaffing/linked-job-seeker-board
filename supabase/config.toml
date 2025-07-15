@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.workable-integration-enhanced]
 verify_jwt = false
+
+[functions.workable-candidates]
+verify_jwt = false
+
+[functions.workable-jobs]
+verify_jwt = false
