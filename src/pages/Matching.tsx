@@ -10,6 +10,7 @@ import { Users, Briefcase, User, Building2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
+import { useWorkableJobs } from "@/hooks/useWorkableJobs";
 import Layout from "@/components/Layout";
 
 interface Match {
@@ -50,7 +51,6 @@ const Matching = () => {
   const [candidateOption, setCandidateOption] = useState<'existing' | 'new'>('existing');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>('');
-  const [jobs, setJobs] = useState<Job[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   
   // New job form
@@ -72,6 +72,17 @@ const Matching = () => {
 
   const { permissions } = useWorkablePermissions();
   const { toast } = useToast();
+  
+  // Fetch jobs directly from Workable API
+  const { data: workableJobs = [], isLoading: jobsLoading } = useWorkableJobs();
+  
+  // Transform Workable jobs to match our interface
+  const jobs: Job[] = workableJobs.map((job: any) => ({
+    id: job.id,
+    title: job.title,
+    company: job.department?.name || job.client?.name || 'Unknown Company',
+    location: job.location?.city || job.location?.region || 'Remote'
+  }));
 
   const fetchMatches = async () => {
     try {
@@ -117,28 +128,6 @@ const Matching = () => {
     }
   };
 
-  const fetchJobs = async () => {
-    try {
-      // Fetch jobs directly from integration
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_jobs' }
-      });
-      
-      if (error) throw error;
-      
-      // Transform integration jobs to match our interface
-      const integrationJobs = (data?.jobs || []).map((job: any) => ({
-        id: job.id,
-        title: job.title,
-        company: job.department?.name || 'Unknown Company',
-        location: job.location?.city || job.location?.region || 'Remote'
-      }));
-      
-      setJobs(integrationJobs);
-    } catch (error) {
-      console.error('Error fetching jobs from integration:', error);
-    }
-  };
 
   const fetchCandidates = async () => {
     try {
@@ -174,12 +163,8 @@ const Matching = () => {
         .from('candidate_responses')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch integration jobs data
-      const { data: jobsData } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_jobs' }
-      });
-
-      const integrationJobs = jobsData?.jobs?.filter((job: any) => job.state === 'published').length || 0;
+      // Count open positions from Workable jobs (using the hook data)
+      const integrationJobs = jobs.filter((job: any) => job.state !== 'archived').length;
 
       // Fetch app-posted jobs count
       const { count: appJobsCount } = await supabase
@@ -194,9 +179,8 @@ const Matching = () => {
         matches: matchesCount || 0
       });
 
-      // Fetch matches for display
+      // Fetch matches and candidates for display
       await fetchMatches();
-      await fetchJobs();
       await fetchCandidates();
     } catch (error) {
       console.error('Error fetching matching data:', error);
@@ -516,12 +500,22 @@ const Matching = () => {
                       <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                         <SelectValue placeholder="Choose a job position" />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-700 border-slate-600">
-                        {jobs.map((job) => (
-                          <SelectItem key={job.id} value={job.id} className="text-white hover:bg-slate-600">
-                            {job.title} - {job.company} {job.location && `(${job.location})`}
+                      <SelectContent className="bg-slate-800 border-slate-700 z-50">
+                        {jobsLoading ? (
+                          <SelectItem value="" disabled className="text-slate-400">
+                            Loading jobs from Workable...
                           </SelectItem>
-                        ))}
+                        ) : jobs.length === 0 ? (
+                          <SelectItem value="" disabled className="text-slate-400">
+                            No jobs available
+                          </SelectItem>
+                        ) : (
+                          jobs.map((job) => (
+                            <SelectItem key={job.id} value={job.id} className="text-white hover:bg-slate-600">
+                              {job.title} - {job.company} {job.location && `(${job.location})`}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   ) : (
