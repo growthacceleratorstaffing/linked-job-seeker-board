@@ -33,28 +33,32 @@ const WorkableCallback = () => {
       }
 
       try {
-        console.log('Processing Workable OAuth callback...');
+        console.log('Processing Workable OAuth callback with code:', code);
         
-        const { data, error: exchangeError } = await supabase.functions.invoke('workable-oauth', {
+        // Use the existing workable-integration function instead
+        const { data, error: exchangeError } = await supabase.functions.invoke('workable-integration', {
           body: { 
-            action: 'exchange_code',
+            action: 'oauth_callback',
             code: code,
-            redirectUri: window.location.origin
+            redirectUri: `${window.location.origin}/auth/workable/callback`
           }
         });
 
-        if (exchangeError) throw exchangeError;
+        if (exchangeError) {
+          console.error('Exchange error:', exchangeError);
+          throw exchangeError;
+        }
 
         if (data?.success) {
           setSuccess(true);
           toast({
             title: "Workable Account Linked! 🎉",
-            description: "Your Workable account has been successfully connected. You can now sign up.",
+            description: "Your Workable account has been successfully connected. You can now access candidates.",
           });
 
-          // Redirect to auth page after 2 seconds
+          // Redirect to candidates page after 2 seconds
           setTimeout(() => {
-            navigate('/auth');
+            navigate('/candidates');
           }, 2000);
         } else {
           throw new Error(data?.error || 'Failed to link Workable account');
