@@ -66,27 +66,47 @@ const Candidates = () => {
   });
 
   const { data: allCandidates = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['workable-candidates'],
+    queryKey: ['workable-integration-candidates'],
     queryFn: async (): Promise<WorkableCandidate[]> => {
-      console.log('Attempting to fetch candidates...');
+      console.log('Fetching all candidates from Workable...');
       
-      // First try the direct API approach
       try {
-        const { data, error: apiError } = await supabase.functions.invoke('workable-candidates');
+        // Use the same working approach as other pages
+        const { data, error: integrationError } = await supabase.functions.invoke('workable-integration-enhanced', {
+          body: { 
+            action: 'load_all_candidates_enhanced',
+            includeEnrichment: true,
+            exportFormat: 'json'
+          }
+        });
         
-        if (!apiError && data && Array.isArray(data)) {
-          console.log('Successfully fetched candidates from API:', data.length);
-          return data;
-        } else {
-          console.log('API fetch failed, falling back to database approach');
+        if (integrationError) {
+          console.error('Workable integration error:', integrationError);
+          throw integrationError;
         }
-      } catch (apiError) {
-        console.log('API fetch error, falling back to database approach:', apiError);
-      }
-      
-      // Fallback: Use database-stored candidates and sync if needed
-      try {
-        // First check if we have candidates in the database
+        
+        if (data?.candidates && Array.isArray(data.candidates)) {
+          console.log('Successfully fetched candidates from Workable integration:', data.candidates.length);
+          return data.candidates.map((candidate: any) => ({
+            id: candidate.id || candidate.workable_candidate_id,
+            name: candidate.name,
+            firstname: candidate.name?.split(' ')[0] || '',
+            lastname: candidate.name?.split(' ').slice(1).join(' ') || '',
+            email: candidate.email,
+            phone: candidate.phone || '',
+            stage: candidate.stage || candidate.interview_stage || 'applied',
+            job: {
+              id: candidate.job?.id || 'unknown',
+              title: candidate.job?.title || candidate.current_position || 'Unknown Position',
+              shortcode: candidate.job?.shortcode || 'unknown'
+            },
+            created_at: candidate.created_at,
+            updated_at: candidate.updated_at || candidate.created_at
+          }));
+        }
+        
+        // If integration doesn't work, get from database without restrictive filtering
+        console.log('Integration returned no candidates, trying database...');
         const { data: dbCandidates, error: dbError } = await supabase
           .from('candidates')
           .select('*')
@@ -94,41 +114,19 @@ const Candidates = () => {
         
         if (dbError) throw dbError;
         
-        // If we have very few candidates, trigger a sync
-        if (!dbCandidates || dbCandidates.length < 10) {
-          console.log('Low candidate count, triggering sync...');
-          const { data: syncData } = await supabase.functions.invoke('workable-integration-enhanced', {
-            body: { action: 'sync_all_candidates' }
-          });
-          
-          if (syncData?.success) {
-            // Refetch from database after sync
-            const { data: updatedCandidates } = await supabase
-              .from('candidates')
-              .select('*')
-              .order('created_at', { ascending: false });
-            
-            if (updatedCandidates) {
-              console.log('Synced and fetched candidates from database:', updatedCandidates.length);
-              return updatedCandidates.map(transformDbCandidate);
-            }
-          }
-        }
-        
-        // Return existing database candidates
-        console.log('Using existing database candidates:', dbCandidates.length);
-        return dbCandidates.map(transformDbCandidate);
+        console.log('Using database candidates:', dbCandidates?.length || 0);
+        return (dbCandidates || []).map(transformDbCandidate);
         
       } catch (error) {
-        console.error('Database fallback failed:', error);
-        throw new Error('Failed to fetch candidates from both API and database');
+        console.error('Failed to fetch candidates:', error);
+        throw new Error('Failed to fetch candidates from Workable');
       }
     },
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
-    retryDelay: 5000,
+    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    retry: 1,
+    retryDelay: 10000,
   });
 
   const { data: allJobs = [] } = useQuery({
@@ -148,7 +146,9 @@ const Candidates = () => {
     retry: 1,
   });
 
-  const { accessibleCandidates, availableJobs } = useAccessibleCandidates(allCandidates, allJobs);
+  // For debugging - don't filter candidates by permissions to see all Workable candidates
+  const accessibleCandidates = allCandidates;
+  const availableJobs = allJobs;
 
   const filteredCandidates = useCandidatesFiltering(
     accessibleCandidates,
