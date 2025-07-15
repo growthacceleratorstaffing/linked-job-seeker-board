@@ -80,8 +80,8 @@ const Matching = () => {
   const jobs: Job[] = workableJobs.map((job: any) => ({
     id: job.id,
     title: job.title,
-    company: job.department?.name || job.client?.name || 'Unknown Company',
-    location: job.location?.city || job.location?.region || 'Remote'
+    company: 'Company', // Workable jobs don't include company in the basic response
+    location: job.location || 'Remote'
   }));
 
   const fetchMatches = async () => {
