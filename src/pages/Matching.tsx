@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,6 @@ import { Users, Briefcase, User, Building2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
-import { useWorkableJobs } from "@/hooks/useWorkableJobs";
 import Layout from "@/components/Layout";
 
 interface Match {
@@ -73,14 +73,31 @@ const Matching = () => {
   const { permissions } = useWorkablePermissions();
   const { toast } = useToast();
   
-  // Fetch jobs directly from Workable API
-  const { data: workableJobs = [], isLoading: jobsLoading } = useWorkableJobs();
+  // Fetch jobs using the same approach as JobsOverview
+  const { data: workableJobs = [], isLoading: jobsLoading } = useQuery({
+    queryKey: ['workable-integration-jobs'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('workable-integration', {
+          body: { action: 'sync_jobs' }
+        });
+        if (error) throw error;
+        return data?.jobs || [];
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+        return [];
+      }
+    },
+    refetchInterval: 30 * 60 * 1000,
+    staleTime: 25 * 60 * 1000,
+    retry: 1,
+  });
   
-  // Transform Workable jobs to match our interface
+  // Transform jobs to match our interface
   const jobs: Job[] = workableJobs.map((job: any) => ({
     id: job.id,
     title: job.title,
-    company: 'Company', // Workable jobs don't include company in the basic response
+    company: 'Company',
     location: job.location || 'Remote'
   }));
 
