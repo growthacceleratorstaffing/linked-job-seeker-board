@@ -199,10 +199,12 @@ const Candidates = () => {
   if (error) {
     return (
       <Layout>
-        <div className="container mx-auto px-6 py-8">
-          <div className="space-y-6">
-            <CandidatesHeader candidateCount={accessibleCandidates.length} isLoading={isLoading} onRefresh={refetch} />
-            <CandidatesErrorState error={error} onRetry={refetch} />
+        <div className="min-h-screen bg-primary-blue text-white">
+          <div className="container mx-auto px-6 py-8">
+            <div className="space-y-6">
+              <CandidatesHeader candidateCount={accessibleCandidates.length} isLoading={isLoading} onRefresh={refetch} />
+              <CandidatesErrorState error={error} onRetry={refetch} />
+            </div>
           </div>
         </div>
       </Layout>
@@ -211,47 +213,49 @@ const Candidates = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-6 py-8">
-        <div className="space-y-6">
-          <CandidatesHeader candidateCount={accessibleCandidates.length} isLoading={isLoading} onRefresh={refetch} />
-          <CandidatesFilters
-            searchTerm={searchTerm}
-            selectedStatus={selectedStatus}
-            selectedJob={selectedJob}
-            uniqueStages={uniqueStages}
-            uniqueJobs={uniqueJobs}
-            onSearchChange={handleSearchChange}
-            onStatusChange={handleStatusChange}
-            onJobChange={handleJobChange}
-          />
+      <div className="min-h-screen bg-primary-blue text-white">
+        <div className="container mx-auto px-6 py-8">
+          <div className="space-y-6">
+            <CandidatesHeader candidateCount={accessibleCandidates.length} isLoading={isLoading} onRefresh={refetch} />
+            <CandidatesFilters
+              searchTerm={searchTerm}
+              selectedStatus={selectedStatus}
+              selectedJob={selectedJob}
+              uniqueStages={uniqueStages}
+              uniqueJobs={uniqueJobs}
+              onSearchChange={handleSearchChange}
+              onStatusChange={handleStatusChange}
+              onJobChange={handleJobChange}
+            />
 
-          {isLoading ? (
-            <CandidatesLoadingState />
-          ) : accessibleCandidates.length === 0 ? (
-            <CandidatesEmptyState hasCandidates={false} onRefresh={refetch} />
-          ) : filteredCandidates.length === 0 ? (
-            <CandidatesEmptyState hasCandidates={true} onRefresh={refetch} />
-          ) : (
-            <>
-              <div className="flex justify-between items-center text-sm text-gray-600 mb-4">
-                <span className="text-slate-300">
-                  Showing {(currentPage - 1) * CANDIDATES_PER_PAGE + 1}-
-                  {Math.min(currentPage * CANDIDATES_PER_PAGE, filteredCandidates.length)} of {filteredCandidates.length} candidates
-                  (Page {currentPage} of {totalPages})
-                </span>
-              </div>
-              <CandidatesList candidates={paginatedCandidates} onJobClick={handleJobClick} />
-              {totalPages > 1 && (
-                <CandidatesPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  hasNextPage={hasNextPage}
-                  hasPreviousPage={hasPreviousPage}
-                  handlePageChange={handlePageChange}
-                />
-              )}
-            </>
-          )}
+            {isLoading ? (
+              <CandidatesLoadingState />
+            ) : accessibleCandidates.length === 0 ? (
+              <CandidatesEmptyState hasCandidates={false} onRefresh={refetch} />
+            ) : filteredCandidates.length === 0 ? (
+              <CandidatesEmptyState hasCandidates={true} onRefresh={refetch} />
+            ) : (
+              <>
+                <div className="flex justify-between items-center text-sm text-gray-600 mb-4">
+                  <span className="text-slate-300">
+                    Showing {(currentPage - 1) * CANDIDATES_PER_PAGE + 1}-
+                    {Math.min(currentPage * CANDIDATES_PER_PAGE, filteredCandidates.length)} of {filteredCandidates.length} candidates
+                    (Page {currentPage} of {totalPages})
+                  </span>
+                </div>
+                <CandidatesList candidates={paginatedCandidates} onJobClick={handleJobClick} />
+                {totalPages > 1 && (
+                  <CandidatesPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    hasNextPage={hasNextPage}
+                    hasPreviousPage={hasPreviousPage}
+                    handlePageChange={handlePageChange}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </Layout>
