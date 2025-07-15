@@ -48,7 +48,7 @@ const Candidates = () => {
   );
 
   const uniqueJobs = useMemo(() => {
-    return availableJobs
+    return (availableJobs || [])
       .filter((job) => job.shortcode)
       .map((job) => ({
         id: job.shortcode,
