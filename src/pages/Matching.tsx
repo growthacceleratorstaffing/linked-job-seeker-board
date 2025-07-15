@@ -502,11 +502,11 @@ const Matching = () => {
                       </SelectTrigger>
                       <SelectContent className="bg-slate-800 border-slate-700 z-50">
                         {jobsLoading ? (
-                          <SelectItem value="" disabled className="text-slate-400">
+                          <SelectItem value="loading" disabled className="text-slate-400">
                             Loading jobs from Workable...
                           </SelectItem>
                         ) : jobs.length === 0 ? (
-                          <SelectItem value="" disabled className="text-slate-400">
+                          <SelectItem value="no-jobs" disabled className="text-slate-400">
                             No jobs available
                           </SelectItem>
                         ) : (
