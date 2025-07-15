@@ -42,7 +42,7 @@ const CandidatesList = ({ candidates, onJobClick }: CandidatesListProps) => {
   };
 
   return (
-    <Card className="bg-slate-800 border-slate-600">
+    <Card className="bg-primary-blue border border-white/20">
       <CardContent className="p-0">
         <Table>
           <TableHeader>
