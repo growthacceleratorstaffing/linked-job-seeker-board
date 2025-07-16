@@ -39,11 +39,13 @@ serve(async (req) => {
 
     // Generate password reset link using Supabase admin
     console.log("🔗 Generating password reset link...");
+    const redirectUrl = `${req.headers.get('origin') || 'https://20d5d3d6-ce4d-4cb8-9c56-2297c6e76a92.lovableproject.com'}/auth`;
+    
     const { data, error } = await supabaseClient.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: `${Deno.env.get("SITE_URL") || "http://localhost:3000"}/auth`,
+        redirectTo: redirectUrl,
       }
     });
 
