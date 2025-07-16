@@ -47,13 +47,30 @@ const Data = () => {
   const loadIntegrationData = async (integrationType: string) => {
     setIsLoading(true);
     try {
-      // For now, we'll show sample data structure
-      // In a real implementation, this would call the respective CRM APIs
-      const sampleData = generateSampleData(integrationType);
+      let data = [];
+      
+      if (integrationType === 'apollo') {
+        // Load real Apollo data via edge function
+        console.log('🔍 Loading Apollo data...');
+        const { data: apolloResult, error } = await supabase.functions.invoke('apollo-integration', {
+          body: { action: 'get_contacts' }
+        });
+        
+        if (apolloResult && !error) {
+          data = apolloResult.contacts || [];
+          console.log(`✅ Loaded ${data.length} Apollo contacts`);
+        } else {
+          console.log('⚠️ Apollo API call failed, showing sample data:', error);
+          data = generateSampleData(integrationType);
+        }
+      } else {
+        // For other integrations, show sample data for now
+        data = generateSampleData(integrationType);
+      }
       
       setIntegrationData(prev => ({
         ...prev,
-        [integrationType]: sampleData
+        [integrationType]: data
       }));
       
       toast({
@@ -62,9 +79,16 @@ const Data = () => {
       });
     } catch (error) {
       console.error('Error loading integration data:', error);
+      // Fallback to sample data on error
+      const fallbackData = generateSampleData(integrationType);
+      setIntegrationData(prev => ({
+        ...prev,
+        [integrationType]: fallbackData
+      }));
+      
       toast({
-        title: "Error",
-        description: "Failed to load integration data.",
+        title: "Using Sample Data",
+        description: "Failed to load live data, showing sample data instead.",
         variant: "destructive",
       });
     } finally {
@@ -89,6 +113,11 @@ const Data = () => {
         return [
           { id: 1, name: "Emma Wilson", email: "emma@retailco.com", stage: "Proposal", company: "Retail Co", value: "$75,000" },
           { id: 2, name: "James Taylor", email: "james@manufacturing.net", stage: "Negotiation", company: "Manufacturing Net", value: "$100,000" },
+        ];
+      case 'apollo':
+        return [
+          { id: 1, name: "Apollo Contact", email: "contact@apollo.com", title: "Sales Manager", company: "Apollo Corp", industry: "Technology" },
+          { id: 2, name: "Demo User", email: "demo@example.com", title: "Marketing Director", company: "Demo Inc", industry: "Marketing" },
         ];
       default:
         return [
