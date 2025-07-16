@@ -132,13 +132,10 @@ serve(async (req) => {
             console.log(`✅ Access to "${job.title}" - recruiter/hiring manager`);
           }
           
-          // Check 4: User has permissions for the job based on their role
-          if (member.role === 'hiring_manager' || member.role === 'simple') {
-            // For hiring managers and simple users, check if they have any connection to the job
-            if (job.members?.some((m: any) => m.id === member.id)) {
-              hasAccess = true;
-              console.log(`✅ Access to "${job.title}" - listed as job member`);
-            }
+          // Check 4: User is in job members
+          if (job.members?.some((m: any) => m.id === member.id)) {
+            hasAccess = true;
+            console.log(`✅ Access to "${job.title}" - listed as job member`);
           }
           
           if (hasAccess) {
