@@ -33,10 +33,17 @@ const Data = () => {
       
       if (error) throw error;
       
-      setConnectedIntegrations(data || []);
+      // Filter out workable - only show CRM integrations
+      const crmIntegrations = (data || []).filter(integration => 
+        integration.integration_type !== 'workable'
+      );
       
-      // Load sample data for each connected integration
-      data?.forEach(integration => {
+      console.log('🔍 Found CRM integrations:', crmIntegrations.map(i => i.integration_type));
+      setConnectedIntegrations(crmIntegrations);
+      
+      // Load data for each connected CRM integration
+      crmIntegrations.forEach(integration => {
+        console.log(`📊 Loading data for ${integration.integration_type}...`);
         loadIntegrationData(integration.integration_type);
       });
     } catch (error) {
@@ -51,20 +58,29 @@ const Data = () => {
       
       if (integrationType === 'apollo') {
         // Load real Apollo data via edge function
-        console.log('🔍 Loading Apollo data...');
+        console.log('🚀 Calling Apollo integration edge function...');
+        
         const { data: apolloResult, error } = await supabase.functions.invoke('apollo-integration', {
           body: { action: 'get_contacts' }
         });
         
+        console.log('🔍 Apollo function response:', { apolloResult, error });
+        
         if (apolloResult && !error) {
           data = apolloResult.contacts || [];
-          console.log(`✅ Loaded ${data.length} Apollo contacts`);
+          console.log(`✅ Successfully loaded ${data.length} Apollo contacts`);
+          
+          if (data.length === 0) {
+            console.log('⚠️ Apollo returned 0 contacts - API might be empty or have issues');
+          }
         } else {
-          console.log('⚠️ Apollo API call failed, showing sample data:', error);
+          console.error('❌ Apollo API call failed:', error);
+          console.log('🔄 Falling back to sample data...');
           data = generateSampleData(integrationType);
         }
       } else {
         // For other integrations, show sample data for now
+        console.log(`📊 Loading sample data for ${integrationType}`);
         data = generateSampleData(integrationType);
       }
       
@@ -75,10 +91,10 @@ const Data = () => {
       
       toast({
         title: "Data Loaded",
-        description: `${integrationType} data has been loaded successfully.`,
+        description: `${integrationType} data has been loaded successfully (${data.length} records).`,
       });
     } catch (error) {
-      console.error('Error loading integration data:', error);
+      console.error('❌ Critical error loading integration data:', error);
       // Fallback to sample data on error
       const fallbackData = generateSampleData(integrationType);
       setIntegrationData(prev => ({
@@ -87,8 +103,8 @@ const Data = () => {
       }));
       
       toast({
-        title: "Using Sample Data",
-        description: "Failed to load live data, showing sample data instead.",
+        title: "Error Loading Data",
+        description: "Failed to load live data, showing sample data instead. Check console for details.",
         variant: "destructive",
       });
     } finally {
@@ -259,19 +275,19 @@ const Data = () => {
                 Back to Integrations
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold text-white">Integration Data</h1>
+            <h1 className="text-3xl font-bold text-white">CRM Data</h1>
           </div>
           
           <Card className="bg-primary-blue border-white/20 text-white text-center py-12" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
             <CardContent>
               <Users className="h-16 w-16 text-white/50 mx-auto mb-4" />
-              <CardTitle className="text-white mb-2">No Integrations Connected</CardTitle>
+              <CardTitle className="text-white mb-2">No CRM Integrations Connected</CardTitle>
               <CardDescription className="text-white/70 mb-6">
-                Connect your CRM integrations to start viewing and managing your data here.
+                Connect your CRM integrations like Apollo, HubSpot, or Salesforce to start viewing and managing your data here.
               </CardDescription>
               <Link to="/integrations">
                 <Button className="bg-white/10 hover:bg-white/20 text-white border-white/20" variant="outline">
-                  Connect Integrations
+                  Connect CRM Integrations
                 </Button>
               </Link>
             </CardContent>
@@ -293,7 +309,7 @@ const Data = () => {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-white">Integration Data</h1>
+              <h1 className="text-3xl font-bold text-white">CRM Data</h1>
               <p className="text-white/70 mt-2">
                 View and manage data from your connected CRM integrations
               </p>
