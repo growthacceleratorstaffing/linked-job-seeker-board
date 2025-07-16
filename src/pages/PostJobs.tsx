@@ -76,15 +76,19 @@ const PostJobs = () => {
       // Then try to load from integration (if available)
       let workableJobs: IntegrationJob[] = [];
       try {
+        console.log('🔄 Automatically loading jobs from Workable...');
         const workableResult = await supabase.functions.invoke('workable-integration', {
           body: { action: 'sync_jobs' }
         });
 
         if (workableResult.data && !workableResult.error) {
           workableJobs = workableResult.data.jobs || [];
+          console.log(`✅ Loaded ${workableJobs.length} jobs from Workable`);
+        } else {
+          console.log('⚠️ Workable sync returned no data or error:', workableResult.error);
         }
       } catch (workableError) {
-        console.log('Workable sync failed, showing local jobs only:', workableError);
+        console.log('⚠️ Workable sync failed, showing local jobs only:', workableError);
       }
 
       // Combine local and workable jobs, avoiding duplicates
@@ -94,6 +98,16 @@ const PostJobs = () => {
       );
       
       const combinedJobs = [...localOnlyJobs, ...workableJobs];
+      
+      // Sort jobs: published first, then by creation date (newest first)
+      combinedJobs.sort((a, b) => {
+        // First sort by status: published jobs come first
+        if (a.state === 'published' && b.state !== 'published') return -1;
+        if (a.state !== 'published' && b.state === 'published') return 1;
+        
+        // Then sort by creation date (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
       
       // Filter jobs for standard members - only show assigned jobs
       let finalJobs = combinedJobs;
@@ -235,9 +249,10 @@ const PostJobs = () => {
   };
 
   useEffect(() => {
+    console.log('📋 Vacancies page mounted - auto-loading jobs...');
     fetchJobs();
     // Trigger auto import after jobs are loaded
-    setTimeout(() => runAutoImport(), 1000);
+    setTimeout(() => runAutoImport(), 2000);
   }, []);
 
   const getStatusBadge = (state: string) => {
