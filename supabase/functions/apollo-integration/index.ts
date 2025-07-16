@@ -103,7 +103,6 @@ serve(async (req) => {
           body: JSON.stringify({
             page: currentPage,
             per_page: 200, // Apollo's maximum per page
-            organization_locations: ["United States"],
             person_seniorities: ["senior", "manager", "director", "vp", "c_level"]
           })
         })
