@@ -16,17 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔧 Creating Supabase client...')
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    console.log('📋 Parsing request body...')
-    const { action } = await req.json()
-    console.log(`🎯 Action requested: ${action}`)
-    
-    // Get user from auth header
+    // Get auth header first
     const authHeader = req.headers.get('Authorization')
     console.log(`🔐 Auth header present: ${!!authHeader}`)
     
@@ -40,6 +30,22 @@ serve(async (req) => {
     
     const token = authHeader.replace('Bearer ', '')
     console.log('👤 Getting user from token...')
+    
+    console.log('🔧 Creating Supabase client...')
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader }
+        }
+      }
+    )
+
+    console.log('📋 Parsing request body...')
+    const { action } = await req.json()
+    console.log(`🎯 Action requested: ${action}`)
+    
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
     
     if (userError || !user) {
