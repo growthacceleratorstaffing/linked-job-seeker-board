@@ -39,6 +39,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             syncWorkableRole(session.user.email);
           }, 0);
         }
+        
+        // Also sync on session recovery/refresh
+        if (event === 'TOKEN_REFRESHED' && session?.user?.email) {
+          setTimeout(() => {
+            syncWorkableRole(session.user.email);
+          }, 0);
+        }
       }
     );
 

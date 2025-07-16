@@ -95,29 +95,52 @@ serve(async (req) => {
       const jobsData = await jobsResponse.json()
       const jobs = jobsData.jobs || []
       
-      // For regular employees, they typically have access to specific jobs
-      // For hiring managers, they might have access to all jobs in their department
-      // For admins, they have access to all jobs
+      console.log(`📊 Found ${jobs.length} jobs in Workable`)
       
+      // Determine job assignments based on role
       if (member.role === 'admin') {
         assignedJobs = ['*'] // All jobs
-      } else if (member.role === 'hiring_manager') {
-        // Hiring managers typically have access to jobs they manage
-        assignedJobs = jobs
-          .filter((job: any) => job.hiring_team?.some((team: any) => team.id === member.id))
-          .map((job: any) => job.shortcode)
+        console.log(`👑 Admin user - assigned to ALL jobs`)
       } else {
-        // Regular employees typically have limited access
-        assignedJobs = jobs
-          .filter((job: any) => 
-            job.hiring_team?.some((team: any) => team.id === member.id) ||
-            job.department === member.department
-          )
-          .map((job: any) => job.shortcode)
+        // For non-admin users, check multiple criteria for job access
+        for (const job of jobs) {
+          let hasAccess = false
+          
+          // Check 1: User is in hiring team
+          if (job.hiring_team?.some((team: any) => team.id === member.id)) {
+            hasAccess = true
+            console.log(`✅ Access to "${job.title}" - member of hiring team`)
+          }
+          
+          // Check 2: Department match
+          if (job.department === member.department) {
+            hasAccess = true
+            console.log(`✅ Access to "${job.title}" - department match`)
+          }
+          
+          // Check 3: User is listed as recruiter or hiring manager for the job
+          if (job.recruiter?.id === member.id || job.hiring_manager?.id === member.id) {
+            hasAccess = true
+            console.log(`✅ Access to "${job.title}" - recruiter/hiring manager`)
+          }
+          
+          // Check 4: User has permissions for the job based on their role
+          if (member.role === 'hiring_manager' || member.role === 'simple') {
+            // For hiring managers and simple users, check if they have any connection to the job
+            if (job.members?.some((m: any) => m.id === member.id)) {
+              hasAccess = true
+              console.log(`✅ Access to "${job.title}" - listed as job member`)
+            }
+          }
+          
+          if (hasAccess) {
+            assignedJobs.push(job.shortcode)
+          }
+        }
       }
     }
 
-    console.log(`📋 Assigned jobs for ${member.name}: ${assignedJobs.length > 0 ? assignedJobs.join(', ') : 'None'}`)
+    console.log(`📋 Final job assignments for ${member.name} (${member.role}): ${assignedJobs.length > 0 ? assignedJobs.join(', ') : 'None'}`)
 
     // Update or create the workable_users record
     const { error: upsertError } = await supabaseClient
