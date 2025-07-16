@@ -10,24 +10,38 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("🚀 Password reset function called");
+  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    console.log("🔧 Initializing Supabase client...");
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    console.log("📝 Parsing request body...");
     const { email } = await req.json();
     console.log(`📧 Password reset requested for: ${email}`);
 
     if (!email) {
+      console.error("❌ No email provided in request");
       return new Response(
         JSON.stringify({ error: "Email is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Check if RESEND_API_KEY is available
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    console.log(`🔑 Resend API key available: ${resendApiKey ? 'Yes' : 'No'}`);
+    
+    if (!resendApiKey) {
+      console.error("❌ RESEND_API_KEY not found in environment");
+      throw new Error("Email service not configured");
     }
 
     // Generate password reset link using Supabase
