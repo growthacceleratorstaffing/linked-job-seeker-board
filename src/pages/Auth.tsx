@@ -197,10 +197,9 @@ const Auth = () => {
     setError('');
 
     try {
-      const redirectUrl = `${window.location.origin}/auth`;
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: redirectUrl,
+      console.log('🚀 Calling custom password reset function...');
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: resetEmail }
       });
 
       if (error) throw error;
@@ -214,7 +213,8 @@ const Auth = () => {
       setResetEmail('');
       
     } catch (error: any) {
-      setError(error.message);
+      console.error('❌ Password reset failed:', error);
+      setError(error.message || 'Failed to send password reset email. Please try again.');
     } finally {
       setIsResettingPassword(false);
     }
