@@ -82,40 +82,64 @@ serve(async (req) => {
     console.log(`🔑 Apollo API key found: ${apiKey.substring(0, 8)}...`)
 
     if (action === 'get_contacts') {
-      console.log('🔍 Fetching contacts from Apollo API...')
+      console.log('🔍 Fetching all contacts from Apollo API...')
       
-      // Call Apollo API to get contacts
-      const apolloResponse = await fetch('https://api.apollo.io/v1/mixed_people/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'X-Api-Key': apiKey,
-        },
-        body: JSON.stringify({
-          page: 1,
-          per_page: 25,
-          organization_locations: ["United States"],
-          person_seniorities: ["senior", "manager", "director", "vp", "c_level"]
+      let allContacts: any[] = []
+      let currentPage = 1
+      let hasMorePages = true
+      const maxPages = 10 // Safety limit to prevent infinite loops
+      
+      while (hasMorePages && currentPage <= maxPages) {
+        console.log(`📄 Fetching page ${currentPage}...`)
+        
+        // Call Apollo API to get contacts for this page
+        const apolloResponse = await fetch('https://api.apollo.io/v1/mixed_people/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'X-Api-Key': apiKey,
+          },
+          body: JSON.stringify({
+            page: currentPage,
+            per_page: 200, // Apollo's maximum per page
+            organization_locations: ["United States"],
+            person_seniorities: ["senior", "manager", "director", "vp", "c_level"]
+          })
         })
-      })
 
-      console.log(`📡 Apollo API response status: ${apolloResponse.status}`)
+        console.log(`📡 Apollo API response status for page ${currentPage}: ${apolloResponse.status}`)
 
-      if (!apolloResponse.ok) {
-        const errorText = await apolloResponse.text()
-        console.error('❌ Apollo API error:', errorText)
-        return new Response(
-          JSON.stringify({ error: `Apollo API error: ${apolloResponse.status} ${errorText}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        if (!apolloResponse.ok) {
+          const errorText = await apolloResponse.text()
+          console.error('❌ Apollo API error:', errorText)
+          return new Response(
+            JSON.stringify({ error: `Apollo API error: ${apolloResponse.status} ${errorText}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        const apolloData = await apolloResponse.json()
+        console.log(`📊 Page ${currentPage}: received ${apolloData.people?.length || 0} contacts`)
+        
+        if (apolloData.people && apolloData.people.length > 0) {
+          allContacts = allContacts.concat(apolloData.people)
+          
+          // Check if there are more pages
+          if (apolloData.people.length < 200) {
+            hasMorePages = false
+          } else {
+            currentPage++
+          }
+        } else {
+          hasMorePages = false
+        }
       }
-
-      const apolloData = await apolloResponse.json()
-      console.log('📊 Apollo API response received, parsing data...')
+      
+      console.log(`📊 Total contacts fetched: ${allContacts.length}`)
       
       // Transform Apollo data to consistent format
-      const contacts = apolloData.people?.map((person: any) => ({
+      const contacts = allContacts.map((person: any) => ({
         id: person.id,
         name: `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Unknown',
         email: person.email || 'No email',
@@ -124,7 +148,7 @@ serve(async (req) => {
         industry: person.organization?.industry || 'No industry',
         location: person.city || 'No location',
         linkedin_url: person.linkedin_url || null
-      })) || []
+      }))
 
       console.log(`✅ Successfully transformed ${contacts.length} contacts from Apollo`)
 
