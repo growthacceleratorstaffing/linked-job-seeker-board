@@ -136,10 +136,11 @@ const Auth = () => {
 
       const redirectUrl = `${window.location.origin}/`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName
           }
@@ -148,10 +149,18 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Account created successfully! 🎉",
-        description: "You can now sign in with your credentials.",
-      });
+      // Check if user needs email confirmation
+      if (data.user && !data.session) {
+        toast({
+          title: "Please check your email! 📧",
+          description: "We sent you a confirmation link. Click it to activate your account, then you can sign in.",
+        });
+      } else {
+        toast({
+          title: "Account created successfully! 🎉",
+          description: "You can now sign in with your credentials.",
+        });
+      }
 
       // Clear the form
       setEmail('');
