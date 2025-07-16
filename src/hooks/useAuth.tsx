@@ -71,27 +71,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log(`🔄 Auto-syncing Workable role for ${email}...`);
       
-      // Use the sync-workable-role function for comprehensive role and job sync
-      const result = await supabase.functions.invoke('sync-workable-role', {
+      // Use the debug function to get detailed information
+      const result = await supabase.functions.invoke('debug-workable-sync', {
         body: { email: email }
       });
 
       if (result.error) {
-        console.log('⚠️ Workable sync failed:', result.error);
+        console.log('⚠️ Workable debug sync failed:', result.error);
         return;
       }
       
       const syncData = result.data;
       if (syncData.success) {
-        console.log(`✅ Auto-synced ${email}:`);
-        console.log(`   Role: ${syncData.role}`);
-        console.log(`   Assigned Jobs: ${syncData.assigned_jobs?.length || 0}`);
-        console.log(`   Permissions:`, syncData.permissions);
+        console.log(`✅ DEBUG: Auto-synced ${email}:`);
+        console.log(`   Member:`, syncData.debug.member);
+        console.log(`   Jobs:`, syncData.debug.jobs);
+        console.log(`   Debug Log:`, syncData.debug.debug_log);
       } else {
-        console.log('⚠️ Workable sync returned no data for:', email);
+        console.log('⚠️ Workable debug sync returned no data for:', email);
       }
     } catch (error) {
-      console.log('⚠️ Background Workable sync failed:', error);
+      console.log('⚠️ Background Workable debug sync failed:', error);
       // Silent fail - don't disrupt user experience
     }
   };
