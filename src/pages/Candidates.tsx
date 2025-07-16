@@ -178,7 +178,7 @@ const Candidates = () => {
       }));
   }, [availableJobs]);
 
-  const handleJobClick = useCallback((jobId: string) => navigate("/jobs"), [navigate]);
+  const handleJobClick = useCallback((jobId: string) => navigate("/post-jobs"), [navigate]);
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
