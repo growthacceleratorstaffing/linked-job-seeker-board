@@ -218,9 +218,9 @@ const Auth = () => {
     try {
       console.log('🚀 Sending password reset email for:', resetEmail);
       
-      // Use our custom edge function to send password reset emails
-      const { error } = await supabase.functions.invoke('send-password-reset', {
-        body: { email: resetEmail }
+      // Use Supabase's built-in password reset (fallback if edge function fails)
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`
       });
 
       if (error) {

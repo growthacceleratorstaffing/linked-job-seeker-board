@@ -68,9 +68,9 @@ serve(async (req) => {
 
     // Send password reset email using Resend
     const emailResponse = await resend.emails.send({
-      from: "Workable Flow Central <onboarding@resend.dev>",
+      from: "Growth Accelerator <onboarding@resend.dev>",
       to: [email],
-      subject: "Reset your password",
+      subject: "Reset your password - Growth Accelerator",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333; text-align: center;">Reset Your Password</h1>
