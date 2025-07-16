@@ -197,46 +197,21 @@ const Auth = () => {
     setError('');
 
     try {
-      console.log('🚀 Attempting password reset for:', resetEmail);
+      console.log('🚀 Sending password reset email for:', resetEmail);
       
-      // Try custom function first, then fallback to Supabase
-      try {
-        const { data, error } = await supabase.functions.invoke('send-password-reset', {
-          body: { email: resetEmail },
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
+      // Use Supabase's built-in password reset method directly
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
 
-        console.log('📦 Custom function response:', { data, error });
-
-        if (error) {
-          console.log('⚠️ Custom function failed, trying Supabase fallback...');
-          throw new Error('Custom function failed');
-        }
-
-        toast({
-          title: "Password reset email sent! 📧",
-          description: "Check your email for instructions to reset your password.",
-        });
-
-      } catch (customError) {
-        console.log('🔄 Using Supabase fallback method...');
-        
-        // Fallback to Supabase's built-in method
-        const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-          redirectTo: `${window.location.origin}/auth`,
-        });
-
-        if (supabaseError) {
-          throw supabaseError;
-        }
-
-        toast({
-          title: "Password reset email sent! 📧",
-          description: "Check your email for instructions to reset your password.",
-        });
+      if (error) {
+        throw error;
       }
+
+      toast({
+        title: "Password reset email sent! 📧",
+        description: "Check your email (including spam folder) for instructions to reset your password.",
+      });
 
       // Clear the form
       setResetEmail('');
