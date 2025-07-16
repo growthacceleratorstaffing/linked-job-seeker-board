@@ -29,7 +29,7 @@ serve(async (req) => {
     console.log('Starting to fetch all jobs from Workable...')
 
     while (hasMore) {
-      const url = `https://${WORKABLE_SUBDOMAIN}.workable.com/spi/v3/jobs?limit=${limit}&offset=${offset}&state=published,draft,archived`
+      const url = `https://${WORKABLE_SUBDOMAIN}/spi/v3/jobs?limit=${limit}&offset=${offset}&state=published,draft,archived`
       
       const response = await fetch(url, {
         headers: {

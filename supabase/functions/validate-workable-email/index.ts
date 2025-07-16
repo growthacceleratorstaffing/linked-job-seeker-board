@@ -53,20 +53,6 @@ serve(async (req) => {
       );
     }
 
-    // For now, let's allow the specific user but require Workable validation for others
-    if (email === 'bartwetselaar.books@gmail.com') {
-      console.log('✅ Test user allowed');
-      return new Response(
-        JSON.stringify({ 
-          isValid: true, 
-          message: 'Test user authorized',
-          role: 'admin',
-          name: 'Test User'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Fetch members from Workable API for other users
     console.log('📡 Fetching Workable members...');
     const membersResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/members`, {
