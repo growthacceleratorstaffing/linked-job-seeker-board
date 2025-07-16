@@ -64,11 +64,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log(`🔄 Auto-syncing Workable role for ${email}...`);
       
-      const result = await supabase.functions.invoke('workable-integration', {
-        body: { 
-          action: 'sync_single_user',
-          email: email 
-        }
+      // Use the sync-workable-role function for comprehensive role and job sync
+      const result = await supabase.functions.invoke('sync-workable-role', {
+        body: { email: email }
       });
 
       if (result.error) {
@@ -78,7 +76,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       const syncData = result.data;
       if (syncData.success) {
-        console.log(`✅ Auto-synced ${email}: ${syncData.user?.workable_role} role with ${syncData.user?.assigned_jobs || 0} jobs`);
+        console.log(`✅ Auto-synced ${email}:`);
+        console.log(`   Role: ${syncData.role}`);
+        console.log(`   Assigned Jobs: ${syncData.assigned_jobs?.length || 0}`);
+        console.log(`   Permissions:`, syncData.permissions);
+      } else {
+        console.log('⚠️ Workable sync returned no data for:', email);
       }
     } catch (error) {
       console.log('⚠️ Background Workable sync failed:', error);

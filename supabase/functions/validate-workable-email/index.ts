@@ -90,13 +90,48 @@ serve(async (req) => {
 
     console.log(`✅ Found member: ${member.name} with role: ${member.role}`);
 
-    // Store/update the member in our database
+    // Fetch assigned jobs for this member
+    const jobsResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/jobs`, {
+      headers: {
+        'Authorization': `Bearer ${workableApiToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let assignedJobs: string[] = [];
+    if (jobsResponse.ok) {
+      const jobsData = await jobsResponse.json();
+      const jobs = jobsData.jobs || [];
+      
+      // Determine job assignments based on role
+      if (member.role === 'admin') {
+        assignedJobs = ['*']; // All jobs
+      } else if (member.role === 'hiring_manager') {
+        // Hiring managers get access to jobs they manage
+        assignedJobs = jobs
+          .filter((job: any) => job.hiring_team?.some((team: any) => team.id === member.id))
+          .map((job: any) => job.shortcode);
+      } else {
+        // Regular employees get access to jobs they're assigned to
+        assignedJobs = jobs
+          .filter((job: any) => 
+            job.hiring_team?.some((team: any) => team.id === member.id) ||
+            job.department === member.department
+          )
+          .map((job: any) => job.shortcode);
+      }
+    }
+
+    console.log(`📋 Job assignments for ${member.name}: ${assignedJobs.length > 0 ? assignedJobs.join(', ') : 'None'}`);
+
+    // Store/update the member in our database with proper role and job assignments
     const { error: upsertError } = await supabase
       .from('workable_users')
       .upsert({
         workable_email: member.email,
         workable_user_id: member.id,
         workable_role: member.role || 'reviewer',
+        assigned_jobs: assignedJobs,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'workable_email'
@@ -111,7 +146,8 @@ serve(async (req) => {
         isValid: true, 
         message: 'Email is authorized for signup',
         role: member.role || 'reviewer',
-        name: member.name
+        name: member.name,
+        assigned_jobs: assignedJobs
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
