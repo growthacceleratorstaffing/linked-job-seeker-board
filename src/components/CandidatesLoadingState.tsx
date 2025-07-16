@@ -7,7 +7,7 @@ const CandidatesLoadingState = () => {
       <CardContent className="pt-6">
         <div className="flex items-center justify-center gap-3 py-8">
           <Loader2 className="w-6 h-6 animate-spin text-secondary-pink" />
-          <p className="text-white">Loading candidates from Workable...</p>
+          <p className="text-white">Loading candidates...</p>
         </div>
       </CardContent>
     </Card>
