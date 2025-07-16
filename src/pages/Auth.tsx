@@ -14,13 +14,20 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isValidatingEmail, setIsValidatingEmail] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [activeTab, setActiveTab] = useState('signin');
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if user is already logged in
+  // Check if user is already logged in or handle password reset
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -29,7 +36,65 @@ const Auth = () => {
       }
     };
     checkUser();
-  }, [navigate]);
+
+    // Listen for auth state changes (including password reset)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+        setActiveTab('reset');
+        toast({
+          title: "Password reset link verified! 🔐",
+          description: "Please enter your new password below.",
+        });
+      } else if (event === 'SIGNED_IN' && session) {
+        navigate('/');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingPassword(true);
+    setError('');
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      setIsUpdatingPassword(false);
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      setIsUpdatingPassword(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password updated successfully! 🎉",
+        description: "You can now sign in with your new password.",
+      });
+
+      // Reset form and state
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsPasswordRecovery(false);
+      setActiveTab('signin');
+      
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
 
   const validateEmail = async (emailToCheck: string) => {
     if (!emailToCheck) return false;
@@ -126,6 +191,35 @@ const Auth = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsResettingPassword(true);
+    setError('');
+
+    try {
+      const redirectUrl = `${window.location.origin}/auth`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password reset email sent! 📧",
+        description: "Check your email for instructions to reset your password.",
+      });
+
+      // Clear the form
+      setResetEmail('');
+      
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-primary-blue flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
       <div className="w-full max-w-md space-y-6">
@@ -150,13 +244,16 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2 bg-slate-700">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-700">
                 <TabsTrigger value="signin" className="text-slate-300 data-[state=active]:text-white data-[state=active]:bg-slate-600">
                   Sign In
                 </TabsTrigger>
                 <TabsTrigger value="signup" className="text-slate-300 data-[state=active]:text-white data-[state=active]:bg-slate-600">
                   Sign Up
+                </TabsTrigger>
+                <TabsTrigger value="reset" className="text-slate-300 data-[state=active]:text-white data-[state=active]:bg-slate-600">
+                  Reset
                 </TabsTrigger>
               </TabsList>
 
@@ -265,6 +362,88 @@ const Auth = () => {
                     )}
                   </Button>
                 </form>
+              </TabsContent>
+
+              <TabsContent value="reset" className="space-y-4">
+                {!isPasswordRecovery ? (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email" className="text-slate-300">Email Address</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="Enter your email address"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                      />
+                      <p className="text-xs text-slate-400">
+                        We'll send you a link to reset your password
+                      </p>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full bg-gradient-to-r from-secondary-pink to-primary-blue hover:from-secondary-pink/80 hover:to-primary-blue/80"
+                      disabled={isResettingPassword}
+                    >
+                      {isResettingPassword ? (
+                        <div className="flex items-center space-x-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Sending reset email...</span>
+                        </div>
+                      ) : (
+                        'Send Reset Email'
+                      )}
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleUpdatePassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password" className="text-slate-300">New Password</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        placeholder="Enter your new password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password" className="text-slate-300">Confirm New Password</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        placeholder="Confirm your new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                      />
+                      <p className="text-xs text-slate-400">
+                        Password must be at least 6 characters
+                      </p>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full bg-gradient-to-r from-secondary-pink to-primary-blue hover:from-secondary-pink/80 hover:to-primary-blue/80"
+                      disabled={isUpdatingPassword}
+                    >
+                      {isUpdatingPassword ? (
+                        <div className="flex items-center space-x-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Updating password...</span>
+                        </div>
+                      ) : (
+                        'Update Password'
+                      )}
+                    </Button>
+                  </form>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>
