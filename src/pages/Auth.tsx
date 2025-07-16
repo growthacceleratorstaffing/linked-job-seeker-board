@@ -178,7 +178,18 @@ const Auth = () => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Sign in error:', error);
+        
+        // Provide more specific error messages
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Incorrect email or password. Please check your credentials and try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and click the confirmation link before signing in.');
+        } else {
+          throw error;
+        }
+      }
 
       toast({
         title: "Welcome back! 🎉",
@@ -187,7 +198,13 @@ const Auth = () => {
 
       navigate('/');
     } catch (error: any) {
+      console.error('Sign in failed:', error);
       setError(error.message);
+      toast({
+        title: "Sign in failed",
+        description: error.message,
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
