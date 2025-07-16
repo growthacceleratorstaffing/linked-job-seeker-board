@@ -149,18 +149,11 @@ const Auth = () => {
 
       if (error) throw error;
 
-      // Check if user needs email confirmation
-      if (data.user && !data.session) {
-        toast({
-          title: "Please check your email! 📧",
-          description: "We sent you a confirmation link. Click it to activate your account, then you can sign in.",
-        });
-      } else {
-        toast({
-          title: "Account created successfully! 🎉",
-          description: "You can now sign in with your credentials.",
-        });
-      }
+      // Since we have auto-confirmation enabled, always show success message
+      toast({
+        title: "Account created successfully! 🎉",
+        description: "You can now sign in with your credentials.",
+      });
 
       // Clear the form
       setEmail('');
