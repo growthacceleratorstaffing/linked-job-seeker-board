@@ -28,31 +28,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
+        console.log(`🔄 Auth state change: ${event}`, session?.user?.email || 'No user');
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
+        
+        // Simple success logging - no complex Workable sync for now
+        if (event === 'SIGNED_IN' && session?.user?.email) {
+          console.log(`✅ User signed in successfully: ${session.user.email}`);
+        }
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session?.user?.email);
+      console.log('🔍 Checking existing session...', session?.user?.email || 'No session');
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
+      
+      // Just log existing session - no complex sync
+      if (session?.user?.email) {
+        console.log(`✅ Existing session found: ${session.user.email}`);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Temporarily disabled Workable sync to isolate auth issues
-  // const syncWorkableRole = async (email: string) => { ... }
-
   const signOut = async () => {
+    console.log('🚪 Signing out...');
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error('Error signing out:', error);
+      console.error('❌ Error signing out:', error);
+    } else {
+      console.log('✅ Signed out successfully');
     }
   };
 
