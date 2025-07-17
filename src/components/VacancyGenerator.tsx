@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import { EmploymentDetailsForm, EmploymentDetails } from './EmploymentDetailsForm';
 
-export const VacancyGenerator = () => {
+export const VacancyGenerator = ({ onJobPublished }: { onJobPublished?: () => void }) => {
   const [prompt, setPrompt] = useState('');
   const [generatedVacancy, setGeneratedVacancy] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -138,6 +138,11 @@ export const VacancyGenerator = () => {
         title: "Job created! 📝",
         description: data?.message || "Your vacancy has been created successfully.",
       });
+
+      // Trigger refresh of job list
+      if (onJobPublished) {
+        onJobPublished();
+      }
 
     } catch (error) {
       console.error('Error publishing job:', error);
