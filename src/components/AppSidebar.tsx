@@ -236,7 +236,7 @@ const AppSidebar = () => {
               <User className="w-5 h-5 text-white" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-white truncate">{userProfile.email}</p>
-                <p className="text-xs text-slate-400">{userProfile.role}</p>
+                <p className="text-xs text-slate-400">{userProfile.role === 'simple' ? 'member' : userProfile.role}</p>
               </div>
             </div>
           </div>
