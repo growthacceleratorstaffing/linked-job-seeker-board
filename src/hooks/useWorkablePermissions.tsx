@@ -63,17 +63,17 @@ export const useWorkablePermissions = () => {
 
       const role = workableUser.workable_role;
 
-      // Check permissions based on role hierarchy
-      // Standard members (simple) have limited access - only assigned jobs/candidates
+      // Check permissions based on role hierarchy following Workable's standard permissions
+      // Standard members (simple) have access to publish jobs, create matches, and view assigned jobs/candidates
       // Hiring managers have more access than simple but less than admin
       const permissions = {
         admin: role === 'admin',
         simple: ['admin', 'simple', 'hiring_manager'].includes(role),
         reviewer: ['admin', 'simple', 'reviewer', 'hiring_manager'].includes(role),
         candidates: ['admin', 'hiring_manager'].includes(role), // Hiring managers can see candidates for their jobs
-        jobs: ['admin', 'simple', 'reviewer', 'hiring_manager'].includes(role), // Hiring managers see assigned jobs
-        create_matches: ['admin', 'hiring_manager'].includes(role), // Hiring managers can create matches
-        publish_jobs: ['admin', 'hiring_manager'].includes(role), // Hiring managers can publish jobs
+        jobs: ['admin', 'simple', 'reviewer', 'hiring_manager'].includes(role), // All roles can see assigned jobs
+        create_matches: ['admin', 'simple', 'hiring_manager'].includes(role), // Members can create matches too
+        publish_jobs: ['admin', 'simple', 'hiring_manager'].includes(role), // Members can publish jobs (Workable standard)
         role
       };
 
