@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Briefcase, RefreshCw, ExternalLink, CheckCircle, Archive } from "lucide-react";
+import { Briefcase, RefreshCw, ExternalLink, CheckCircle, Archive, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,11 +11,13 @@ interface IntegrationJob {
   id: string;
   title: string;
   full_title: string;
-  description: string;
   state: string;
   created_at: string;
   url: string;
-  application_url: string;
+  location?: {
+    location_str: string;
+    workplace_type: string;
+  };
 }
 
 interface JobsOverviewProps {
@@ -23,26 +25,81 @@ interface JobsOverviewProps {
 }
 
 export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) => {
-  const [workableJobs, setWorkableJobs] = useState<IntegrationJob[]>([]);
+  const [jobs, setJobs] = useState<IntegrationJob[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
 
   const syncJobs = async () => {
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { action: 'sync_jobs' }
+      console.log('🔄 Loading jobs from both local and Workable...');
+      
+      // First load from local database (jobs created through the app)
+      const { data: localJobs, error: localError } = await supabase
+        .from('jobs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (localError) {
+        console.error('Error fetching local jobs:', localError);
+      }
+
+      // Transform local jobs to IntegrationJob format
+      const localJobsFormatted: IntegrationJob[] = (localJobs || []).map(job => ({
+        id: job.id,
+        title: job.title,
+        full_title: job.title,
+        state: job.synced_to_jobadder ? 'published' : 'draft',
+        created_at: job.created_at,
+        url: job.jobadder_job_id ? `https://workable.com/jobs/${job.jobadder_job_id}` : '#',
+        location: {
+          location_str: job.location_name || 'Not specified',
+          workplace_type: job.work_type_name || 'onsite'
+        }
+      }));
+
+      // Then try to load from Workable integration
+      let workableJobs: IntegrationJob[] = [];
+      try {
+        const { data, error } = await supabase.functions.invoke('workable-integration', {
+          body: { action: 'sync_jobs' }
+        });
+
+        if (error) throw error;
+        
+        workableJobs = data?.jobs || [];
+        console.log(`✅ Loaded ${workableJobs.length} jobs from Workable`);
+      } catch (workableError) {
+        console.log('⚠️ Workable sync failed, showing local jobs only:', workableError);
+      }
+
+      // Combine local and workable jobs, avoiding duplicates
+      const workableJobIds = new Set(workableJobs.map(job => job.id));
+      const localOnlyJobs = localJobsFormatted.filter(job => 
+        !job.url.includes('workable.com') || !workableJobIds.has(job.id)
+      );
+      
+      const combinedJobs = [...localOnlyJobs, ...workableJobs];
+      
+      // Sort jobs: published first, then by creation date (newest first)
+      combinedJobs.sort((a, b) => {
+        if (a.state === 'published' && b.state !== 'published') return -1;
+        if (a.state !== 'published' && b.state === 'published') return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      if (error) throw error;
-
-      setWorkableJobs(data.jobs || []);
+      setJobs(combinedJobs);
+      
+      toast({
+        title: "Jobs Loaded! 🎉",
+        description: `Found ${combinedJobs.length} jobs (${localOnlyJobs.length} local, ${workableJobs.length} from Workable)`,
+      });
       
     } catch (error) {
       console.error('Error syncing jobs:', error);
       toast({
         title: "Sync failed",
-        description: error instanceof Error ? error.message : "Failed to sync jobs from integration.",
+        description: error instanceof Error ? error.message : "Failed to sync jobs.",
         variant: "destructive",
       });
     } finally {
@@ -60,6 +117,13 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
         <Badge variant="outline" className="border-green-400 text-green-400">
           <CheckCircle className="w-3 h-3 mr-1" />
           Published
+        </Badge>
+      );
+    } else if (state === 'draft') {
+      return (
+        <Badge variant="outline" className="border-blue-400 text-blue-400">
+          <Edit className="w-3 h-3 mr-1" />
+          Draft
         </Badge>
       );
     } else if (state === 'archived') {
@@ -107,28 +171,37 @@ export const JobsOverview: React.FC<JobsOverviewProps> = ({ refreshTrigger }) =>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {workableJobs.length > 0 ? (
+        {jobs.length > 0 ? (
           <div className="space-y-4">
             <p className="text-slate-300 text-sm">
-              {workableJobs.length} total jobs in your integration account
+              {jobs.length} total jobs ({jobs.filter(j => !j.url.includes('workable.com')).length} local, {jobs.filter(j => j.url.includes('workable.com')).length} from Workable)
             </p>
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-600">
                   <TableHead className="text-slate-300">Job Title</TableHead>
                   <TableHead className="text-slate-300">Status</TableHead>
+                  <TableHead className="text-slate-300">Location</TableHead>
                   <TableHead className="text-slate-300">Created</TableHead>
                   <TableHead className="text-slate-300 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {workableJobs.map((job) => (
+                {jobs.map((job) => (
                   <TableRow key={job.id} className="border-slate-600 hover:bg-slate-700">
                     <TableCell className="text-white font-medium">
                       {job.title}
                     </TableCell>
                     <TableCell>
                       {getStatusBadge(job.state)}
+                    </TableCell>
+                    <TableCell className="text-slate-400">
+                      {job.location?.location_str || 'Not specified'}
+                      {job.location?.workplace_type === 'remote' && (
+                        <Badge variant="outline" className="ml-2 text-xs border-blue-400 text-blue-400">
+                          Remote
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-slate-400">
                       {new Date(job.created_at).toLocaleDateString()}
