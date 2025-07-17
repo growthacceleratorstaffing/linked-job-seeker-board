@@ -16,8 +16,8 @@ const Jobs = () => {
       <div className="min-h-screen bg-primary-blue text-white">
         <div className="container mx-auto px-6 py-8 space-y-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Vacancies</h1>
-            <p className="text-slate-300">Create compelling job descriptions with AI and manage your job postings</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Create Vacancies</h1>
+            <p className="text-slate-300">Generate compelling job descriptions with AI and publish new positions</p>
           </div>
 
           <VacancyGenerator onJobPublished={handleJobPublished} />
