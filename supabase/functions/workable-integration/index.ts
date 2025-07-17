@@ -225,13 +225,48 @@ serve(async (req) => {
         console.log('Syncing jobs from Workable...');
         
         const spiBaseUrl = `https://${cleanSubdomain}.workable.com/spi/v3`;
-        const response = await fetch(`${spiBaseUrl}/jobs`, {
-          method: 'GET',
-          headers,
-        });
+        
+        // Add retry logic for rate limiting
+        let retryCount = 0;
+        const maxRetries = 3;
+        let response: Response;
+        
+        while (retryCount < maxRetries) {
+          try {
+            response = await fetch(`${spiBaseUrl}/jobs`, {
+              method: 'GET',
+              headers,
+            });
+
+            if (response.ok) {
+              break; // Success, exit retry loop
+            }
+
+            if (response.status === 429) {
+              // Rate limited - wait before retry
+              const retryAfter = response.headers.get('Retry-After');
+              const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : (retryCount + 1) * 2000;
+              console.log(`⏳ Rate limited, waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              retryCount++;
+              continue;
+            }
+
+            // Other non-ok status
+            throw new Error(`Failed to sync jobs: ${response.status}`);
+            
+          } catch (error) {
+            if (retryCount === maxRetries - 1) {
+              throw error; // Final retry failed
+            }
+            console.log(`⚠️ Request failed, retrying in ${(retryCount + 1) * 2000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+            retryCount++;
+          }
+        }
 
         if (!response.ok) {
-          throw new Error(`Failed to sync jobs: ${response.status}`);
+          throw new Error(`Failed to sync jobs after ${maxRetries} retries: ${response.status}`);
         }
 
         const data = await response.json();
