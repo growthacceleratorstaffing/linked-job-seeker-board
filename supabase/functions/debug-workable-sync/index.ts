@@ -128,92 +128,104 @@ serve(async (req) => {
       assignedJobs = ['*']
       debugLog.push('👑 Admin user - assigned to ALL jobs')
     } else {
-    // For non-admin users, we need to fetch detailed job info to check permissions
-    // The basic jobs endpoint doesn't include hiring team, members, etc.
-    for (const job of jobs) {
-      let hasAccess = false
-      let accessReason = ''
-
+      // For non-admin users, check Workable's permission system properly
+      // Use the members endpoint to get actual job assignments
+      console.log(`🔍 Fetching member permissions for ${member.email}...`)
+      
       try {
-        // Fetch detailed job information
-        console.log(`🔍 Fetching detailed info for job: ${job.title} (${job.shortcode})`)
-        const detailedJobResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/jobs/${job.shortcode}`, {
+        const memberResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/members/${member.id}`, {
           headers: {
             'Authorization': `Bearer ${workableApiToken}`,
             'Content-Type': 'application/json'
           }
         })
 
-        if (detailedJobResponse.ok) {
-          const detailedJob = await detailedJobResponse.json()
-          console.log(`   📊 Detailed job data for ${job.title}:`, JSON.stringify(detailedJob, null, 2))
+        if (memberResponse.ok) {
+          const memberDetails = await memberResponse.json()
+          console.log(`   📊 Member details:`, JSON.stringify(memberDetails, null, 2))
           
-          // Check 1: User is in hiring team
-          if (detailedJob.hiring_team && Array.isArray(detailedJob.hiring_team)) {
-            const isInHiringTeam = detailedJob.hiring_team.some((team: any) => team.id === member.id)
-            if (isInHiringTeam) {
-              hasAccess = true
-              accessReason = 'member of hiring team'
+          // Check member permissions and job assignments
+          if (memberDetails.collaboration_rules && Array.isArray(memberDetails.collaboration_rules)) {
+            memberDetails.collaboration_rules.forEach((rule: any) => {
+              if (rule.job_shortcode) {
+                assignedJobs.push(rule.job_shortcode)
+                debugLog.push(`✅ Job access via collaboration rule: ${rule.job_shortcode}`)
+              }
+            })
+          }
+
+          // For "simple" role, check each job for specific access
+          for (const job of jobs) {
+            let hasAccess = false
+            let accessReason = ''
+
+            try {
+              // Fetch detailed job information
+              const detailedJobResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/jobs/${job.shortcode}`, {
+                headers: {
+                  'Authorization': `Bearer ${workableApiToken}`,
+                  'Content-Type': 'application/json'
+                }
+              })
+
+              if (detailedJobResponse.ok) {
+                const detailedJob = await detailedJobResponse.json()
+                
+                // Check 1: User is in hiring team
+                if (detailedJob.hiring_team && Array.isArray(detailedJob.hiring_team)) {
+                  const isInHiringTeam = detailedJob.hiring_team.some((team: any) => team.id === member.id)
+                  if (isInHiringTeam) {
+                    hasAccess = true
+                    accessReason = 'member of hiring team'
+                  }
+                }
+
+                // Check 2: User is recruiter for the job
+                if (detailedJob.recruiter && detailedJob.recruiter.id === member.id) {
+                  hasAccess = true
+                  accessReason = accessReason ? `${accessReason} + recruiter` : 'recruiter'
+                }
+
+                // Check 3: User is hiring manager for the job
+                if (detailedJob.hiring_manager && detailedJob.hiring_manager.id === member.id) {
+                  hasAccess = true
+                  accessReason = accessReason ? `${accessReason} + hiring manager` : 'hiring manager'
+                }
+
+                // Check 4: User is in job members/collaborators
+                if (detailedJob.members && Array.isArray(detailedJob.members)) {
+                  const isJobMember = detailedJob.members.some((m: any) => m.id === member.id)
+                  if (isJobMember) {
+                    hasAccess = true
+                    accessReason = accessReason ? `${accessReason} + job member` : 'job member'
+                  }
+                }
+
+                if (hasAccess && !assignedJobs.includes(job.shortcode)) {
+                  assignedJobs.push(job.shortcode)
+                }
+              }
+            } catch (error) {
+              console.log(`   ❌ Error fetching job details for ${job.title}: ${error}`)
             }
-          }
 
-          // Check 2: Department match
-          if (detailedJob.department && member.department && detailedJob.department === member.department) {
-            hasAccess = true
-            accessReason = accessReason ? `${accessReason} + department match` : 'department match'
-          }
-
-          // Check 3: User is recruiter for the job
-          if (detailedJob.recruiter && detailedJob.recruiter.id === member.id) {
-            hasAccess = true
-            accessReason = accessReason ? `${accessReason} + recruiter` : 'recruiter'
-          }
-
-          // Check 4: User is hiring manager for the job
-          if (detailedJob.hiring_manager && detailedJob.hiring_manager.id === member.id) {
-            hasAccess = true
-            accessReason = accessReason ? `${accessReason} + hiring manager` : 'hiring manager'
-          }
-
-          // Check 5: User is in job members
-          if (detailedJob.members && Array.isArray(detailedJob.members)) {
-            const isJobMember = detailedJob.members.some((m: any) => m.id === member.id)
-            if (isJobMember) {
-              hasAccess = true
-              accessReason = accessReason ? `${accessReason} + job member` : 'job member'
-            }
-          }
-
-          // Check 6: For "simple" role users, check if they have access based on Workable's permission system
-          // If user is "simple" role and the job is active/published, they might have default access
-          if (member.role === 'simple' && (job.state === 'published' || job.state === 'draft')) {
-            hasAccess = true
-            accessReason = accessReason ? `${accessReason} + simple role default access` : 'simple role default access'
+            debugLog.push(`🔍 Job "${job.title}" (${job.shortcode}): ${hasAccess ? '✅ ACCESS' : '❌ NO ACCESS'} ${accessReason ? `(${accessReason})` : ''}`)
           }
 
         } else {
-          console.log(`   ⚠️ Failed to fetch detailed job info: ${detailedJobResponse.status}`)
-          // Fallback: If we can't get detailed info, give simple users access to published jobs
-          if (member.role === 'simple' && (job.state === 'published' || job.state === 'draft')) {
-            hasAccess = true
-            accessReason = 'simple role fallback access'
+          console.log(`   ⚠️ Failed to fetch member details: ${memberResponse.status}`)
+          // Fallback: check jobs individually
+          for (const job of jobs) {
+            debugLog.push(`🔍 Job "${job.title}" (${job.shortcode}): ❌ NO ACCESS (member details fetch failed)`)
           }
         }
       } catch (error) {
-        console.log(`   ❌ Error fetching job details: ${error}`)
-        // Fallback: If we can't get detailed info, give simple users access to published jobs
-        if (member.role === 'simple' && (job.state === 'published' || job.state === 'draft')) {
-          hasAccess = true
-          accessReason = 'simple role fallback access'
+        console.log(`   ❌ Error fetching member details: ${error}`)
+        // Fallback: check jobs individually
+        for (const job of jobs) {
+          debugLog.push(`🔍 Job "${job.title}" (${job.shortcode}): ❌ NO ACCESS (member details fetch error)`)
         }
       }
-
-      debugLog.push(`🔍 Job "${job.title}" (${job.shortcode}): ${hasAccess ? '✅ ACCESS' : '❌ NO ACCESS'} ${accessReason ? `(${accessReason})` : ''}`)
-
-      if (hasAccess) {
-        assignedJobs.push(job.shortcode)
-      }
-    }
     }
 
     console.log(`📋 DEBUG: Job assignment results:`)

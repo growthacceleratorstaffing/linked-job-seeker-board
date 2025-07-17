@@ -105,79 +105,84 @@ serve(async (req) => {
       
       console.log(`📊 Found ${jobs.length} jobs in Workable`);
       
-      // Determine job assignments based on role
+      // Determine job assignments based on Workable's role system
       if (member.role === 'admin') {
         assignedJobs = ['*']; // All jobs
         console.log(`👑 Admin user - assigned to ALL jobs`);
       } else {
-        // For non-admin users, we need to check job access properly
-        // The basic jobs endpoint doesn't include hiring team, members, etc.
-        for (const job of jobs) {
-          let hasAccess = false;
-          
-          try {
-            // Fetch detailed job information
-            const detailedJobResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/jobs/${job.shortcode}`, {
-              headers: {
-                'Authorization': `Bearer ${workableApiToken}`,
-                'Content-Type': 'application/json'
-              }
-            });
+        // For non-admin users, get actual job assignments from Workable
+        console.log(`🔍 Fetching member permissions for ${member.email}...`);
+        
+        try {
+          const memberResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/members/${member.id}`, {
+            headers: {
+              'Authorization': `Bearer ${workableApiToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
 
-            if (detailedJobResponse.ok) {
-              const detailedJob = await detailedJobResponse.json();
-              
-              // Check 1: User is in hiring team
-              if (detailedJob.hiring_team?.some((team: any) => team.id === member.id)) {
-                hasAccess = true;
-                console.log(`✅ Access to "${job.title}" - member of hiring team`);
-              }
-              
-              // Check 2: Department match
-              if (detailedJob.department === member.department) {
-                hasAccess = true;
-                console.log(`✅ Access to "${job.title}" - department match`);
-              }
-              
-              // Check 3: User is listed as recruiter or hiring manager for the job
-              if (detailedJob.recruiter?.id === member.id || detailedJob.hiring_manager?.id === member.id) {
-                hasAccess = true;
-                console.log(`✅ Access to "${job.title}" - recruiter/hiring manager`);
-              }
-              
-              // Check 4: User is in job members
-              if (detailedJob.members?.some((m: any) => m.id === member.id)) {
-                hasAccess = true;
-                console.log(`✅ Access to "${job.title}" - listed as job member`);
-              }
+          if (memberResponse.ok) {
+            const memberDetails = await memberResponse.json();
+            console.log(`📊 Member details:`, JSON.stringify(memberDetails, null, 2));
+            
+            // Check member collaboration rules and job assignments
+            if (memberDetails.collaboration_rules && Array.isArray(memberDetails.collaboration_rules)) {
+              memberDetails.collaboration_rules.forEach((rule: any) => {
+                if (rule.job_shortcode) {
+                  assignedJobs.push(rule.job_shortcode);
+                  console.log(`✅ Job access via collaboration rule: ${rule.job_shortcode}`);
+                }
+              });
+            }
 
-              // Check 5: For "simple" role users, check if they have access based on Workable's permission system
-              // If user is "simple" role and the job is active/published, they might have default access
-              if (member.role === 'simple' && (job.state === 'published' || job.state === 'draft')) {
-                hasAccess = true;
-                console.log(`✅ Access to "${job.title}" - simple role default access`);
-              }
+            // Check each job for specific access permissions
+            for (const job of jobs) {
+              let hasAccess = false;
+              
+              try {
+                // Fetch detailed job information
+                const detailedJobResponse = await fetch(`https://${cleanSubdomain}.workable.com/spi/v3/jobs/${job.shortcode}`, {
+                  headers: {
+                    'Authorization': `Bearer ${workableApiToken}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
 
-            } else {
-              console.log(`⚠️ Failed to fetch detailed job info for ${job.title}: ${detailedJobResponse.status}`);
-              // Fallback: If we can't get detailed info, give simple users access to published jobs
-              if (member.role === 'simple' && (job.state === 'published' || job.state === 'draft')) {
-                hasAccess = true;
-                console.log(`✅ Access to "${job.title}" - simple role fallback access`);
+                if (detailedJobResponse.ok) {
+                  const detailedJob = await detailedJobResponse.json();
+                  
+                  // Check 1: User is in hiring team
+                  if (detailedJob.hiring_team?.some((team: any) => team.id === member.id)) {
+                    hasAccess = true;
+                    console.log(`✅ Access to "${job.title}" - member of hiring team`);
+                  }
+                  
+                  // Check 2: User is listed as recruiter or hiring manager for the job
+                  if (detailedJob.recruiter?.id === member.id || detailedJob.hiring_manager?.id === member.id) {
+                    hasAccess = true;
+                    console.log(`✅ Access to "${job.title}" - recruiter/hiring manager`);
+                  }
+                  
+                  // Check 3: User is in job members/collaborators
+                  if (detailedJob.members?.some((m: any) => m.id === member.id)) {
+                    hasAccess = true;
+                    console.log(`✅ Access to "${job.title}" - listed as job member`);
+                  }
+
+                  if (hasAccess && !assignedJobs.includes(job.shortcode)) {
+                    assignedJobs.push(job.shortcode);
+                  }
+                }
+              } catch (error) {
+                console.log(`❌ Error fetching job details for ${job.title}: ${error}`);
               }
             }
-          } catch (error) {
-            console.log(`❌ Error fetching job details for ${job.title}: ${error}`);
-            // Fallback: If we can't get detailed info, give simple users access to published jobs
-            if (member.role === 'simple' && (job.state === 'published' || job.state === 'draft')) {
-              hasAccess = true;
-              console.log(`✅ Access to "${job.title}" - simple role fallback access`);
-            }
+
+          } else {
+            console.log(`⚠️ Failed to fetch member details: ${memberResponse.status}`);
           }
-          
-          if (hasAccess) {
-            assignedJobs.push(job.shortcode);
-          }
+        } catch (error) {
+          console.log(`❌ Error fetching member details: ${error}`);
         }
       }
     }
