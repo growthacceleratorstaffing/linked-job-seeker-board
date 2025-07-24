@@ -33,16 +33,14 @@ const Data = () => {
       
       if (error) throw error;
       
-      // Filter out workable - only show CRM integrations
-      const crmIntegrations = (data || []).filter(integration => 
-        integration.integration_type !== 'workable'
-      );
+      // Include all integrations (CRM and ATS)
+      const allIntegrations = data || [];
       
-      console.log('🔍 Found CRM integrations:', crmIntegrations.map(i => i.integration_type));
-      setConnectedIntegrations(crmIntegrations);
+      console.log('🔍 Found integrations:', allIntegrations.map(i => i.integration_type));
+      setConnectedIntegrations(allIntegrations);
       
-      // Load data for each connected CRM integration
-      crmIntegrations.forEach(integration => {
+      // Load data for each connected integration
+      allIntegrations.forEach(integration => {
         console.log(`📊 Loading data for ${integration.integration_type}...`);
         loadIntegrationData(integration.integration_type);
       });
@@ -75,6 +73,68 @@ const Data = () => {
           }
         } else {
           console.error('❌ Apollo API call failed:', error);
+          console.log('🔄 Falling back to sample data...');
+          data = generateSampleData(integrationType);
+        }
+      } else if (integrationType === 'jazzhr') {
+        // Load JazzHR data via edge function
+        console.log('🎵 Calling JazzHR integration edge function...');
+        
+        const { data: jazzhrResult, error } = await supabase.functions.invoke('jazzhr-integration', {
+          body: { action: 'get_candidates' }
+        });
+        
+        console.log('🔍 JazzHR function response:', { jazzhrResult, error });
+        
+        if (jazzhrResult && !error) {
+          data = jazzhrResult.candidates || [];
+          console.log(`✅ Successfully loaded ${data.length} JazzHR candidates`);
+        } else {
+          console.error('❌ JazzHR API call failed:', error);
+          console.log('🔄 Falling back to sample data...');
+          data = generateSampleData(integrationType);
+        }
+      } else if (integrationType === 'jobadder') {
+        // Load JobAdder data via edge function
+        console.log('➕ Calling JobAdder integration edge function...');
+        
+        const { data: jobadderResult, error } = await supabase.functions.invoke('jobadder-integration', {
+          body: { action: 'get_candidates' }
+        });
+        
+        console.log('🔍 JobAdder function response:', { jobadderResult, error });
+        
+        if (jobadderResult && !error) {
+          data = jobadderResult.candidates || [];
+          console.log(`✅ Successfully loaded ${data.length} JobAdder candidates`);
+        } else {
+          console.error('❌ JobAdder API call failed:', error);
+          console.log('🔄 Falling back to sample data...');
+          data = generateSampleData(integrationType);
+        }
+      } else if (integrationType === 'workable') {
+        // Load Workable data using existing candidates function
+        console.log('⚡ Calling Workable candidates function...');
+        
+        const { data: workableResult, error } = await supabase.functions.invoke('workable-candidates');
+        
+        console.log('🔍 Workable function response:', { workableResult, error });
+        
+        if (workableResult && !error) {
+          // Transform Workable data to consistent format
+          data = (Array.isArray(workableResult) ? workableResult : []).map((candidate: any) => ({
+            id: candidate.id,
+            name: candidate.name || 'Unknown',
+            email: candidate.email || 'No email',
+            phone: candidate.phone || 'No phone',
+            status: candidate.stage || 'Unknown',
+            job_title: candidate.job?.title || 'No job title',
+            applied_date: candidate.created_at || null,
+            source: 'Workable'
+          }));
+          console.log(`✅ Successfully loaded ${data.length} Workable candidates`);
+        } else {
+          console.error('❌ Workable API call failed:', error);
           console.log('🔄 Falling back to sample data...');
           data = generateSampleData(integrationType);
         }
@@ -135,6 +195,21 @@ const Data = () => {
           { id: 1, name: "Apollo Contact", email: "contact@apollo.com", title: "Sales Manager", company: "Apollo Corp", industry: "Technology" },
           { id: 2, name: "Demo User", email: "demo@example.com", title: "Marketing Director", company: "Demo Inc", industry: "Marketing" },
         ];
+      case 'jazzhr':
+        return [
+          { id: 1, name: "Jazz Candidate", email: "candidate@example.com", phone: "+1234567890", status: "Applied", job_title: "Software Engineer", applied_date: "2024-01-15", source: "JazzHR" },
+          { id: 2, name: "HR Demo", email: "demo@jazzhr.com", phone: "+1234567891", status: "Screening", job_title: "Product Manager", applied_date: "2024-01-14", source: "JazzHR" },
+        ];
+      case 'jobadder':
+        return [
+          { id: 1, name: "John Developer", email: "john@example.com", phone: "+1234567890", status: "Active", job_title: "Software Engineer", applied_date: "2024-01-15", source: "JobAdder" },
+          { id: 2, name: "Jane Designer", email: "jane@example.com", phone: "+1234567891", status: "Interviewing", job_title: "UI/UX Designer", applied_date: "2024-01-14", source: "JobAdder" },
+        ];
+      case 'workable':
+        return [
+          { id: 1, name: "Workable Candidate", email: "candidate@workable.com", phone: "+1234567890", status: "Applied", job_title: "Full Stack Developer", applied_date: "2024-01-15", source: "Workable" },
+          { id: 2, name: "ATS Demo", email: "demo@workable.com", phone: "+1234567891", status: "Interview", job_title: "Data Scientist", applied_date: "2024-01-14", source: "Workable" },
+        ];
       default:
         return [
           { id: 1, name: "Sample Contact", email: "contact@example.com", status: "Active", company: "Example Corp", date: "2024-01-15" }
@@ -179,6 +254,9 @@ const Data = () => {
       case 'apollo': return '🚀';
       case 'zoho crm': return '🏢';
       case 'linkedin sales navigator': return '💼';
+      case 'jazzhr': return '🎵';
+      case 'jobadder': return '➕';
+      case 'workable': return '⚡';
       default: return '📊';
     }
   };
@@ -275,19 +353,19 @@ const Data = () => {
                 Back to Integrations
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold text-white">CRM Data</h1>
+            <h1 className="text-3xl font-bold text-white">CRM/ATS Data</h1>
           </div>
           
           <Card className="bg-primary-blue border-white/20 text-white text-center py-12" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
             <CardContent>
               <Users className="h-16 w-16 text-white/50 mx-auto mb-4" />
-              <CardTitle className="text-white mb-2">No CRM Integrations Connected</CardTitle>
+              <CardTitle className="text-white mb-2">No Integrations Connected</CardTitle>
               <CardDescription className="text-white/70 mb-6">
-                Connect your CRM integrations like Apollo, HubSpot, or Salesforce to start viewing and managing your data here.
+                Connect your CRM and ATS integrations like Apollo, HubSpot, Workable, or JazzHR to start viewing and managing your data here.
               </CardDescription>
               <Link to="/integrations">
                 <Button className="bg-white/10 hover:bg-white/20 text-white border-white/20" variant="outline">
-                  Connect CRM Integrations
+                  Connect Integrations
                 </Button>
               </Link>
             </CardContent>
@@ -309,9 +387,9 @@ const Data = () => {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-white">CRM Data</h1>
+              <h1 className="text-3xl font-bold text-white">CRM/ATS Data</h1>
               <p className="text-white/70 mt-2">
-                View and manage data from your connected CRM integrations
+                View and manage data from your connected CRM and ATS integrations
               </p>
             </div>
           </div>
