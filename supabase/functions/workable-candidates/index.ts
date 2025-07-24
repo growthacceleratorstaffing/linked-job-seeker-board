@@ -30,7 +30,8 @@ serve(async (req) => {
     console.log('Starting to fetch all candidates from Workable...')
 
     while (hasMore) {
-      const url = `https://${WORKABLE_SUBDOMAIN}.workable.com/spi/v3/candidates?limit=${limit}&page=${page}`
+      // Include candidates from archived jobs using 'include_archived_jobs=true'
+      const url = `https://${WORKABLE_SUBDOMAIN}.workable.com/spi/v3/candidates?limit=${limit}&page=${page}&include_archived_jobs=true`
       
       console.log(`Fetching page ${page} from: ${url}`)
       
