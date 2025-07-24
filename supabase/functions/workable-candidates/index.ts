@@ -23,13 +23,16 @@ serve(async (req) => {
 
     let allCandidates = []
     let limit = 100
-    let offset = 0
+    let page = 1
     let hasMore = true
+    let totalFetched = 0
 
     console.log('Starting to fetch all candidates from Workable...')
 
     while (hasMore) {
-      const url = `https://${WORKABLE_SUBDOMAIN}.workable.com/spi/v3/candidates?limit=${limit}&offset=${offset}`
+      const url = `https://${WORKABLE_SUBDOMAIN}.workable.com/spi/v3/candidates?limit=${limit}&page=${page}`
+      
+      console.log(`Fetching page ${page} from: ${url}`)
       
       const response = await fetch(url, {
         headers: {
@@ -38,30 +41,45 @@ serve(async (req) => {
         },
       })
 
+      console.log(`Page ${page} response status: ${response.status}`)
+
       if (!response.ok) {
-        console.error('Workable API error:', response.status, response.statusText)
         if (response.status === 429) {
+          const responseText = await response.text()
+          console.error(`Workable API error on page ${page}: ${response.status} ${response.statusText} ${responseText}`)
+          
           const retryAfter = response.headers.get('Retry-After')
-          console.log(`Rate limited. Retry after: ${retryAfter} seconds`)
-          await new Promise(resolve => setTimeout(resolve, (parseInt(retryAfter) || 60) * 1000))
-          continue
+          const waitTime = retryAfter ? parseInt(retryAfter) : 60
+          console.log(`Rate limit hit on page ${page}, waiting ${waitTime} seconds...`)
+          
+          await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
+          continue // Retry the same page
         }
+        
+        console.error(`Workable API error on page ${page}:`, response.status, response.statusText)
         throw new Error(`Workable API error: ${response.status}`)
       }
 
       const data = await response.json()
-      console.log(`Fetched ${data.candidates?.length || 0} candidates (offset: ${offset})`)
+      const candidatesCount = data.candidates?.length || 0
+      console.log(`Page ${page} fetched ${candidatesCount} candidates`)
 
-      if (data.candidates && data.candidates.length > 0) {
+      if (data.candidates && candidatesCount > 0) {
         allCandidates = allCandidates.concat(data.candidates)
-        offset += limit
-        hasMore = data.candidates.length === limit
+        totalFetched += candidatesCount
+        console.log(`Running total candidates: ${totalFetched}`)
+        
+        // Move to next page
+        page++
+        hasMore = candidatesCount === limit // Continue if we got a full page
       } else {
         hasMore = false
       }
 
-      // Add a small delay to avoid overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Add delay between requests to avoid overwhelming the API
+      if (hasMore) {
+        await new Promise(resolve => setTimeout(resolve, 200)) // 200ms delay
+      }
     }
 
     console.log(`Total candidates fetched: ${allCandidates.length}`)
