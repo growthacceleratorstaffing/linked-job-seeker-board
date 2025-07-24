@@ -66,38 +66,27 @@ const Candidates = () => {
   });
 
   const { data: allCandidates = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['workable-integration-candidates'],
+    queryKey: ['workable-candidates'],
     queryFn: async (): Promise<WorkableCandidate[]> => {
-      console.log('Fetching all candidates from Workable...');
+      console.log('Fetching candidates from Workable...');
       
       try {
-        // Use the same working approach as other pages
-        const { data, error: integrationError } = await supabase.functions.invoke('workable-integration-enhanced', {
-          body: { 
-            action: 'load_all_candidates_enhanced',
-            includeEnrichment: true,
-            exportFormat: 'json'
-          }
-        });
+        // First try the fast workable-candidates function
+        const { data, error: workableError } = await supabase.functions.invoke('workable-candidates');
         
-        if (integrationError) {
-          console.error('Workable integration error:', integrationError);
-          throw integrationError;
-        }
-        
-        if (data?.candidates && Array.isArray(data.candidates)) {
-          console.log('Successfully fetched candidates from Workable integration:', data.candidates.length);
-          return data.candidates.map((candidate: any) => ({
-            id: candidate.id || candidate.workable_candidate_id,
+        if (!workableError && data && Array.isArray(data)) {
+          console.log('Successfully fetched candidates from Workable:', data.length);
+          return data.map((candidate: any) => ({
+            id: candidate.id,
             name: candidate.name,
-            firstname: candidate.name?.split(' ')[0] || '',
-            lastname: candidate.name?.split(' ').slice(1).join(' ') || '',
+            firstname: candidate.firstname || candidate.name?.split(' ')[0] || '',
+            lastname: candidate.lastname || candidate.name?.split(' ').slice(1).join(' ') || '',
             email: candidate.email,
             phone: candidate.phone || '',
-            stage: candidate.stage || candidate.interview_stage || 'applied',
+            stage: candidate.stage || 'applied',
             job: {
               id: candidate.job?.id || 'unknown',
-              title: candidate.job?.title || candidate.current_position || 'Unknown Position',
+              title: candidate.job?.title || 'Unknown Position',
               shortcode: candidate.job?.shortcode || 'unknown'
             },
             created_at: candidate.created_at,
@@ -105,8 +94,8 @@ const Candidates = () => {
           }));
         }
         
-        // If integration doesn't work, get from database without restrictive filtering
-        console.log('Integration returned no candidates, trying database...');
+        // Fallback to database if Workable API fails
+        console.log('Workable API failed, falling back to database...');
         const { data: dbCandidates, error: dbError } = await supabase
           .from('candidates')
           .select('*')
@@ -119,14 +108,26 @@ const Candidates = () => {
         
       } catch (error) {
         console.error('Failed to fetch candidates:', error);
-        throw new Error('Failed to fetch candidates from Workable');
+        
+        // Final fallback to database
+        try {
+          const { data: dbCandidates, error: dbError } = await supabase
+            .from('candidates')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (dbError) throw dbError;
+          return (dbCandidates || []).map(transformDbCandidate);
+        } catch (dbError) {
+          throw new Error('Failed to fetch candidates from both Workable and database');
+        }
       }
     },
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 15 * 60 * 1000, // 15 minutes
+    staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
-    retry: 1,
-    retryDelay: 10000,
+    retry: 2,
+    retryDelay: 5000, // 5 seconds
   });
 
   const { data: allJobs = [] } = useQuery({
