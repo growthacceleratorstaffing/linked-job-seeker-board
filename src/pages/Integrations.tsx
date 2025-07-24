@@ -18,6 +18,7 @@ const popularCRMs = [
     description: "Comprehensive CRM and marketing platform",
     logo: "🔶",
     status: "available",
+    type: "crm",
     fields: [
       { name: "api_key", label: "API Key", type: "password", placeholder: "pat-na1-..." },
       { name: "portal_id", label: "Portal ID", type: "text", placeholder: "12345678" }
@@ -28,6 +29,7 @@ const popularCRMs = [
     description: "World's leading CRM platform",
     logo: "☁️",
     status: "available",
+    type: "crm",
     fields: [
       { name: "username", label: "Username", type: "text", placeholder: "user@company.com" },
       { name: "password", label: "Password", type: "password", placeholder: "Password" },
@@ -39,6 +41,7 @@ const popularCRMs = [
     description: "Professional networking and sales tool",
     logo: "💼",
     status: "available",
+    type: "crm",
     fields: [
       { name: "access_token", label: "Access Token", type: "password", placeholder: "AQV..." }
     ]
@@ -48,6 +51,7 @@ const popularCRMs = [
     description: "Sales intelligence and engagement platform",
     logo: "🚀",
     status: "available",
+    type: "crm",
     fields: [
       { name: "api_key", label: "API Key", type: "password", placeholder: "api_key_..." }
     ]
@@ -57,6 +61,7 @@ const popularCRMs = [
     description: "Sales-focused CRM software",
     logo: "📊",
     status: "available",
+    type: "crm",
     fields: [
       { name: "api_token", label: "API Token", type: "password", placeholder: "abc123..." },
       { name: "company_domain", label: "Company Domain", type: "text", placeholder: "yourcompany" }
@@ -67,10 +72,45 @@ const popularCRMs = [
     description: "Complete customer relationship management",
     logo: "🏢",
     status: "available",
+    type: "crm",
     fields: [
       { name: "client_id", label: "Client ID", type: "text", placeholder: "1000.ABC123..." },
       { name: "client_secret", label: "Client Secret", type: "password", placeholder: "abc123..." },
       { name: "refresh_token", label: "Refresh Token", type: "password", placeholder: "1000.abc123..." }
+    ]
+  },
+  {
+    name: "JazzHR",
+    description: "Modern applicant tracking system for growing companies",
+    logo: "🎵",
+    status: "available",
+    type: "ats",
+    fields: [
+      { name: "api_key", label: "API Key", type: "password", placeholder: "your_api_key..." },
+      { name: "username", label: "Username", type: "text", placeholder: "your_username" }
+    ]
+  },
+  {
+    name: "JobAdder",
+    description: "Cloud-based recruitment software for teams",
+    logo: "➕",
+    status: "available",
+    type: "ats",
+    fields: [
+      { name: "client_id", label: "Client ID", type: "text", placeholder: "your_client_id..." },
+      { name: "client_secret", label: "Client Secret", type: "password", placeholder: "your_client_secret..." },
+      { name: "redirect_uri", label: "Redirect URI", type: "text", placeholder: "https://your-app.com/callback" }
+    ]
+  },
+  {
+    name: "Workable",
+    description: "All-in-one recruiting software for modern teams",
+    logo: "⚡",
+    status: "connected",
+    type: "ats",
+    fields: [
+      { name: "subdomain", label: "Subdomain", type: "text", placeholder: "yourcompany" },
+      { name: "api_token", label: "API Token", type: "password", placeholder: "your_api_token..." }
     ]
   }
 ];
@@ -234,7 +274,7 @@ const Integrations = () => {
           <div>
             <h1 className="text-3xl font-bold">Integrations</h1>
             <p className="text-muted-foreground mt-2">
-              Connect your CRM and sync candidate data seamlessly
+              Connect your CRM and ATS systems to sync candidate data seamlessly
             </p>
           </div>
           <Link to="/data">
@@ -246,7 +286,7 @@ const Integrations = () => {
 
         <Tabs defaultValue="crm" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="crm">CRM Integrations</TabsTrigger>
+            <TabsTrigger value="crm">CRM/ATS Integrations</TabsTrigger>
             <TabsTrigger value="custom">Custom Webhooks</TabsTrigger>
           </TabsList>
 
@@ -303,7 +343,7 @@ const Integrations = () => {
               <CardHeader>
                 <CardTitle className="text-white">Integration Benefits</CardTitle>
                 <CardDescription className="text-white/80">
-                  What you get when you connect your CRM
+                  What you get when you connect your CRM/ATS systems
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -420,7 +460,7 @@ const Integrations = () => {
             <DialogHeader>
               <DialogTitle>Connect {selectedCRM?.name}</DialogTitle>
               <DialogDescription>
-                Enter your {selectedCRM?.name} credentials to connect your CRM
+                Enter your {selectedCRM?.name} credentials to connect your {selectedCRM?.type?.toUpperCase() || 'CRM/ATS'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">

@@ -199,7 +199,7 @@ const AppSidebar = () => {
         {filteredCrmItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-              CRM
+              CRM/ATS
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
