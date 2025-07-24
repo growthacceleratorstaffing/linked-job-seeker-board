@@ -64,9 +64,9 @@ const PostJobs = () => {
         id: job.id,
         title: job.title,
         full_title: job.title,
-        state: job.synced_to_jobadder ? 'published' : 'draft',
+        state: 'draft', // Local jobs are drafts until published to Workable
         created_at: job.created_at,
-        url: job.jobadder_job_id ? `https://workable.com/jobs/${job.jobadder_job_id}` : '#',
+        url: '#',
         location: {
           location_str: job.location_name || 'Not specified',
           workplace_type: job.work_type_name || 'onsite'
