@@ -61,15 +61,17 @@ Make it engaging, professional, and tailored to the specific role described. Use
         messages: [
           {
             role: 'system',
-            content: systemPrompt
+            content: `Create professional job vacancies. Use: Job Title, About Role, Key Responsibilities (3-5 bullets), Requirements (3-5 bullets), What We Offer, Call to action. Use markdown formatting. Be concise.` // Shortened system prompt
           },
           {
             role: 'user',
-            content: `Create a job vacancy for: ${prompt}`
+            content: `Create job vacancy: ${prompt}` // Shortened user prompt
           }
         ],
-        temperature: 0.7,
-        max_tokens: 1500,
+        temperature: 0.6, // Slightly lower for more consistent output
+        max_tokens: 1000, // Reduced from 1500 to 1000 tokens
+        presence_penalty: 0.1,
+        frequency_penalty: 0.1,
       }),
     });
 

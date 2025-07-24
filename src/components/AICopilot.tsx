@@ -34,6 +34,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
   const [messages, setMessages] = useState<Message[]>([initialGreeting]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [lastMessageTime, setLastMessageTime] = useState(0);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +100,18 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
     const message = messageText || inputMessage;
     if (!message.trim()) return;
 
+    // Prevent rapid-fire messages to reduce costs
+    const now = Date.now();
+    if (now - lastMessageTime < 2000) {
+      toast({
+        title: "Please wait",
+        description: "Wait a moment between messages to ensure quality responses.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLastMessageTime(now);
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -111,8 +124,8 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
     setIsTyping(true);
 
     try {
-      // Prepare conversation history for context
-      const conversationHistory = messages.map(msg => ({
+      // Limit conversation history to last 6 messages to reduce token costs
+      const conversationHistory = messages.slice(-6).map(msg => ({
         role: msg.role,
         content: msg.content
       }));

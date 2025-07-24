@@ -74,9 +74,11 @@ Be conversational, helpful, and professional. Keep responses concise and to the 
         'api-key': azureApiKey,
       },
       body: JSON.stringify({
-        messages: messages,
+        messages: messages.slice(-10), // Limit conversation history to last 10 messages to reduce tokens
         temperature: 0.7,
-        max_tokens: 800,
+        max_tokens: 500, // Reduced from 800 to 500 tokens
+        presence_penalty: 0.1, // Small penalty to reduce repetition
+        frequency_penalty: 0.1, // Small penalty to reduce repetition
       }),
     });
 
