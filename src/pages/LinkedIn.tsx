@@ -78,7 +78,7 @@ const LinkedInIntegration: React.FC = () => {
       const { data: tokenData, error: tokenError } = await supabase
         .from('linkedin_user_tokens')
         .select('*')
-        .single();
+        .maybeSingle();
 
       console.log('Token query result:', { tokenData, tokenError });
 
