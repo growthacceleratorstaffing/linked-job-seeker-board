@@ -290,7 +290,8 @@ const PostJobs = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-6 py-8">
+      <div className="min-h-screen bg-primary-blue text-white">
+        <div className="container mx-auto px-6 py-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Jobs Overview</h1>
             <p className="text-slate-300">View and manage all your job postings from local and external platforms</p>
@@ -540,6 +541,7 @@ const PostJobs = () => {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
     </Layout>
   );
 };
