@@ -25,6 +25,7 @@ import Integrations from "./pages/Integrations";
 import LinkedIn from "./pages/LinkedIn";
 import LinkedInCallback from "./pages/LinkedInCallback";
 import Data from "./pages/Data";
+import Advertising from "./pages/Advertising";
 
 import NotFound from "./pages/NotFound";
 
@@ -94,6 +95,11 @@ const App = () => (
             <Route path="/linkedin" element={
               <ProtectedRoute>
                 <LinkedIn />
+              </ProtectedRoute>
+            } />
+            <Route path="/advertising" element={
+              <ProtectedRoute>
+                <Advertising />
               </ProtectedRoute>
             } />
             <Route path="/linkedin-callback" element={<LinkedInCallback />} />
