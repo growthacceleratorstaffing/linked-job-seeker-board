@@ -63,19 +63,24 @@ const LinkedInIntegration: React.FC = () => {
   
   // Initialize data on component mount
   useEffect(() => {
+    console.log('LinkedIn component mounted, checking status...');
     checkConnectionStatus();
     checkCredentialsStatus();
   }, []);
 
   // Connection and authentication functions
   const checkConnectionStatus = async () => {
+    console.log('Starting connection status check...');
     setIsLoading(true);
     try {
       // Check if user has LinkedIn tokens
+      console.log('Checking for LinkedIn tokens...');
       const { data: tokenData, error: tokenError } = await supabase
         .from('linkedin_user_tokens')
         .select('*')
         .single();
+
+      console.log('Token query result:', { tokenData, tokenError });
 
       if (tokenError && tokenError.code !== 'PGRST116') {
         throw tokenError;
