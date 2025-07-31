@@ -75,7 +75,16 @@ const LinkedInIntegration: React.FC = () => {
     console.log('Starting connection status check...');
     setIsLoading(true);
     try {
-      // Check if user has LinkedIn tokens
+      // First check credentials status to see if global token exists
+      const { data: credentialsData, error: credentialsError } = await supabase.functions.invoke('linkedin-integration', {
+        body: { action: 'getCredentialsStatus' }
+      });
+
+      if (credentialsError) {
+        throw credentialsError;
+      }
+
+      // Check if user has LinkedIn tokens in database
       console.log('Checking for LinkedIn tokens...');
       const { data: tokenData, error: tokenError } = await supabase
         .from('linkedin_user_tokens')
@@ -88,8 +97,9 @@ const LinkedInIntegration: React.FC = () => {
         throw tokenError;
       }
 
-      if (tokenData) {
-        // Test connection with the token
+      // If we have credentials (including global token) or user token, test the connection
+      if (credentialsData?.accessToken || tokenData) {
+        // Test connection with available token
         const { data: testData, error: testError } = await supabase.functions.invoke('linkedin-integration', {
           body: { action: 'testConnection' }
         });
@@ -106,9 +116,14 @@ const LinkedInIntegration: React.FC = () => {
 
           setConnectionStatus({
             connected: true,
-            token: tokenData,
+            token: tokenData || { 
+              id: 'global-token',
+              access_token: 'configured-via-secrets',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            },
             profile: profileData?.profile,
-            scopes: tokenData.scope?.split(' ') || []
+            scopes: tokenData?.scope?.split(' ') || ['configured-via-secrets']
           });
         } else {
           setConnectionStatus({
