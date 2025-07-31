@@ -327,30 +327,39 @@ const LinkedInIntegration: React.FC = () => {
                     <p className="text-blue-200 text-sm mb-4">
                       LinkedIn access tokens expire after 60 days. If you experience connection issues, reconnect your account.
                     </p>
-                    <div className="flex gap-3">
-                      <Button 
-                        onClick={testConnection} 
-                        variant="outline" 
-                        size="sm"
-                        disabled={!connectionStatus.connected || isTesting}
-                        className="border-blue-500 text-blue-200 hover:bg-blue-700/50"
-                      >
-                        {isTesting ? (
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                        )}
-                        Test Connection
-                      </Button>
-                      <Button 
-                        onClick={refreshConnection} 
-                        variant="outline" 
-                        size="sm"
-                        className="border-blue-500 text-blue-200 hover:bg-blue-700/50"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reconnect LinkedIn Account
-                      </Button>
+                    <div className="space-y-3">
+                      <div className="flex gap-3">
+                        <Button 
+                          onClick={testConnection} 
+                          variant="outline" 
+                          size="sm"
+                          disabled={!connectionStatus.connected || isTesting}
+                          className="border-blue-500 text-blue-200 hover:bg-blue-700/50"
+                        >
+                          {isTesting ? (
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                          )}
+                          Test Connection
+                        </Button>
+                        <Button 
+                          onClick={refreshConnection} 
+                          variant="outline" 
+                          size="sm"
+                          className="border-blue-500 text-blue-200 hover:bg-blue-700/50"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Reconnect LinkedIn Account
+                        </Button>
+                      </div>
+                      
+                      {/* Manual Token Input */}
+                      <div className="pt-4 border-t border-blue-600/30">
+                        <p className="text-blue-200 text-sm mb-3">
+                          Need to update your LinkedIn access token? Use the form below:
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
