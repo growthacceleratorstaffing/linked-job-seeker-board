@@ -60,6 +60,7 @@ const AppSidebar = () => {
   const vacancyItems = [
     { path: '/post-jobs', label: 'Vacancies', icon: Briefcase, permission: 'jobs' },
     { path: '/jobs', label: 'Job Posting', icon: FileText, permission: 'jobs' },
+    { path: '/advertising', label: 'Advertising', icon: BarChart3, permission: 'jobs' },
   ];
 
   const staffingItems = [
