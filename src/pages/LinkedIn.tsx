@@ -258,7 +258,7 @@ const LinkedInIntegration: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 p-6">
+    <div className="min-h-screen bg-primary-blue p-6">
       <div className="container mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
