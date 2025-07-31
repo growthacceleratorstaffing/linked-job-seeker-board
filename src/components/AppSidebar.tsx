@@ -83,16 +83,18 @@ const AppSidebar = () => {
     { path: 'https://mijn.cootje.com/urenregistraties', label: 'Backoffice', icon: FileText, external: true, permission: 'admin' },
   ];
 
-  // Filter navigation items based on permissions - show all sections if permissions loading fails
+  // Show all sections by default, filter only if permissions are explicitly loaded and denied
+  const hasLoadedPermissions = Object.keys(permissions).length > 0;
+  
   const filteredVacancyItems = vacancyItems.filter(item => 
-    !item.permission || permissions[item.permission as keyof typeof permissions] || Object.keys(permissions).length === 0
+    !item.permission || !hasLoadedPermissions || permissions[item.permission as keyof typeof permissions]
   );
   const filteredStaffingItems = staffingItems.filter(item => 
-    !item.permission || permissions[item.permission as keyof typeof permissions] || Object.keys(permissions).length === 0
+    !item.permission || !hasLoadedPermissions || permissions[item.permission as keyof typeof permissions]
   );
   const filteredCrmItems = crmItems;
   const filteredContractingItems = contractingItems.filter(item => 
-    !item.permission || permissions[item.permission as keyof typeof permissions] || Object.keys(permissions).length === 0
+    !item.permission || !hasLoadedPermissions || permissions[item.permission as keyof typeof permissions]
   );
 
   const isActivePath = (path: string) => {
