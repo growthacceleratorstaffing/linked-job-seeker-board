@@ -22,6 +22,7 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import JobAdvertising from "./pages/JobAdvertising";
 import Integrations from "./pages/Integrations";
+import LinkedIn from "./pages/LinkedIn";
 import Data from "./pages/Data";
 
 import NotFound from "./pages/NotFound";
@@ -87,6 +88,11 @@ const App = () => (
             <Route path="/integrations" element={
               <ProtectedRoute>
                 <Integrations />
+              </ProtectedRoute>
+            } />
+            <Route path="/linkedin" element={
+              <ProtectedRoute>
+                <LinkedIn />
               </ProtectedRoute>
             } />
             <Route path="/data" element={
