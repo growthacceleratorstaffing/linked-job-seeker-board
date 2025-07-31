@@ -23,6 +23,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import JobAdvertising from "./pages/JobAdvertising";
 import Integrations from "./pages/Integrations";
 import LinkedIn from "./pages/LinkedIn";
+import LinkedInCallback from "./pages/LinkedInCallback";
 import Data from "./pages/Data";
 
 import NotFound from "./pages/NotFound";
@@ -95,6 +96,7 @@ const App = () => (
                 <LinkedIn />
               </ProtectedRoute>
             } />
+            <Route path="/linkedin-callback" element={<LinkedInCallback />} />
             <Route path="/data" element={
               <ProtectedRoute>
                 <Data />

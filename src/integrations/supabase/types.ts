@@ -694,6 +694,45 @@ export type Database = {
         }
         Relationships: []
       }
+      linkedin_creatives: {
+        Row: {
+          account_id: string
+          click_uri: string | null
+          created_at: string | null
+          created_by: string | null
+          creative_data: Json | null
+          description: string | null
+          id: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_id: string
+          click_uri?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          creative_data?: Json | null
+          description?: string | null
+          id: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          click_uri?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          creative_data?: Json | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       linkedin_leads: {
         Row: {
           campaign_id: string | null
@@ -758,6 +797,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      linkedin_user_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          id: string
+          refresh_token: string | null
+          scope: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          id?: string
+          refresh_token?: string | null
+          scope?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          id?: string
+          refresh_token?: string | null
+          scope?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       local_placements: {
         Row: {
@@ -846,6 +918,69 @@ export type Database = {
           id?: string
           role?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      security_audit_logs: {
+        Row: {
+          created_at: string
+          event_details: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_api_keys: {
+        Row: {
+          created_at: string
+          encrypted_key: string
+          id: string
+          is_active: boolean
+          key_label: string | null
+          service_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_key: string
+          id?: string
+          is_active?: boolean
+          key_label?: string | null
+          service_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_key?: string
+          id?: string
+          is_active?: boolean
+          key_label?: string | null
+          service_name?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -970,6 +1105,16 @@ export type Database = {
           _role: Database["public"]["Enums"]["workable_role"]
         }
         Returns: boolean
+      }
+      log_security_event: {
+        Args: {
+          p_user_id: string
+          p_event_type: string
+          p_event_details?: Json
+          p_ip_address?: unknown
+          p_user_agent?: string
+        }
+        Returns: string
       }
       make_first_user_admin: {
         Args: Record<PropertyKey, never>

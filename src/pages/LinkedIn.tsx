@@ -1,29 +1,15 @@
-// Complete LinkedIn Integration System for Lovable
-// This file contains all the components, types, and API implementation needed
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 import { 
   RefreshCw, 
   ExternalLink, 
   CheckCircle, 
   XCircle, 
-  User, 
-  Download,
-  Upload,
   Settings,
-  Link,
-  Users,
-  BarChart3,
+  User,
   AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -35,25 +21,6 @@ interface LinkedInProfile {
   firstName: string;
   lastName: string;
   profilePicture?: string;
-  headline?: string;
-  vanityName?: string;
-  industry?: string;
-  location?: string;
-}
-
-interface LinkedInLead {
-  id: string;
-  linkedin_lead_id: string;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
-  job_title?: string;
-  form_name?: string;
-  linkedin_campaign_id?: string;
-  submitted_at?: string;
-  lead_data?: any;
 }
 
 interface LinkedInToken {
@@ -74,39 +41,38 @@ interface ConnectionStatus {
   scopes?: string[];
 }
 
+interface CredentialsStatus {
+  clientId: boolean;
+  clientSecret: boolean;
+  accessToken: boolean;
+}
+
 // Main LinkedIn Integration Component
 const LinkedInIntegration: React.FC = () => {
   const { toast } = useToast();
   
   // State management
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ connected: false });
-  const [leads, setLeads] = useState<LinkedInLead[]>([]);
+  const [credentialsStatus, setCredentialsStatus] = useState<CredentialsStatus>({
+    clientId: false,
+    clientSecret: false,
+    accessToken: false
+  });
   const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(0);
+  const [isTesting, setIsTesting] = useState(false);
   
-  // Settings state
-  const [autoSync, setAutoSync] = useState(false);
-  const [syncFrequency, setSyncFrequency] = useState(24);
-  const [webhookUrl, setWebhookUrl] = useState("");
-  
-  // Search and filter state
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCampaign, setSelectedCampaign] = useState("");
-
   // Initialize data on component mount
   useEffect(() => {
     checkConnectionStatus();
-    fetchLeads();
-    loadSettings();
+    checkCredentialsStatus();
   }, []);
 
   // Connection and authentication functions
   const checkConnectionStatus = async () => {
     setIsLoading(true);
     try {
-      // Check if user has LinkedIn tokens - using any for now since table doesn't exist in types
-      const { data: tokenData, error: tokenError } = await (supabase as any)
+      // Check if user has LinkedIn tokens
+      const { data: tokenData, error: tokenError } = await supabase
         .from('linkedin_user_tokens')
         .select('*')
         .single();
@@ -117,7 +83,7 @@ const LinkedInIntegration: React.FC = () => {
 
       if (tokenData) {
         // Test connection with the token
-        const { data: testData, error: testError } = await supabase.functions.invoke('linkedin-lead-sync', {
+        const { data: testData, error: testError } = await supabase.functions.invoke('linkedin-integration', {
           body: { action: 'testConnection' }
         });
 
@@ -127,7 +93,7 @@ const LinkedInIntegration: React.FC = () => {
 
         if (testData?.connected) {
           // Get profile information
-          const { data: profileData, error: profileError } = await supabase.functions.invoke('linkedin-lead-sync', {
+          const { data: profileData, error: profileError } = await supabase.functions.invoke('linkedin-integration', {
             body: { action: 'getProfile' }
           });
 
@@ -154,6 +120,20 @@ const LinkedInIntegration: React.FC = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const checkCredentialsStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('linkedin-integration', {
+        body: { action: 'getCredentialsStatus' }
+      });
+
+      if (error) throw error;
+
+      setCredentialsStatus(data);
+    } catch (error) {
+      console.error('Error checking credentials status:', error);
     }
   };
 
@@ -186,30 +166,36 @@ const LinkedInIntegration: React.FC = () => {
     }
   };
 
-  const disconnectFromLinkedIn = async () => {
+  const testConnection = async () => {
+    setIsTesting(true);
     try {
-      // Delete tokens from database - using any for now since table doesn't exist in types
-      const { error } = await (supabase as any)
-        .from('linkedin_user_tokens')
-        .delete()
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      const { data, error } = await supabase.functions.invoke('linkedin-integration', {
+        body: { action: 'testConnection' }
+      });
 
       if (error) throw error;
 
-      setConnectionStatus({ connected: false });
-      setLeads([]);
-
-      toast({
-        title: "Success",
-        description: "Disconnected from LinkedIn successfully"
-      });
+      if (data?.connected) {
+        toast({
+          title: "Success",
+          description: "LinkedIn connection is working properly",
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "LinkedIn connection test failed",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
-      console.error('Error disconnecting from LinkedIn:', error);
+      console.error('Error testing connection:', error);
       toast({
         title: "Error",
-        description: "Failed to disconnect from LinkedIn",
+        description: "Failed to test LinkedIn connection",
         variant: "destructive"
       });
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -217,7 +203,7 @@ const LinkedInIntegration: React.FC = () => {
     try {
       setIsLoading(true);
 
-      const { data, error } = await supabase.functions.invoke('linkedin-lead-sync', {
+      const { data, error } = await supabase.functions.invoke('linkedin-integration', {
         body: { action: 'refreshToken' }
       });
 
@@ -241,177 +227,7 @@ const LinkedInIntegration: React.FC = () => {
     }
   };
 
-  // Lead management functions
-  const fetchLeads = async () => {
-    try {
-      // Using any for now since table doesn't exist in types
-      const { data, error } = await (supabase as any)
-        .from('linkedin_leads')
-        .select('*')
-        .order('submitted_at', { ascending: false });
-
-      if (error) throw error;
-      setLeads(data || []);
-    } catch (error) {
-      console.error('Error fetching leads:', error);
-    }
-  };
-
-  const syncLeads = async () => {
-    if (!connectionStatus.connected) {
-      toast({
-        title: "Error",
-        description: "Please connect to LinkedIn first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setIsSyncing(true);
-      setSyncProgress(10);
-
-      const { data, error } = await supabase.functions.invoke('linkedin-lead-sync', {
-        body: { action: 'syncLeads' }
-      });
-
-      setSyncProgress(50);
-
-      if (error) throw error;
-
-      setSyncProgress(80);
-
-      // Refresh leads data
-      await fetchLeads();
-
-      setSyncProgress(100);
-
-      toast({
-        title: "Success",
-        description: `Synced ${data?.leadsCount || 0} leads from LinkedIn`
-      });
-    } catch (error) {
-      console.error('Error syncing leads:', error);
-      toast({
-        title: "Error",
-        description: "Failed to sync leads from LinkedIn",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSyncing(false);
-      setSyncProgress(0);
-    }
-  };
-
-  const exportLeads = async () => {
-    try {
-      const csvContent = [
-        ['Name', 'Email', 'Phone', 'Company', 'Job Title', 'Form', 'Campaign', 'Submitted Date'].join(','),
-        ...leads.map(lead => [
-          `"${lead.first_name || ''} ${lead.last_name || ''}"`,
-          `"${lead.email || ''}"`,
-          `"${lead.phone || ''}"`,
-          `"${lead.company || ''}"`,
-          `"${lead.job_title || ''}"`,
-          `"${lead.form_name || ''}"`,
-          `"${lead.linkedin_campaign_id || ''}"`,
-          `"${lead.submitted_at ? new Date(lead.submitted_at).toLocaleDateString() : ''}"`
-        ].join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `linkedin-leads-${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      toast({
-        title: "Success",
-        description: "Leads exported successfully"
-      });
-    } catch (error) {
-      console.error('Error exporting leads:', error);
-      toast({
-        title: "Error",
-        description: "Failed to export leads",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Settings functions
-  const loadSettings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('integration_settings')
-        .select('*')
-        .eq('integration_type', 'linkedin')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
-        setAutoSync(data.is_enabled || false);
-        setSyncFrequency(data.sync_frequency_hours || 24);
-        setWebhookUrl((data.settings as any)?.webhook_url || '');
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    }
-  };
-
-  const saveSettings = async () => {
-    try {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) throw new Error('User not authenticated');
-
-      const settingsData = {
-        user_id: user.id,
-        integration_type: 'linkedin',
-        is_enabled: autoSync,
-        sync_frequency_hours: syncFrequency,
-        settings: {
-          webhook_url: webhookUrl
-        }
-      };
-
-      const { error } = await supabase
-        .from('integration_settings')
-        .upsert(settingsData, {
-          onConflict: 'user_id,integration_type'
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Settings saved successfully"
-      });
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save settings",
-        variant: "destructive"
-      });
-    }
-  };
-
   // Utility functions
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const getTokenExpiryStatus = () => {
     if (!connectionStatus.token?.token_expires_at) return 'unknown';
     
@@ -423,20 +239,6 @@ const LinkedInIntegration: React.FC = () => {
     if (daysUntilExpiry < 7) return 'warning';
     return 'good';
   };
-
-  // Filter functions
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = !searchTerm || 
-      `${lead.first_name} ${lead.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.company?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCampaign = !selectedCampaign || lead.linkedin_campaign_id === selectedCampaign;
-    
-    return matchesSearch && matchesCampaign;
-  });
-
-  const uniqueCampaigns = [...new Set(leads.map(lead => lead.linkedin_campaign_id).filter(Boolean))];
 
   // Render loading state
   if (isLoading && !connectionStatus.connected) {
@@ -451,440 +253,196 @@ const LinkedInIntegration: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">LinkedIn Integration</h1>
-          <p className="text-muted-foreground">Connect and manage your LinkedIn advertising data</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={checkConnectionStatus} variant="outline" disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Connection Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link className="h-5 w-5" />
-            LinkedIn Connection Status
-          </CardTitle>
-          <CardDescription>
-            Manage your LinkedIn integration and authentication
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {connectionStatus.connected ? (
-                <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="font-medium">Connected to LinkedIn</p>
-                    {connectionStatus.profile && (
-                      <p className="text-sm text-muted-foreground">
-                        {connectionStatus.profile.firstName} {connectionStatus.profile.lastName}
-                        {connectionStatus.profile.headline && ` • ${connectionStatus.profile.headline}`}
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <XCircle className="h-5 w-5 text-red-500" />
-                  <div>
-                    <p className="font-medium">Not connected to LinkedIn</p>
-                    <p className="text-sm text-muted-foreground">
-                      Connect your LinkedIn account to access advertising features
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-            
-            <div className="flex gap-2">
-              {connectionStatus.connected ? (
-                <>
-                  <Button onClick={refreshConnection} variant="outline" size="sm">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </Button>
-                  <Button onClick={disconnectFromLinkedIn} variant="destructive" size="sm">
-                    Disconnect
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={connectToLinkedIn}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Connect LinkedIn
-                </Button>
-              )}
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 p-6">
+      <div className="container mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <svg className="h-8 w-8 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+            <h1 className="text-3xl font-bold text-white">LinkedIn Integration</h1>
+            {connectionStatus.connected && (
+              <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30">
+                ✓ Connected
+              </Badge>
+            )}
           </div>
+        </div>
 
-          {/* Token Status */}
-          {connectionStatus.connected && connectionStatus.token && (
-            <div className="mt-4 p-4 bg-muted rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="font-medium">Token Status</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getTokenExpiryStatus() === 'good' && <Badge variant="default">Valid</Badge>}
-                    {getTokenExpiryStatus() === 'warning' && <Badge variant="destructive">Expires Soon</Badge>}
-                    {getTokenExpiryStatus() === 'expired' && <Badge variant="destructive">Expired</Badge>}
-                  </div>
-                </div>
-                <div>
-                  <p className="font-medium">Expires</p>
-                  <p className="text-muted-foreground mt-1">
-                    {connectionStatus.token.token_expires_at 
-                      ? formatDate(connectionStatus.token.token_expires_at)
-                      : 'Never'
-                    }
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium">Scopes</p>
-                  <p className="text-muted-foreground mt-1">
-                    {connectionStatus.scopes?.join(', ') || 'No scopes'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Connection Error */}
-          {connectionStatus.error && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                {connectionStatus.error}
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="leads" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="leads">Lead Management</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-
-        {/* Leads Tab */}
-        <TabsContent value="leads" className="space-y-4">
-          {/* Sync Controls */}
-          <Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* API Configuration */}
+          <Card className="bg-blue-900/30 border-blue-700/50 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Lead Synchronization
-              </CardTitle>
-              <CardDescription>
-                Sync leads from your LinkedIn advertising campaigns
+              <CardTitle className="text-white">API Configuration</CardTitle>
+              <CardDescription className="text-blue-200">
+                Your LinkedIn API credentials are securely stored in Supabase secrets
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-blue-800/30 border border-blue-600/30">
+                  <div className="flex items-center gap-3">
+                    <Settings className="h-5 w-5 text-blue-300" />
+                    <span className="text-white font-medium">Client ID</span>
+                  </div>
+                  <Badge variant={credentialsStatus.clientId ? "default" : "destructive"}>
+                    {credentialsStatus.clientId ? "Configured" : "Not Set"}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-blue-800/30 border border-blue-600/30">
+                  <div className="flex items-center gap-3">
+                    <Settings className="h-5 w-5 text-blue-300" />
+                    <span className="text-white font-medium">Client Secret</span>
+                  </div>
+                  <Badge variant={credentialsStatus.clientSecret ? "default" : "destructive"}>
+                    {credentialsStatus.clientSecret ? "Configured" : "Not Set"}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-blue-800/30 border border-blue-600/30">
+                  <div className="flex items-center gap-3">
+                    <Settings className="h-5 w-5 text-blue-300" />
+                    <span className="text-white font-medium">Access Token</span>
+                  </div>
+                  <Badge variant={connectionStatus.connected ? "default" : "destructive"}>
+                    {connectionStatus.connected ? "Configured" : "Not Set"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 rounded-lg bg-blue-800/20 border border-blue-600/20">
+                <p className="text-blue-200 text-sm mb-4">
+                  LinkedIn access tokens expire after 60 days. If you experience connection issues, reconnect your account.
+                </p>
+                <div className="flex gap-3">
                   <Button 
-                    onClick={syncLeads} 
-                    disabled={!connectionStatus.connected || isSyncing}
+                    onClick={testConnection} 
+                    variant="outline" 
+                    size="sm"
+                    disabled={!connectionStatus.connected || isTesting}
+                    className="border-blue-500 text-blue-200 hover:bg-blue-700/50"
                   >
-                    {isSyncing ? (
+                    {isTesting ? (
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                      <Upload className="h-4 w-4 mr-2" />
+                      <ExternalLink className="h-4 w-4 mr-2" />
                     )}
-                    {isSyncing ? 'Syncing...' : 'Sync Leads'}
+                    Test Connection
                   </Button>
-                  
                   <Button 
-                    onClick={exportLeads} 
-                    variant="outline"
-                    disabled={leads.length === 0}
+                    onClick={refreshConnection} 
+                    variant="outline" 
+                    size="sm"
+                    className="border-blue-500 text-blue-200 hover:bg-blue-700/50"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Reconnect LinkedIn Account
                   </Button>
                 </div>
-                
-                <div className="text-sm text-muted-foreground">
-                  {leads.length} leads total
-                </div>
               </div>
-
-              {/* Sync Progress */}
-              {isSyncing && (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span>Syncing leads...</span>
-                    <span>{syncProgress}%</span>
-                  </div>
-                  <Progress value={syncProgress} />
-                </div>
-              )}
             </CardContent>
           </Card>
 
-          {/* Leads Table */}
-          <Card>
+          {/* Connection Status */}
+          <Card className="bg-blue-900/30 border-blue-700/50 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>LinkedIn Leads</CardTitle>
-              <CardDescription>
-                Leads captured from your LinkedIn advertising campaigns
+              <CardTitle className="text-white">Connection Status</CardTitle>
+              <CardDescription className="text-blue-200">
+                Your LinkedIn profile information
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              {/* Filters */}
-              <div className="flex gap-4 mb-4">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Search leads..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+            <CardContent className="space-y-4">
+              {connectionStatus.connected ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center">
+                      <svg className="h-8 w-8 text-blue-200" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-white">
+                        {connectionStatus.profile?.firstName} {connectionStatus.profile?.lastName}
+                      </h3>
+                      <p className="text-blue-200">
+                        LinkedIn ID: {connectionStatus.profile?.id}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                    ✓ API Connection Active
+                  </Badge>
+
+                  {/* Token Status */}
+                  {connectionStatus.token && (
+                    <div className="mt-4 p-4 rounded-lg bg-blue-800/20 border border-blue-600/20">
+                      <div className="grid grid-cols-1 gap-3 text-sm">
+                        <div>
+                          <p className="font-medium text-white">Token Status</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getTokenExpiryStatus() === 'good' && <Badge className="bg-green-500/20 text-green-300 border-green-500/30">Valid</Badge>}
+                            {getTokenExpiryStatus() === 'warning' && <Badge variant="destructive">Expires Soon</Badge>}
+                            {getTokenExpiryStatus() === 'expired' && <Badge variant="destructive">Expired</Badge>}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">Expires</p>
+                          <p className="text-blue-200 mt-1">
+                            {connectionStatus.token.token_expires_at 
+                              ? new Date(connectionStatus.token.token_expires_at).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : 'Never'
+                            }
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">Scopes</p>
+                          <p className="text-blue-200 mt-1">
+                            {connectionStatus.scopes?.join(', ') || 'No scopes'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="w-48">
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    value={selectedCampaign}
-                    onChange={(e) => setSelectedCampaign(e.target.value)}
+              ) : (
+                <div className="text-center py-8">
+                  <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-white mb-2">Not Connected</h3>
+                  <p className="text-blue-200 mb-6">
+                    Connect your LinkedIn account to access advertising features
+                  </p>
+                  <Button 
+                    onClick={connectToLinkedIn}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    <option value="">All campaigns</option>
-                    {uniqueCampaigns.map(campaign => (
-                      <option key={campaign} value={campaign}>
-                        {campaign}
-                      </option>
-                    ))}
-                  </select>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Connect LinkedIn
+                  </Button>
                 </div>
-              </div>
+              )}
 
-              {/* Leads Table */}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Job Title</TableHead>
-                    <TableHead>Form</TableHead>
-                    <TableHead>Campaign</TableHead>
-                    <TableHead>Submitted</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeads.map((lead) => (
-                    <TableRow key={lead.id}>
-                      <TableCell className="font-medium">
-                        {lead.first_name} {lead.last_name}
-                      </TableCell>
-                      <TableCell>{lead.email || 'N/A'}</TableCell>
-                      <TableCell>{lead.company || 'N/A'}</TableCell>
-                      <TableCell>{lead.job_title || 'N/A'}</TableCell>
-                      <TableCell>{lead.form_name || 'N/A'}</TableCell>
-                      <TableCell>{lead.linkedin_campaign_id || 'N/A'}</TableCell>
-                      <TableCell>
-                        {lead.submitted_at ? formatDate(lead.submitted_at) : 'N/A'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {filteredLeads.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  {leads.length === 0 
-                    ? "No leads found. Sync from LinkedIn to get started."
-                    : "No leads match your search criteria."
-                  }
-                </div>
+              {/* Connection Error */}
+              {connectionStatus.error && (
+                <Alert className="border-red-500/50 bg-red-500/10">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-red-200">
+                    {connectionStatus.error}
+                  </AlertDescription>
+                </Alert>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Integration Settings
-              </CardTitle>
-              <CardDescription>
-                Configure your LinkedIn integration preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Auto Sync Settings */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="auto-sync">Automatic Lead Sync</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Automatically sync leads from LinkedIn at regular intervals
-                    </p>
-                  </div>
-                  <Switch
-                    id="auto-sync"
-                    checked={autoSync}
-                    onCheckedChange={setAutoSync}
-                  />
-                </div>
-
-                {autoSync && (
-                  <div>
-                    <Label htmlFor="sync-frequency">Sync Frequency (hours)</Label>
-                    <Input
-                      id="sync-frequency"
-                      type="number"
-                      min="1"
-                      max="168"
-                      value={syncFrequency}
-                      onChange={(e) => setSyncFrequency(parseInt(e.target.value))}
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      How often to automatically sync leads (1-168 hours)
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Webhook Settings */}
-              <div className="space-y-2">
-                <Label htmlFor="webhook-url">Webhook URL (Optional)</Label>
-                <Input
-                  id="webhook-url"
-                  type="url"
-                  value={webhookUrl}
-                  onChange={(e) => setWebhookUrl(e.target.value)}
-                  placeholder="https://your-app.com/webhook/linkedin"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Receive real-time notifications when new leads are captured
-                </p>
-              </div>
-
-              {/* Save Button */}
-              <Button onClick={saveSettings}>
-                Save Settings
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{leads.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  All time
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">This Month</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {leads.filter(lead => {
-                    if (!lead.submitted_at) return false;
-                    const leadDate = new Date(lead.submitted_at);
-                    const now = new Date();
-                    return leadDate.getMonth() === now.getMonth() && 
-                           leadDate.getFullYear() === now.getFullYear();
-                  }).length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  New leads this month
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{uniqueCampaigns.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  With captured leads
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Lead Sources */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Lead Sources</CardTitle>
-              <CardDescription>
-                Breakdown of leads by form and campaign
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Form Name</TableHead>
-                    <TableHead>Campaign ID</TableHead>
-                    <TableHead>Lead Count</TableHead>
-                    <TableHead>Latest Lead</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(
-                    leads.reduce((acc, lead) => {
-                      const key = `${lead.form_name || 'Unknown'}-${lead.linkedin_campaign_id || 'Unknown'}`;
-                      if (!acc[key]) {
-                        acc[key] = {
-                          formName: lead.form_name || 'Unknown',
-                          campaignId: lead.linkedin_campaign_id || 'Unknown',
-                          count: 0,
-                          latestDate: lead.submitted_at
-                        };
-                      }
-                      acc[key].count++;
-                      if (lead.submitted_at && (!acc[key].latestDate || lead.submitted_at > acc[key].latestDate)) {
-                        acc[key].latestDate = lead.submitted_at;
-                      }
-                      return acc;
-                    }, {} as any)
-                  ).map(([key, stats]: [string, any]) => (
-                    <TableRow key={key}>
-                      <TableCell>{stats.formName}</TableCell>
-                      <TableCell>{stats.campaignId}</TableCell>
-                      <TableCell>{stats.count}</TableCell>
-                      <TableCell>
-                        {stats.latestDate ? formatDate(stats.latestDate) : 'N/A'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 };
