@@ -32,6 +32,152 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
 
     switch (action) {
+      case 'getCredentialsStatus': {
+        // Check if credentials are configured
+        const credentialsStatus = {
+          clientId: !!linkedinClientId,
+          clientSecret: !!linkedinClientSecret,
+          accessToken: !!linkedinAccessToken
+        };
+
+        return new Response(
+          JSON.stringify(credentialsStatus),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'testConnection': {
+        // Get user's LinkedIn token from database
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+          return new Response(
+            JSON.stringify({ connected: false, error: 'No authorization header' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        
+        if (authError || !user) {
+          return new Response(
+            JSON.stringify({ connected: false, error: 'Authentication failed' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if user has LinkedIn token stored
+        const { data: tokenData } = await supabase
+          .from('linkedin_user_tokens')
+          .select('access_token')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!tokenData?.access_token) {
+          // Try to create token from environment access token if available
+          if (linkedinAccessToken) {
+            // Store the access token for the user
+            await supabase
+              .from('linkedin_user_tokens')
+              .upsert({
+                user_id: user.id,
+                access_token: linkedinAccessToken,
+                scope: 'openid profile email w_ads_reporting rw_ads',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+
+            return new Response(
+              JSON.stringify({ connected: true, message: 'Auto-connected using system token' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          return new Response(
+            JSON.stringify({ connected: false, error: 'No LinkedIn token found' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Test the connection with LinkedIn API
+        try {
+          const testResponse = await fetch('https://api.linkedin.com/v2/people/~', {
+            headers: {
+              'Authorization': `Bearer ${tokenData.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (testResponse.ok) {
+            return new Response(
+              JSON.stringify({ connected: true }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          } else {
+            return new Response(
+              JSON.stringify({ connected: false, error: 'LinkedIn API test failed' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } catch (error) {
+          return new Response(
+            JSON.stringify({ connected: false, error: 'Connection test failed' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      case 'getProfile': {
+        // Get user's LinkedIn token and fetch profile
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+          throw new Error('No authorization header');
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        
+        if (authError || !user) {
+          throw new Error('Authentication failed');
+        }
+
+        const { data: tokenData } = await supabase
+          .from('linkedin_user_tokens')
+          .select('access_token')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!tokenData?.access_token) {
+          throw new Error('No LinkedIn token found');
+        }
+
+        const profileResponse = await fetch('https://api.linkedin.com/v2/people/~', {
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!profileResponse.ok) {
+          throw new Error(`LinkedIn API error: ${profileResponse.status}`);
+        }
+
+        const profile = await profileResponse.json();
+        
+        return new Response(
+          JSON.stringify({ success: true, profile }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'refreshToken': {
+        // For now, just redirect to reconnect since LinkedIn doesn't provide refresh tokens in basic flow
+        return new Response(
+          JSON.stringify({ success: false, error: 'Please reconnect your LinkedIn account' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'get_profile': {
         if (!accessToken) {
           throw new Error('Access token is required');
