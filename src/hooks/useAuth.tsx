@@ -34,6 +34,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsLoading(false);
         
         // Automatically sync Workable roles when user signs in
+        // Temporarily disabled to fix app responsiveness
+        /*
         if (event === 'SIGNED_IN' && session?.user?.email) {
           setTimeout(() => {
             syncWorkableRole(session.user.email);
@@ -46,6 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             syncWorkableRole(session.user.email);
           }, 0);
         }
+        */
       }
     );
 
@@ -57,11 +60,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(false);
       
       // Also sync for existing sessions on page load
+      // Temporarily disabled to fix app responsiveness
+      /*
       if (session?.user?.email) {
         setTimeout(() => {
           syncWorkableRole(session.user.email);
         }, 1000); // Small delay to ensure user is fully loaded
       }
+      */
     });
 
     return () => subscription.unsubscribe();
