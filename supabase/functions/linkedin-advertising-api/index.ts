@@ -72,12 +72,33 @@ serve(async (req) => {
 
     if (tokenData?.access_token) {
       accessToken = tokenData.access_token;
+      console.log('Using user-specific token');
     } else {
-      // Fallback to global token
+      // Fallback to global token from secrets
       accessToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || '';
+      console.log('Using global token from secrets');
+      
+      // If we have a global token, store it for the user
+      if (accessToken) {
+        try {
+          await supabase
+            .from('linkedin_user_tokens')
+            .upsert({
+              user_id: user.id,
+              access_token: accessToken,
+              scope: 'openid profile email w_ads_reporting rw_ads',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          console.log('Stored global token for user');
+        } catch (error) {
+          console.error('Failed to store token for user:', error);
+        }
+      }
     }
 
     if (!accessToken) {
+      console.error('No LinkedIn access token available');
       throw new Error('No LinkedIn access token available');
     }
 
@@ -125,6 +146,8 @@ serve(async (req) => {
 
 async function testConnection(accessToken: string) {
   try {
+    console.log('Testing LinkedIn Ads API connection...');
+    
     const response = await fetch('https://api.linkedin.com/rest/adAccounts?q=search&search=(status:(values:List(ACTIVE)))&pageSize=1', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -133,14 +156,26 @@ async function testConnection(accessToken: string) {
       }
     });
 
-    return { connected: response.ok };
+    const responseText = await response.text();
+    console.log(`LinkedIn Ads API response: ${response.status} - ${responseText}`);
+
+    if (response.ok) {
+      console.log('LinkedIn Ads API connection successful');
+      return { connected: true };
+    } else {
+      console.error('LinkedIn Ads API connection failed:', responseText);
+      return { connected: false, error: `API Error: ${response.status} - ${responseText}` };
+    }
   } catch (error) {
+    console.error('LinkedIn Ads API connection error:', error);
     return { connected: false, error: error.message };
   }
 }
 
 async function getAdAccounts(accessToken: string, supabase: any, userId: string): Promise<{ accounts: LinkedInAdAccount[] }> {
   try {
+    console.log('Fetching LinkedIn ad accounts...');
+    
     const response = await fetch('https://api.linkedin.com/rest/adAccounts?q=search&search=(status:(values:List(ACTIVE)))&pageSize=100', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -149,29 +184,45 @@ async function getAdAccounts(accessToken: string, supabase: any, userId: string)
       }
     });
 
+    const responseText = await response.text();
+    console.log(`Ad accounts API response: ${response.status} - ${responseText}`);
+
     if (!response.ok) {
-      throw new Error(`LinkedIn API error: ${response.statusText}`);
+      console.error('Failed to fetch ad accounts:', responseText);
+      throw new Error(`LinkedIn API error: ${responseText}`);
     }
 
-    const data = await response.json();
-    const accounts = data.elements || [];
+    const data = JSON.parse(responseText);
+    console.log('Ad accounts data:', data);
+
+    const accounts: LinkedInAdAccount[] = data.elements?.map((account: any) => ({
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      status: account.status,
+      currency: account.currency
+    })) || [];
+
+    console.log(`Found ${accounts.length} ad accounts`);
 
     // Store accounts in database
     for (const account of accounts) {
-      const accountId = account.id.toString();
-      
-      await supabase
-        .from('linkedin_ad_accounts')
-        .upsert({
-          user_id: userId,
-          linkedin_account_id: accountId,
-          name: account.name,
-          type: account.type,
-          status: account.status,
-          currency: account.currency
-        }, {
-          onConflict: 'user_id,linkedin_account_id'
-        });
+      try {
+        await supabase
+          .from('linkedin_ad_accounts')
+          .upsert({
+            user_id: userId,
+            linkedin_account_id: account.id,
+            name: account.name,
+            type: account.type,
+            status: account.status,
+            currency: account.currency,
+            updated_at: new Date().toISOString()
+          });
+        console.log(`Stored account: ${account.name} (${account.id})`);
+      } catch (dbError) {
+        console.error('Failed to store account:', account.id, dbError);
+      }
     }
 
     return { accounts };
