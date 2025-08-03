@@ -349,7 +349,7 @@ const LinkedInIntegration: React.FC = () => {
                           variant="outline" 
                           size="sm"
                           disabled={!connectionStatus.connected || isTesting}
-                          className="border-blue-500 text-blue-200 hover:bg-blue-700/50"
+                          className="border-pink-500 text-pink-200 hover:bg-pink-700/50 bg-pink-900/20"
                         >
                           {isTesting ? (
                             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -362,7 +362,7 @@ const LinkedInIntegration: React.FC = () => {
                           onClick={refreshConnection} 
                           variant="outline" 
                           size="sm"
-                          className="border-blue-500 text-blue-200 hover:bg-blue-700/50"
+                          className="border-pink-500 text-pink-200 hover:bg-pink-700/50 bg-pink-900/20"
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
                           Reconnect LinkedIn Account
@@ -457,7 +457,7 @@ const LinkedInIntegration: React.FC = () => {
                       </p>
                       <Button 
                         onClick={connectToLinkedIn}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="bg-pink-600 hover:bg-pink-700 text-white"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Connect LinkedIn

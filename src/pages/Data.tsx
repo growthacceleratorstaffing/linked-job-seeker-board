@@ -269,7 +269,7 @@ const Data = () => {
           <p className="text-white/70">No data available</p>
           <Button 
             onClick={() => syncData(integrationType)}
-            className="mt-4 bg-white/10 hover:bg-white/20 text-white border-white/20"
+            className="mt-4 bg-pink-900/20 hover:bg-pink-700/50 text-pink-200 border-pink-500"
             variant="outline"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -295,7 +295,7 @@ const Data = () => {
             <Button 
               onClick={() => syncData(integrationType)}
               disabled={isLoading}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              className="bg-pink-900/20 hover:bg-pink-700/50 text-pink-200 border-pink-500"
               variant="outline"
               size="sm"
             >
@@ -304,7 +304,7 @@ const Data = () => {
             </Button>
             <Button 
               onClick={() => exportData(integrationType)}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              className="bg-pink-900/20 hover:bg-pink-700/50 text-pink-200 border-pink-500"
               variant="outline"
               size="sm"
             >
@@ -348,7 +348,7 @@ const Data = () => {
         <div className="container mx-auto p-6">
           <div className="flex items-center mb-6">
             <Link to="/integrations">
-              <Button variant="ghost" className="text-white hover:bg-white/10 mr-4">
+              <Button variant="ghost" className="text-pink-200 hover:bg-pink-700/50 mr-4">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Integrations
               </Button>
@@ -364,7 +364,7 @@ const Data = () => {
                 Connect your CRM and ATS integrations like Apollo, HubSpot, Workable, or JazzHR to start viewing and managing your data here.
               </CardDescription>
               <Link to="/integrations">
-                <Button className="bg-white/10 hover:bg-white/20 text-white border-white/20" variant="outline">
+                <Button className="bg-pink-900/20 hover:bg-pink-700/50 text-pink-200 border-pink-500" variant="outline">
                   Connect Integrations
                 </Button>
               </Link>
@@ -381,7 +381,7 @@ const Data = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <Link to="/integrations">
-              <Button variant="ghost" className="text-white hover:bg-white/10 mr-4">
+              <Button variant="ghost" className="text-pink-200 hover:bg-pink-700/50 mr-4">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Integrations
               </Button>

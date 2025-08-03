@@ -278,7 +278,7 @@ const Integrations = () => {
             </p>
           </div>
           <Link to="/data">
-            <Button className="bg-primary hover:bg-primary/90">
+            <Button className="bg-pink-600 hover:bg-pink-700 text-white">
               View Integration Data
             </Button>
           </Link>
@@ -317,7 +317,7 @@ const Integrations = () => {
                       {isConnected ? (
                         <Button 
                           onClick={() => handleDisconnectCRM(crm.name)}
-                          className="w-full bg-white/10 text-white border-white/20 hover:bg-white/20"
+                          className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50"
                           variant="outline"
                         >
                           <Unplug className="h-4 w-4 mr-2" />
@@ -326,7 +326,7 @@ const Integrations = () => {
                       ) : (
                         <Button 
                           onClick={() => handleConnectCRM(crm)}
-                          className="w-full bg-white/10 text-white border-white/20 hover:bg-white/20"
+                          className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50"
                           variant="outline"
                         >
                           <Plus className="h-4 w-4 mr-2" />
@@ -411,7 +411,7 @@ const Integrations = () => {
                     We'll send candidate data to this endpoint when changes occur
                   </p>
                 </div>
-                <Button onClick={handleSaveWebhook}>
+                <Button onClick={handleSaveWebhook} className="bg-pink-600 hover:bg-pink-700 text-white">
                   Save Webhook Configuration
                 </Button>
               </CardContent>
@@ -485,12 +485,14 @@ const Integrations = () => {
                 variant="outline" 
                 onClick={() => setSelectedCRM(null)}
                 disabled={isConnecting}
+                className="border-pink-500 text-pink-200 hover:bg-pink-700/50 bg-pink-900/20"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleFormSubmit}
                 disabled={isConnecting}
+                className="bg-pink-600 hover:bg-pink-700 text-white"
               >
                 {isConnecting ? "Connecting..." : "Connect"}
               </Button>
