@@ -55,9 +55,16 @@ serve(async (req) => {
     // Get LinkedIn credentials from environment
     const linkedinClientId = Deno.env.get('LINKEDIN_CLIENT_ID');
     const linkedinClientSecret = Deno.env.get('LINKEDIN_CLIENT_SECRET');
+    const linkedinAccessToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN');
+    
+    console.log('Environment check:', {
+      hasClientId: !!linkedinClientId,
+      hasClientSecret: !!linkedinClientSecret,
+      hasAccessToken: !!linkedinAccessToken
+    });
     
     if (!linkedinClientId || !linkedinClientSecret) {
-      throw new Error('LinkedIn credentials not configured');
+      throw new Error('LinkedIn credentials not configured in environment');
     }
 
     // Get user-specific access token or global token
@@ -107,6 +114,14 @@ serve(async (req) => {
     let result;
 
     switch (action) {
+      case 'testCredentials':
+        result = {
+          hasClientId: !!linkedinClientId,
+          hasClientSecret: !!linkedinClientSecret,
+          hasAccessToken: !!accessToken,
+          tokenLength: accessToken ? accessToken.length : 0
+        };
+        break;
       case 'testConnection':
         result = await testConnection(accessToken);
         break;
@@ -136,8 +151,16 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Error in linkedin-advertising-api function:', error);
+    
+    // Return more detailed error information
+    const errorResponse = {
+      error: error.message || 'Internal server error',
+      details: error.stack || 'No stack trace available',
+      timestamp: new Date().toISOString()
+    };
+    
+    return new Response(JSON.stringify(errorResponse), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

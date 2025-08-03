@@ -218,9 +218,25 @@ const Advertising: React.FC = () => {
 
   const checkLinkedInConnection = async () => {
     try {
+      // First test credentials
+      const { data: credentialsData, error: credentialsError } = await supabase.functions.invoke('linkedin-advertising-api', {
+        body: { action: 'testCredentials' }
+      });
+
+      console.log('Credentials test:', { credentialsData, credentialsError });
+
+      if (credentialsError) {
+        console.error('Credentials test error:', credentialsError);
+        setIsLinkedInConnected(false);
+        return;
+      }
+
+      // Now test the actual connection
       const { data, error } = await supabase.functions.invoke('linkedin-advertising-api', {
         body: { action: 'testConnection' }
       });
+
+      console.log('Connection test:', { data, error });
 
       if (error) throw error;
       setIsLinkedInConnected(data?.connected || false);
