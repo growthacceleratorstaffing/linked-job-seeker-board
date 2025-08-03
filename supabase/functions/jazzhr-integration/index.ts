@@ -90,8 +90,8 @@ serve(async (req) => {
     if (action === 'get_candidates') {
       console.log('🔍 Fetching candidates from JazzHR API...')
       
-      // JazzHR API endpoint for candidates
-      const jazzhrResponse = await fetch(`https://api.resumatorapi.com/v1/candidates?apikey=${apiKey}`, {
+      // JazzHR API endpoint for candidates (using username in URL)
+      const jazzhrResponse = await fetch(`https://api.resumatorapi.com/v1/applicants?apikey=${apiKey}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
