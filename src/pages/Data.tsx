@@ -279,7 +279,8 @@ const Data = () => {
       );
     }
 
-    const columns = Object.keys(data[0]);
+    const allColumns = Object.keys(data[0]);
+    const columns = allColumns.filter(col => col !== 'id').concat(allColumns.filter(col => col === 'id'));
 
     return (
       <div className="space-y-4">
