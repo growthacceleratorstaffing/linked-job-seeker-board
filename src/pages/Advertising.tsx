@@ -190,8 +190,7 @@ const Advertising: React.FC = () => {
 
   const checkLinkedInConnection = async () => {
     try {
-      // Use the same connection check as LinkedIn page
-      const { data, error } = await supabase.functions.invoke('linkedin-integration', {
+      const { data, error } = await supabase.functions.invoke('linkedin-advertising-api', {
         body: { action: 'testConnection' }
       });
 
