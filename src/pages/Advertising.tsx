@@ -460,7 +460,7 @@ const Advertising: React.FC = () => {
                   <p className="text-blue-200">Manage your LinkedIn advertising campaigns and creatives</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleRefresh} variant="outline" disabled={isLoading} className="border-blue-500 text-blue-200 hover:bg-blue-700/50">
+                  <Button onClick={handleRefresh} variant="outline" disabled={isLoading} className="border-pink-500 text-pink-200 hover:bg-pink-700/50 bg-pink-900/20">
                     <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
