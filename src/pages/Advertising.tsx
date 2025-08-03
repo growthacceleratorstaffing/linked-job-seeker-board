@@ -103,6 +103,13 @@ const Advertising: React.FC = () => {
     checkLinkedInConnection();
   }, []);
 
+  // Load campaigns when account is selected
+  useEffect(() => {
+    if (selectedAccount) {
+      fetchCampaigns();
+    }
+  }, [selectedAccount]);
+
   // Data fetching functions
   const fetchAdvertisingData = async () => {
     setIsLoading(true);
@@ -175,6 +182,24 @@ const Advertising: React.FC = () => {
 
   const fetchCampaigns = async () => {
     try {
+      // First try to fetch campaigns from LinkedIn API if an account is selected
+      if (selectedAccount) {
+        console.log('Fetching campaigns from LinkedIn for account:', selectedAccount);
+        const { data: linkedInData, error: linkedInError } = await supabase.functions.invoke('linkedin-advertising-api', {
+          body: { 
+            action: 'getCampaigns',
+            accountId: selectedAccount
+          }
+        });
+
+        if (linkedInData && linkedInData.campaigns) {
+          console.log('Loaded campaigns from LinkedIn:', linkedInData.campaigns);
+          setCampaigns(linkedInData.campaigns);
+          return;
+        }
+      }
+
+      // Fallback to database campaigns
       const { data, error } = await supabase
         .from('linkedin_campaigns')
         .select('*')
