@@ -73,10 +73,15 @@ serve(async (req) => {
           .eq('user_id', user.id)
           .single();
 
-        if (!tokenData?.access_token) {
-          // Try to create token from environment access token if available
-          if (linkedinAccessToken) {
-            // Store the access token for the user
+        // Use access token from database or fallback to system token
+        let accessTokenToUse = tokenData?.access_token;
+        
+        if (!accessTokenToUse && linkedinAccessToken) {
+          console.log('No user token found, using system token');
+          accessTokenToUse = linkedinAccessToken;
+          
+          // Store the system access token for the user
+          try {
             await supabase
               .from('linkedin_user_tokens')
               .upsert({
@@ -86,42 +91,64 @@ serve(async (req) => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               });
-
-            return new Response(
-              JSON.stringify({ connected: true, message: 'Auto-connected using system token' }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+          } catch (error) {
+            console.error('Failed to store token:', error);
           }
+        }
 
+        if (!accessTokenToUse) {
           return new Response(
-            JSON.stringify({ connected: false, error: 'No LinkedIn token found' }),
+            JSON.stringify({ connected: false, error: 'No LinkedIn access token available' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
         // Test the connection with LinkedIn API
         try {
-          const testResponse = await fetch('https://api.linkedin.com/v2/people/~', {
+          console.log('Testing LinkedIn connection...');
+          
+          const testResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
             headers: {
-              'Authorization': `Bearer ${tokenData.access_token}`,
+              'Authorization': `Bearer ${accessTokenToUse}`,
               'Content-Type': 'application/json',
             },
           });
 
+          const responseText = await testResponse.text();
+          console.log(`LinkedIn API response: ${testResponse.status} - ${responseText}`);
+
           if (testResponse.ok) {
+            const profileData = JSON.parse(responseText);
             return new Response(
-              JSON.stringify({ connected: true }),
+              JSON.stringify({ 
+                connected: true, 
+                profile: profileData,
+                message: 'Successfully connected to LinkedIn'
+              }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           } else {
+            let errorMessage = 'LinkedIn API test failed';
+            try {
+              const errorData = JSON.parse(responseText);
+              if (errorData.error_description) {
+                errorMessage = errorData.error_description;
+              } else if (errorData.message) {
+                errorMessage = errorData.message;
+              }
+            } catch (e) {
+              errorMessage = `LinkedIn API error: ${testResponse.status} - ${responseText}`;
+            }
+            
             return new Response(
-              JSON.stringify({ connected: false, error: 'LinkedIn API test failed' }),
+              JSON.stringify({ connected: false, error: errorMessage }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
         } catch (error) {
+          console.error('Connection test error:', error);
           return new Response(
-            JSON.stringify({ connected: false, error: 'Connection test failed' }),
+            JSON.stringify({ connected: false, error: `Connection test failed: ${error.message}` }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
