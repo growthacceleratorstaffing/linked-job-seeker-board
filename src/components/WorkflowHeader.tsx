@@ -24,8 +24,8 @@ const WorkflowHeader = () => {
     { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/jobs', label: 'Attract', icon: FileText, requiresPermission: 'publish_jobs' },
     { path: '/matching', label: 'Match', icon: ArrowRightLeft, requiresPermission: 'create_matches' },
-    { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Hire', icon: FileText, external: true },
     { path: '/onboarding', label: 'Onboard', icon: CheckSquare },
+    { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Hire', icon: FileText, external: true },
   ];
 
   // Filter workflow steps based on user permissions
@@ -107,7 +107,7 @@ const WorkflowHeader = () => {
             Growth Accelerator Staffing Platform
           </h1>
           <p className="text-secondary-pink text-sm sm:text-lg font-medium">
-            Attract. Match. Hire. Onboard.
+            Attract. Match. Onboard. Hire.
           </p>
         </div>
         
