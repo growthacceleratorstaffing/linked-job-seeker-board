@@ -6,7 +6,8 @@ import {
   Users, 
   ArrowRightLeft, 
   CheckSquare, 
-  FileText 
+  FileText,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
@@ -18,6 +19,7 @@ const WorkflowHeader = () => {
 
   const allWorkflowSteps = [
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { path: '/integrations', label: 'Integrations', icon: Settings },
     { path: '/post-jobs', label: 'Jobs', icon: Briefcase },
     { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/jobs', label: 'Attract', icon: FileText, requiresPermission: 'publish_jobs' },
