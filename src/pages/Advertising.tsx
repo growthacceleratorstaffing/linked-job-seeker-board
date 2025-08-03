@@ -218,28 +218,40 @@ const Advertising: React.FC = () => {
 
   const checkLinkedInConnection = async () => {
     try {
-      // First test credentials
-      const { data: credentialsData, error: credentialsError } = await supabase.functions.invoke('linkedin-advertising-api', {
-        body: { action: 'testCredentials' }
+      console.log('Checking LinkedIn connection...');
+      
+      // Instead of testing credentials, let's just try to fetch ad accounts
+      // If this succeeds, LinkedIn is connected
+      const { data: accountsData, error: accountsError } = await supabase.functions.invoke('linkedin-advertising-api', {
+        body: { action: 'getAdAccounts' }
       });
 
-      console.log('Credentials test:', { credentialsData, credentialsError });
+      console.log('Ad accounts fetch result:', { accountsData, accountsError });
 
-      if (credentialsError) {
-        console.error('Credentials test error:', credentialsError);
+      if (accountsError) {
+        console.error('LinkedIn connection failed:', accountsError);
         setIsLinkedInConnected(false);
         return;
       }
 
-      // Now test the actual connection
-      const { data, error } = await supabase.functions.invoke('linkedin-advertising-api', {
-        body: { action: 'testConnection' }
-      });
+      // If we successfully got accounts (even if empty), LinkedIn is connected
+      if (accountsData && accountsData.accounts !== undefined) {
+        console.log('LinkedIn connection successful');
+        setIsLinkedInConnected(true);
+        
+        // Also update the ad accounts state while we're at it
+        const { data: dbAccounts, error: dbError } = await supabase
+          .from('linkedin_ad_accounts')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      console.log('Connection test:', { data, error });
-
-      if (error) throw error;
-      setIsLinkedInConnected(data?.connected || false);
+        if (!dbError && dbAccounts) {
+          setAdAccounts(dbAccounts);
+        }
+      } else {
+        console.log('LinkedIn connection failed - no accounts data');
+        setIsLinkedInConnected(false);
+      }
     } catch (error) {
       console.error('Error checking LinkedIn connection:', error);
       setIsLinkedInConnected(false);
