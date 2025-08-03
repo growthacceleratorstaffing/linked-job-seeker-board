@@ -90,30 +90,53 @@ serve(async (req) => {
     if (action === 'get_candidates') {
       console.log('🔍 Fetching candidates from JazzHR API...')
       
-      // JazzHR API endpoint for candidates (using username in URL)
-      const jazzhrResponse = await fetch(`https://api.resumatorapi.com/v1/applicants?apikey=${apiKey}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+      let allCandidates: any[] = []
+      let page = 1
+      const limit = 100 // JazzHR API limit per page
+      let hasMorePages = true
+      
+      while (hasMorePages) {
+        console.log(`📄 Fetching page ${page} with limit ${limit}`)
+        
+        // JazzHR API endpoint for candidates with pagination
+        const jazzhrResponse = await fetch(`https://api.resumatorapi.com/v1/applicants?apikey=${apiKey}&page=${page}&limit=${limit}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+
+        console.log(`📡 JazzHR API response status for page ${page}: ${jazzhrResponse.status}`)
+
+        if (!jazzhrResponse.ok) {
+          const errorText = await jazzhrResponse.text()
+          console.error(`❌ JazzHR API error on page ${page}:`, errorText)
+          return new Response(
+            JSON.stringify({ error: `JazzHR API error: ${jazzhrResponse.status} ${errorText}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
         }
-      })
 
-      console.log(`📡 JazzHR API response status: ${jazzhrResponse.status}`)
-
-      if (!jazzhrResponse.ok) {
-        const errorText = await jazzhrResponse.text()
-        console.error('❌ JazzHR API error:', errorText)
-        return new Response(
-          JSON.stringify({ error: `JazzHR API error: ${jazzhrResponse.status} ${errorText}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        const jazzhrData = await jazzhrResponse.json()
+        console.log(`📊 Received ${jazzhrData?.length || 0} candidates from JazzHR page ${page}`)
+        
+        if (jazzhrData && jazzhrData.length > 0) {
+          allCandidates = allCandidates.concat(jazzhrData)
+          page++
+          
+          // If we got fewer results than the limit, we've reached the last page
+          if (jazzhrData.length < limit) {
+            hasMorePages = false
+          }
+        } else {
+          hasMorePages = false
+        }
       }
-
-      const jazzhrData = await jazzhrResponse.json()
-      console.log(`📊 Received ${jazzhrData?.length || 0} candidates from JazzHR`)
+      
+      console.log(`✅ Total candidates fetched from all pages: ${allCandidates.length}`)
       
       // Transform JazzHR data to consistent format
-      const candidates = (jazzhrData || []).map((candidate: any) => ({
+      const candidates = allCandidates.map((candidate: any) => ({
         id: candidate.id,
         name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Unknown',
         email: candidate.email || 'No email',
