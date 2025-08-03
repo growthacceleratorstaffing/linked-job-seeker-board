@@ -127,21 +127,49 @@ const Advertising: React.FC = () => {
 
   const fetchAdAccounts = async () => {
     try {
+      console.log('Fetching ad accounts from LinkedIn API...');
+      
+      // First, call the LinkedIn API to fetch and store accounts
       const { data: accountsData, error: accountsError } = await supabase.functions.invoke('linkedin-advertising-api', {
         body: { action: 'getAdAccounts' }
       });
 
-      if (accountsError) throw accountsError;
+      console.log('LinkedIn API response:', { accountsData, accountsError });
 
+      if (accountsError) {
+        console.error('LinkedIn API error:', accountsError);
+        throw accountsError;
+      }
+
+      // Then fetch the stored accounts from the database
       const { data: dbAccounts, error: dbError } = await supabase
         .from('linkedin_ad_accounts')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (dbError) throw dbError;
+      console.log('Database accounts:', { dbAccounts, dbError });
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw dbError;
+      }
 
       setAdAccounts(dbAccounts || []);
+      console.log(`Loaded ${dbAccounts?.length || 0} ad accounts`);
+      
+      if (dbAccounts && dbAccounts.length > 0) {
+        toast({
+          title: "Success",
+          description: `Loaded ${dbAccounts.length} ad account(s)`,
+        });
+      }
     } catch (error) {
       console.error('Error fetching ad accounts:', error);
+      toast({
+        title: "Error",
+        description: `Failed to load ad accounts: ${error.message}`,
+        variant: "destructive"
+      });
     }
   };
 
