@@ -60,7 +60,8 @@ serve(async (req) => {
     console.log('Environment check:', {
       hasClientId: !!linkedinClientId,
       hasClientSecret: !!linkedinClientSecret,
-      hasAccessToken: !!linkedinAccessToken
+      hasAccessToken: !!linkedinAccessToken,
+      userId: user.id
     });
     
     if (!linkedinClientId || !linkedinClientSecret) {
@@ -82,7 +83,7 @@ serve(async (req) => {
       console.log('Using user-specific token');
     } else {
       // Fallback to global token from secrets
-      accessToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN') || '';
+      accessToken = linkedinAccessToken || '';
       console.log('Using global token from secrets');
       
       // If we have a global token, store it for the user
@@ -110,6 +111,7 @@ serve(async (req) => {
     }
 
     const { action, ...params } = await req.json();
+    console.log('Processing action:', action);
 
     let result;
 
@@ -134,14 +136,11 @@ serve(async (req) => {
       case 'createCampaign':
         result = await createCampaign(accessToken, params);
         break;
-      case 'updateCampaign':
-        result = await updateCampaign(accessToken, params.campaignId, params.updateData);
-        break;
       case 'createCreative':
-        result = await createCreative(accessToken, params, supabase, user.id);
+        result = await createCreative(accessToken, params);
         break;
-      case 'getAccountCreatives':
-        result = await getAccountCreatives(accessToken, params.accountId, supabase, user.id);
+      case 'updateCampaign':
+        result = await updateCampaign(accessToken, params);
         break;
       default:
         throw new Error(`Unknown action: ${action}`);
@@ -150,6 +149,7 @@ serve(async (req) => {
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
     console.error('Error in linkedin-advertising-api function:', error);
     
@@ -169,50 +169,62 @@ serve(async (req) => {
 
 async function testConnection(accessToken: string) {
   try {
-    console.log('Testing LinkedIn Ads API connection...');
+    console.log('Testing LinkedIn Marketing API connection...');
     
-    const response = await fetch('https://api.linkedin.com/rest/adAccounts?q=search&search=(status:(values:List(ACTIVE)))&pageSize=1', {
+    // Use the Marketing API for testing connection with advertising permissions
+    const response = await fetch('https://api.linkedin.com/v2/adAccountsV2?q=search&search=(status:(values:List(ACTIVE)))&projection=(elements*(id,name,type,status,currency))&start=0&count=1', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202407',
+        'LinkedIn-Version': '202410',
         'X-Restli-Protocol-Version': '2.0.0'
       }
     });
 
     const responseText = await response.text();
-    console.log(`LinkedIn Ads API response: ${response.status} - ${responseText}`);
+    console.log(`LinkedIn Marketing API response: ${response.status} - ${responseText}`);
 
     if (response.ok) {
-      console.log('LinkedIn Ads API connection successful');
+      console.log('LinkedIn Marketing API connection successful');
       return { connected: true };
     } else {
-      console.error('LinkedIn Ads API connection failed:', responseText);
-      return { connected: false, error: `API Error: ${response.status} - ${responseText}` };
+      console.error('LinkedIn Marketing API connection failed:', responseText);
+      // Try to parse error for better message
+      let errorMessage = `API Error: ${response.status}`;
+      try {
+        const errorData = JSON.parse(responseText);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (e) {
+        errorMessage = responseText;
+      }
+      return { connected: false, error: errorMessage };
     }
   } catch (error) {
-    console.error('LinkedIn Ads API connection error:', error);
+    console.error('LinkedIn Marketing API connection error:', error);
     return { connected: false, error: error.message };
   }
 }
 
 async function getAdAccounts(accessToken: string, supabase: any, userId: string): Promise<{ accounts: LinkedInAdAccount[] }> {
   try {
-    console.log('Fetching LinkedIn ad accounts...');
+    console.log('Fetching LinkedIn ad accounts using Marketing API...');
     
-    const response = await fetch('https://api.linkedin.com/rest/adAccounts?q=search&search=(status:(values:List(ACTIVE)))&pageSize=100', {
+    // Use Marketing API v2 for ad accounts
+    const response = await fetch('https://api.linkedin.com/v2/adAccountsV2?q=search&search=(status:(values:List(ACTIVE)))&projection=(elements*(id,name,type,status,currency))&start=0&count=100', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202407',
+        'LinkedIn-Version': '202410',
         'X-Restli-Protocol-Version': '2.0.0'
       }
     });
 
     const responseText = await response.text();
-    console.log(`Ad accounts API response: ${response.status} - ${responseText}`);
+    console.log(`Ad accounts Marketing API response: ${response.status} - ${responseText}`);
 
     if (!response.ok) {
       console.error('Failed to fetch ad accounts:', responseText);
-      throw new Error(`LinkedIn API error: ${responseText}`);
+      throw new Error(`LinkedIn Marketing API error: ${responseText}`);
     }
 
     const data = JSON.parse(responseText);
@@ -255,194 +267,165 @@ async function getAdAccounts(accessToken: string, supabase: any, userId: string)
   }
 }
 
-async function getCampaigns(accessToken: string, accountId?: string): Promise<{ campaigns: LinkedInCampaign[] }> {
+async function getCampaigns(accessToken: string, accountId: string): Promise<{ campaigns: LinkedInCampaign[] }> {
   try {
-    let url = 'https://api.linkedin.com/rest/adCampaigns?q=search&pageSize=100';
+    console.log('Fetching LinkedIn campaigns for account:', accountId);
     
-    if (accountId) {
-      url = `https://api.linkedin.com/rest/adAccounts/${accountId}/adCampaigns?q=search&pageSize=100`;
-    }
-
-    const response = await fetch(url, {
+    const response = await fetch(`https://api.linkedin.com/v2/adCampaignsV2?q=search&search=(account:(values:List(urn:li:sponsoredAccount:${accountId})))&projection=(elements*(id,name,status,account,campaignGroup,runSchedule,dailyBudget,totalBudget,costType,unitCost,objectiveType))`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202407',
+        'LinkedIn-Version': '202410',
         'X-Restli-Protocol-Version': '2.0.0'
       }
     });
 
+    const responseText = await response.text();
+    console.log(`Campaigns API response: ${response.status} - ${responseText}`);
+
     if (!response.ok) {
-      throw new Error(`LinkedIn API error: ${response.statusText}`);
+      throw new Error(`LinkedIn API error: ${responseText}`);
     }
 
-    const data = await response.json();
-    return { campaigns: data.elements || [] };
+    const data = JSON.parse(responseText);
+    const campaigns: LinkedInCampaign[] = data.elements?.map((campaign: any) => ({
+      id: campaign.id,
+      name: campaign.name,
+      status: campaign.status,
+      account: campaign.account,
+      campaignGroup: campaign.campaignGroup,
+      runSchedule: campaign.runSchedule,
+      budget: campaign.dailyBudget || campaign.totalBudget,
+      costType: campaign.costType,
+      unitCost: campaign.unitCost,
+      objective: campaign.objectiveType
+    })) || [];
+
+    return { campaigns };
   } catch (error) {
     console.error('Error fetching campaigns:', error);
     throw error;
   }
 }
 
-async function createCampaign(accessToken: string, campaignData: any): Promise<{ campaign: any }> {
+async function createCampaign(accessToken: string, params: any) {
   try {
-    const payload = {
-      name: campaignData.name,
-      type: campaignData.type,
-      account: `urn:li:sponsoredAccount:${campaignData.account}`,
-      campaignGroup: campaignData.campaignGroup ? `urn:li:sponsoredCampaignGroup:${campaignData.campaignGroup}` : undefined,
-      status: 'DRAFT',
-      costType: campaignData.costType || 'CPC',
+    console.log('Creating LinkedIn campaign with params:', params);
+    
+    const campaignPayload = {
+      name: params.name,
+      status: 'PAUSED',
+      type: 'SPONSORED_CONTENT',
+      account: `urn:li:sponsoredAccount:${params.account}`,
+      campaignGroup: `urn:li:sponsoredCampaignGroup:${params.campaignGroup}`,
+      costType: params.costType || 'CPC',
       dailyBudget: {
-        currencyCode: campaignData.currency || 'USD',
-        amount: campaignData.budget.toString()
+        amount: params.budget,
+        currencyCode: params.currency || 'USD'
       },
       unitCost: {
-        currencyCode: campaignData.currency || 'USD',
-        amount: (campaignData.bidAmount || 5.0).toString()
+        amount: params.bidAmount || 5.00,
+        currencyCode: params.currency || 'USD'
       },
-      objective: campaignData.objective || 'BRAND_AWARENESS'
+      objectiveType: params.objective || 'BRAND_AWARENESS',
+      runSchedule: {
+        start: Date.now(),
+        end: params.endDate ? new Date(params.endDate).getTime() : Date.now() + (30 * 24 * 60 * 60 * 1000)
+      }
     };
 
-    const response = await fetch('https://api.linkedin.com/rest/adCampaigns', {
+    const response = await fetch('https://api.linkedin.com/v2/adCampaignsV2', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202407',
-        'X-Restli-Protocol-Version': '2.0.0',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'LinkedIn-Version': '202410',
+        'X-Restli-Protocol-Version': '2.0.0'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(campaignPayload)
     });
 
+    const responseText = await response.text();
+    console.log(`Create campaign response: ${response.status} - ${responseText}`);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`LinkedIn API error: ${response.status} ${errorText}`);
+      throw new Error(`Failed to create campaign: ${responseText}`);
     }
 
-    const result = await response.json();
-    return { campaign: result };
+    const result = JSON.parse(responseText);
+    return { success: true, campaign: result };
   } catch (error) {
     console.error('Error creating campaign:', error);
     throw error;
   }
 }
 
-async function updateCampaign(accessToken: string, campaignId: string, updateData: any): Promise<{ success: boolean }> {
+async function createCreative(accessToken: string, params: any) {
   try {
-    const response = await fetch(`https://api.linkedin.com/rest/adCampaigns/${campaignId}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202407',
-        'X-Restli-Protocol-Version': '2.0.0',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(updateData)
-    });
-
-    if (!response.ok) {
-      throw new Error(`LinkedIn API error: ${response.statusText}`);
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error updating campaign:', error);
-    throw error;
-  }
-}
-
-async function createCreative(accessToken: string, creativeData: any, supabase: any, userId: string): Promise<{ creative: any }> {
-  try {
-    // Create Direct Sponsored Content first
-    const contentPayload = {
-      author: `urn:li:sponsoredAccount:${creativeData.accountId}`,
-      lifecycleState: 'PUBLISHED',
-      isReshareDisabledByAuthor: false,
+    console.log('Creating LinkedIn creative with params:', params);
+    
+    const creativePayload = {
+      account: `urn:li:sponsoredAccount:${params.accountId}`,
+      name: params.name,
+      type: 'SPONSORED_CONTENT',
+      status: 'ACTIVE',
       content: {
-        contentEntities: [],
-        title: creativeData.name,
-        landingPage: {
-          url: creativeData.clickUri || 'https://example.com'
-        }
-      },
-      isTest: false
+        title: params.name,
+        description: params.description || '',
+        clickUri: params.clickUri || ''
+      }
     };
 
-    if (creativeData.description) {
-      contentPayload.content.commentary = creativeData.description;
-    }
-
-    const contentResponse = await fetch('https://api.linkedin.com/rest/posts', {
+    const response = await fetch('https://api.linkedin.com/v2/adCreativesV2', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202407',
-        'X-Restli-Protocol-Version': '2.0.0',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'LinkedIn-Version': '202410',
+        'X-Restli-Protocol-Version': '2.0.0'
       },
-      body: JSON.stringify(contentPayload)
+      body: JSON.stringify(creativePayload)
     });
 
-    if (!contentResponse.ok) {
-      const errorText = await contentResponse.text();
-      throw new Error(`LinkedIn Content API error: ${contentResponse.status} ${errorText}`);
+    const responseText = await response.text();
+    console.log(`Create creative response: ${response.status} - ${responseText}`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to create creative: ${responseText}`);
     }
 
-    const contentResult = await contentResponse.json();
-    const creativeId = contentResult.id;
-
-    // Store in database
-    await supabase
-      .from('linkedin_creatives')
-      .insert({
-        id: creativeId,
-        title: creativeData.name,
-        description: creativeData.description,
-        click_uri: creativeData.clickUri,
-        account_id: creativeData.accountId,
-        created_by: userId,
-        status: 'ACTIVE',
-        creative_data: contentResult
-      });
-
-    return { creative: contentResult };
+    const result = JSON.parse(responseText);
+    return { success: true, creative: result };
   } catch (error) {
     console.error('Error creating creative:', error);
     throw error;
   }
 }
 
-async function getAccountCreatives(accessToken: string, accountId: string, supabase: any, userId: string): Promise<{ creatives: any[] }> {
+async function updateCampaign(accessToken: string, params: any) {
   try {
-    // First try to get from database
-    const { data: dbCreatives } = await supabase
-      .from('linkedin_creatives')
-      .select('*')
-      .eq('account_id', accountId)
-      .eq('created_by', userId);
-
-    if (dbCreatives && dbCreatives.length > 0) {
-      return { creatives: dbCreatives };
-    }
-
-    // Fallback to API call
-    const response = await fetch(`https://api.linkedin.com/rest/adAccounts/${accountId}/creatives?q=search&pageSize=100`, {
+    console.log('Updating LinkedIn campaign:', params.campaignId, 'with data:', params.updateData);
+    
+    const response = await fetch(`https://api.linkedin.com/v2/adCampaignsV2/${params.campaignId}`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202407',
+        'Content-Type': 'application/json',
+        'LinkedIn-Version': '202410',
         'X-Restli-Protocol-Version': '2.0.0'
-      }
+      },
+      body: JSON.stringify(params.updateData)
     });
 
+    const responseText = await response.text();
+    console.log(`Update campaign response: ${response.status} - ${responseText}`);
+
     if (!response.ok) {
-      console.log(`API call failed with status ${response.status}, returning empty array`);
-      return { creatives: [] };
+      throw new Error(`Failed to update campaign: ${responseText}`);
     }
 
-    const data = await response.json();
-    return { creatives: data.elements || [] };
+    return { success: true };
   } catch (error) {
-    console.error('Error fetching creatives:', error);
-    return { creatives: [] };
+    console.error('Error updating campaign:', error);
+    throw error;
   }
 }
