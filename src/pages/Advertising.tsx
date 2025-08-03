@@ -103,12 +103,7 @@ const Advertising: React.FC = () => {
     checkLinkedInConnection();
   }, []);
 
-  // Load campaigns when account is selected
-  useEffect(() => {
-    if (selectedAccount) {
-      fetchCampaigns();
-    }
-  }, [selectedAccount]);
+  // Load campaigns from all accounts automatically
 
   // Data fetching functions
   const fetchAdvertisingData = async () => {
@@ -182,31 +177,49 @@ const Advertising: React.FC = () => {
 
   const fetchCampaigns = async () => {
     try {
-      // First try to fetch campaigns from LinkedIn API if an account is selected
-      if (selectedAccount) {
-        console.log('Fetching campaigns from LinkedIn for account:', selectedAccount);
-        const { data: linkedInData, error: linkedInError } = await supabase.functions.invoke('linkedin-advertising-api', {
-          body: { 
-            action: 'getCampaigns',
-            accountId: selectedAccount
+      console.log('Fetching campaigns from all LinkedIn ad accounts...');
+      
+      // Get all ad accounts first
+      const { data: accounts, error: accountsError } = await supabase
+        .from('linkedin_ad_accounts')
+        .select('*');
+
+      if (accountsError) throw accountsError;
+
+      let allCampaigns: Campaign[] = [];
+
+      // Fetch campaigns for each account
+      if (accounts && accounts.length > 0) {
+        const campaignPromises = accounts.map(async (account) => {
+          try {
+            console.log(`Fetching campaigns for account: ${account.name} (${account.linkedin_account_id})`);
+            const { data: linkedInData, error: linkedInError } = await supabase.functions.invoke('linkedin-advertising-api', {
+              body: { 
+                action: 'getCampaigns',
+                accountId: account.linkedin_account_id
+              }
+            });
+
+            if (linkedInData && linkedInData.campaigns) {
+              console.log(`Found ${linkedInData.campaigns.length} campaigns for account ${account.name}`);
+              return linkedInData.campaigns.map((campaign: any) => ({
+                ...campaign,
+                account_name: account.name // Add account name for display
+              }));
+            }
+            return [];
+          } catch (error) {
+            console.error(`Error fetching campaigns for account ${account.name}:`, error);
+            return [];
           }
         });
 
-        if (linkedInData && linkedInData.campaigns) {
-          console.log('Loaded campaigns from LinkedIn:', linkedInData.campaigns);
-          setCampaigns(linkedInData.campaigns);
-          return;
-        }
+        const campaignResults = await Promise.all(campaignPromises);
+        allCampaigns = campaignResults.flat();
       }
 
-      // Fallback to database campaigns
-      const { data, error } = await supabase
-        .from('linkedin_campaigns')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCampaigns(data || []);
+      console.log(`Total campaigns loaded: ${allCampaigns.length}`);
+      setCampaigns(allCampaigns);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
     }
