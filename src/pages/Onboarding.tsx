@@ -263,7 +263,7 @@ const Onboarding = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{candidates.length}</div>
-              <p className="text-xs text-slate-400">Available for onboarding</p>
+              <p className="text-xs text-slate-400">Selected at Matching, available for onboarding</p>
             </CardContent>
           </Card>
         </div>
@@ -284,7 +284,7 @@ const Onboarding = () => {
               <Label htmlFor="candidate-select" className="text-white">Choose Candidate</Label>
               <Select value={selectedCandidateId} onValueChange={setSelectedCandidateId}>
                 <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue placeholder={isLoading ? "Loading candidates..." : "Select a candidate for onboarding"} />
+                  <SelectValue placeholder={isLoading ? "Loading candidates..." : candidates.length === 0 ? "No matched candidates yet — match someone on the Matching page first" : "Select a matched candidate"} />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-700 border-slate-600">
                   {candidates.map((candidate) => (
@@ -378,7 +378,37 @@ const Onboarding = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-white mb-4">Active Onboarding Processes</h3>
+                <h3 className="text-xl font-semibold text-white mb-2">People who received the onboarding email</h3>
+                <div className="overflow-x-auto rounded-lg border border-white/15">
+                  <table className="w-full text-sm text-white">
+                    <thead className="bg-white/5 text-left text-slate-300">
+                      <tr>
+                        <th className="p-3">Name</th><th className="p-3">Email</th>
+                        {createInitialSteps().map((s) => <th key={s.id} className="p-3">{s.name}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {onboardingProgress.map((p: any) => (
+                        <tr key={p.candidateId} className="border-t border-white/10">
+                          <td className="p-3 font-medium">{p.candidateName}</td>
+                          <td className="p-3 text-slate-300">{p.candidateEmail}</td>
+                          {p.steps.map((s: OnboardingStep, i: number) => (
+                            <td key={s.id} className="p-3">
+                              {s.completed ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-300">
+                                  <CheckCircle className="h-3 w-3" />{p.dates?.[i] ? new Date(p.dates[i]).toLocaleDateString('nl-NL') : 'Done'}
+                                </span>
+                              ) : (
+                                <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-200">Pending</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-4 pt-4">Active Onboarding Processes</h3>
                 
                 {onboardingProgress.map((progress) => {
                   const completedSteps = progress.steps.filter(step => step.completed).length;
