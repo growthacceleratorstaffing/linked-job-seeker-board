@@ -1038,6 +1038,51 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_progress: {
+        Row: {
+          account_created_at: string | null
+          candidate_email: string
+          candidate_id: string
+          candidate_name: string
+          contract_signed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          job_title: string | null
+          team_intro_at: string | null
+          updated_at: string
+          welcome_email_at: string | null
+        }
+        Insert: {
+          account_created_at?: string | null
+          candidate_email: string
+          candidate_id: string
+          candidate_name: string
+          contract_signed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_title?: string | null
+          team_intro_at?: string | null
+          updated_at?: string
+          welcome_email_at?: string | null
+        }
+        Update: {
+          account_created_at?: string | null
+          candidate_email?: string
+          candidate_id?: string
+          candidate_name?: string
+          contract_signed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_title?: string | null
+          team_intro_at?: string | null
+          updated_at?: string
+          welcome_email_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -1107,6 +1152,7 @@ export type Database = {
           project: string | null
           start_time: string | null
           status: string
+          submitted_at: string | null
           updated_at: string
           user_id: string
         }
@@ -1121,6 +1167,7 @@ export type Database = {
           project?: string | null
           start_time?: string | null
           status?: string
+          submitted_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1135,6 +1182,7 @@ export type Database = {
           project?: string | null
           start_time?: string | null
           status?: string
+          submitted_at?: string | null
           updated_at?: string
           user_id?: string
         }
