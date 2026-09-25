@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const WORKABLE_SUBDOMAIN = Deno.env.get('WORKABLE_SUBDOMAIN')
+    const WORKABLE_SUBDOMAIN = (Deno.env.get('WORKABLE_SUBDOMAIN') || '').trim().replace(/^https?:\/\//, '').replace(/\.workable\.com.*$/, '')
     const WORKABLE_API_TOKEN = Deno.env.get('WORKABLE_API_TOKEN')
 
     if (!WORKABLE_SUBDOMAIN || !WORKABLE_API_TOKEN) {
@@ -29,7 +29,7 @@ serve(async (req) => {
     console.log('Starting to fetch all jobs from Workable...')
 
     while (hasMore) {
-      const url = `https://${WORKABLE_SUBDOMAIN}/spi/v3/jobs?limit=${limit}&offset=${offset}&state=published,draft,archived`
+      const url = `https://${WORKABLE_SUBDOMAIN}.workable.com/spi/v3/jobs?limit=${limit}&offset=${offset}&state=published,draft,archived`
       
       const response = await fetch(url, {
         headers: {
