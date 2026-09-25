@@ -228,7 +228,7 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
           {entries.length === 0 ? <p className="text-white/60 text-sm">No hours registered this week.</p> : (
             <table className="w-full text-sm">
               <thead className="text-white/60 text-left">
-                <tr>{allEmployees && <th className="py-2">Employee</th>}<th>Date</th><th>Time</th><th>Break</th><th>Hours</th><th>Project</th><th>Description</th><th>Status</th><th></th></tr>
+                <tr>{allEmployees && <th className="py-2">Employee</th>}<th>Date</th><th>Time</th><th>Break</th><th>Hours</th><th>Project</th><th>Status</th><th></th></tr>
               </thead>
               <tbody>
                 {entries.map((e) => (
@@ -239,7 +239,6 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
                     <td>{e.break_minutes}m</td>
                     <td className="font-semibold">{Number(e.hours).toFixed(2)}</td>
                     <td>{e.project}</td>
-                    <td className="max-w-xs truncate">{e.description}</td>
                     <td><span className={`px-2 py-0.5 rounded-full text-xs ${e.status === 'approved' ? 'bg-green-500/20 text-green-300' : e.status === 'submitted' ? 'bg-blue-500/20 text-blue-200' : 'bg-yellow-500/20 text-yellow-200'}`}>{e.status}</span></td>
                     <td className="text-right whitespace-nowrap">
                       {allEmployees && e.status !== 'approved' && <Button size="sm" variant="ghost" onClick={() => approve(e.id)} className="text-green-300 hover:bg-white/10"><Check className="h-4 w-4" /></Button>}
