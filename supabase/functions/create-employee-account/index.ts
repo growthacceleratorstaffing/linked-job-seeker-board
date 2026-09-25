@@ -57,7 +57,40 @@ Deno.serve(async (req) => {
     }, { onConflict: "user_id" });
     if (empErr) return json({ error: empErr.message }, 400);
 
-    return json({ success: true, email, password, user_id: userId });
+    // Email the login details to the new employee
+    const loginUrl = `${APP_URL}/auth`;
+    const { error: mailErr } = await resend.emails.send({
+      from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
+      to: [email],
+      reply_to: "bart@startupaccelerator.nl",
+      subject: "Your Growth Accelerator backoffice account is ready",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb; text-align: center;">Welcome to Growth Accelerator, ${full_name}!</h1>
+          <div style="background-color: #f8fafc; padding: 30px; border-radius: 8px; margin: 20px 0;">
+            <p>Your backoffice account has been created. You can sign in with the details below:</p>
+            <div style="background-color: white; padding: 20px; border-radius: 6px; border-left: 4px solid #ec4899;">
+              <p><strong>Login page:</strong> <a href="${loginUrl}">${loginUrl}</a></p>
+              <p><strong>Email:</strong> ${email}</p>
+              <p><strong>Temporary password:</strong> ${password}</p>
+            </div>
+            <p style="margin-top: 20px;">After signing in you can view your onboarding and register your hours in the backoffice. We recommend changing your password after your first login.</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${loginUrl}" style="background-color: #ec4899; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Sign in to your account</a>
+            </div>
+          </div>
+          <div style="text-align: center; padding: 20px; color: #64748b; font-size: 12px;">
+            <p>Best regards,<br>The Growth Accelerator Team</p>
+          </div>
+        </div>
+      `,
+    });
+    if (mailErr) {
+      console.error("Resend rejected account email:", mailErr);
+      return json({ success: true, email, password, user_id: userId, email_sent: false, email_error: mailErr.message || String(mailErr) });
+    }
+
+    return json({ success: true, email, password, user_id: userId, email_sent: true });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
