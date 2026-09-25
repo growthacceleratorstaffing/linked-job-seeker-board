@@ -215,17 +215,40 @@ const Integrations = () => {
         return;
       }
 
-      // Store integration settings
+      const integrationType = selectedCRM.name.toLowerCase();
+
+      // Store integration settings (one row per user + integration)
       const { error } = await supabase
         .from('integration_settings')
         .upsert({
-          integration_type: selectedCRM.name.toLowerCase(),
+          integration_type: integrationType,
           is_enabled: true,
           settings: connectionForm,
           user_id: user.id,
-        });
+        }, { onConflict: 'user_id,integration_type' });
 
       if (error) throw error;
+
+      // Verify the key actually works where a test is available
+      const testFn: Record<string, string> = {
+        apollo: 'apollo-integration',
+        jazzhr: 'jazzhr-integration',
+      };
+      if (testFn[integrationType]) {
+        const { data: testData, error: testError } = await supabase.functions.invoke(testFn[integrationType], {
+          body: { action: 'test_connection' },
+        });
+        let detail = testData?.error as string | undefined;
+        if (testError) {
+          try { detail = JSON.parse(await (testError as any).context.text()).error; } catch { detail = testError.message; }
+        }
+        if (detail) {
+          await supabase.from('integration_settings')
+            .update({ is_enabled: false })
+            .eq('user_id', user.id).eq('integration_type', integrationType);
+          throw new Error(detail);
+        }
+      }
 
       setConnectedIntegrations(prev => ({
         ...prev,
@@ -239,11 +262,11 @@ const Integrations = () => {
 
       setSelectedCRM(null);
       setConnectionForm({});
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error connecting CRM:', error);
       toast({
         title: "Connection Failed",
-        description: "Failed to connect integration. Please check your credentials and try again.",
+        description: error?.message || "Failed to connect integration. Please check your credentials and try again.",
         variant: "destructive",
       });
     } finally {
