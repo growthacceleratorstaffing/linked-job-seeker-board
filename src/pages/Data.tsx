@@ -474,6 +474,36 @@ const Data = () => {
           ))}
         </Tabs>
       </div>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit record</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {Object.keys(editing.row).map((key) => {
+                const editable = isFieldEditable(editing.type, key);
+                return (
+                  <div key={key} className="space-y-1">
+                    <Label className="capitalize">{key.replace(/_/g, ' ')}{!editable && ' (read-only)'}</Label>
+                    <Input
+                      value={String(editing.row[key] ?? '')}
+                      disabled={!editable}
+                      onChange={(e) => setEditing({ ...editing, row: { ...editing.row, [key]: e.target.value } })}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={saving} className="bg-pink-600 hover:bg-pink-700">
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
