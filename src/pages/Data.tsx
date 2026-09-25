@@ -403,15 +403,22 @@ const Data = () => {
         </div>
 
         <Tabs defaultValue={connectedIntegrations[0]?.integration_type} className="w-full">
-          <TabsList className="grid w-full mb-6" style={{ gridTemplateColumns: `repeat(${connectedIntegrations.length}, minmax(0, 1fr))` }}>
+          <TabsList className="grid w-full mb-6 h-auto bg-transparent gap-4 p-0" style={{ gridTemplateColumns: `repeat(${connectedIntegrations.length}, minmax(0, 1fr))` }}>
             {connectedIntegrations.map((integration) => (
               <TabsTrigger 
                 key={integration.integration_type} 
                 value={integration.integration_type}
-                className="capitalize"
+                className="capitalize h-auto p-4 rounded-lg border border-white/20 bg-white/5 text-white data-[state=active]:bg-pink-900/30 data-[state=active]:border-pink-500 data-[state=active]:text-pink-200 hover:bg-white/10 transition-colors"
               >
-                <span className="mr-2">{getIntegrationIcon(integration.integration_type)}</span>
-                {integration.integration_type}
+                <div className="flex items-center space-x-3">
+                  <span className="text-3xl">{getIntegrationIcon(integration.integration_type)}</span>
+                  <div className="text-left">
+                    <div className="font-semibold">{integration.integration_type}</div>
+                    <div className="text-xs opacity-70 normal-case">
+                      {integrationData[integration.integration_type]?.length ?? 0} records
+                    </div>
+                  </div>
+                </div>
               </TabsTrigger>
             ))}
           </TabsList>
