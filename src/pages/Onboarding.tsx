@@ -234,6 +234,13 @@ const Onboarding = () => {
       return;
     }
     setCreatedLogin({ email: data.email, password: data.password });
+    toast({
+      title: data.email_sent ? 'Account created & emailed ✉️' : 'Account created',
+      description: data.email_sent
+        ? `Login details were emailed to ${data.email}`
+        : `Account created, but the email could not be sent: ${data.email_error || 'unknown reason'}`,
+      variant: data.email_sent ? undefined : 'destructive',
+    });
     completeStep(accountFor.candidateId, 1);
   };
 
