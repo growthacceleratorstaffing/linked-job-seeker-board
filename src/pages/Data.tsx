@@ -38,6 +38,10 @@ const Data = () => {
           body: { action: 'update_contact', id: editing.row.id, fields },
         });
         if (error || res?.error) throw new Error(res?.error || error?.message);
+      } else if (editing.type === 'growth accelerator') {
+        const { id, created_at, ...fields } = editing.row;
+        const { error } = await supabase.from('candidates').update(fields as any).eq('id', id);
+        if (error) throw error;
       } else if (editing.type === 'linkedin recruiter') {
         const { id, created_at, ...fields } = editing.row;
         const { error } = await supabase.from('contacts').update(fields as any).eq('id', id);
@@ -75,7 +79,7 @@ const Data = () => {
       if (error) throw error;
       
       // Include all integrations (CRM and ATS)
-      const allIntegrations = [...(data || []).filter(i => i.integration_type !== 'custom' && i.integration_type !== 'linkedin'), { integration_type: 'linkedin recruiter' }];
+      const allIntegrations = [{ integration_type: 'growth accelerator' }, ...(data || []).filter(i => i.integration_type !== 'custom' && i.integration_type !== 'linkedin'), { integration_type: 'linkedin recruiter' }];
       setActiveTab(prev => prev || allIntegrations[0]?.integration_type);
       
       console.log('🔍 Found integrations:', allIntegrations.map(i => i.integration_type));
@@ -96,7 +100,13 @@ const Data = () => {
     try {
       let data = [];
       
-      if (integrationType === 'linkedin recruiter') {
+      if (integrationType === 'growth accelerator') {
+        const { data: rows, error } = await supabase.from('candidates')
+          .select('name,email,phone,current_position,company,location,interview_stage,linkedin_profile_url,source_platform,created_at,id')
+          .order('created_at', { ascending: false });
+        if (error) toast({ title: "Could not load candidates", description: error.message, variant: "destructive" });
+        data = rows || [];
+      } else if (integrationType === 'linkedin recruiter') {
         const { data: rows, error } = await supabase.from('contacts')
           .select('name,email,phone,title,company,location,linkedin_url,status,notes,created_at,id')
           .eq('source', 'linkedin_recruiter').order('created_at', { ascending: false });
@@ -304,6 +314,7 @@ const Data = () => {
       case 'apollo': return '🚀';
       case 'zoho crm': return '🏢';
       case 'linkedin recruiter': return '💼';
+      case 'growth accelerator': return '🚀';
       case 'jazzhr': return '🎵';
       case 'jobadder': return '➕';
       case 'workable': return '⚡';

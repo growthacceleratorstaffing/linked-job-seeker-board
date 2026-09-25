@@ -113,30 +113,23 @@ export const VacancyGenerator = ({ onJobPublished }: { onJobPublished?: () => vo
         source: generatedVacancy.trim() ? 'AI Generator' : 'Manual Entry',
       };
       
-      console.log('Publishing job with data:', jobData);
-      
-      const { data, error } = await supabase.functions.invoke('workable-integration', {
-        body: { 
-          action: 'publish_job',
-          jobData
-        }
+      // Save to the Vacancies list (jobs table)
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('jobs').insert({
+        title: jobData.title,
+        company_name: 'Growth Accelerator',
+        location_name: jobData.location || (jobData.remote ? 'Remote' : null),
+        work_type_name: jobData.employment_type,
+        category_name: jobData.department,
+        job_description: jobData.description,
+        source: jobData.source,
+        created_by: user?.id ?? null,
       });
-
-      console.log('Edge function response:', { data, error });
-
-      if (error) {
-        console.error('Edge function error details:', error);
-        throw error;
-      }
-
-      // Check if the response indicates success
-      if (data && !data.success && data.error) {
-        throw new Error(data.message || data.error || 'Job creation failed');
-      }
+      if (error) throw error;
 
       toast({
         title: "Job created! 📝",
-        description: data?.message || "Your vacancy has been created successfully.",
+        description: "Your vacancy is now listed under Vacancies.",
       });
 
       // Trigger refresh of job list

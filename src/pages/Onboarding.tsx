@@ -43,6 +43,7 @@ const Onboarding = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [onboardingProgress, setOnboardingProgress] = useState<OnboardingProgress[]>([]);
+  const [viewId, setViewId] = useState<string>('');
   const { toast } = useToast();
 
   const createInitialSteps = (): OnboardingStep[] => [
@@ -408,9 +409,17 @@ const Onboarding = () => {
                     </tbody>
                   </table>
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-4 pt-4">Active Onboarding Processes</h3>
-                
-                {onboardingProgress.map((progress) => {
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
+                  <h3 className="text-xl font-semibold text-white">Onboarding process</h3>
+                  <Select value={viewId || onboardingProgress[0]?.candidateId} onValueChange={setViewId}>
+                    <SelectTrigger className="w-72 bg-slate-700 border-slate-600 text-white"><SelectValue placeholder="Select a person" /></SelectTrigger>
+                    <SelectContent>
+                      {onboardingProgress.map((p) => <SelectItem key={p.candidateId} value={p.candidateId}>{p.candidateName}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {onboardingProgress.filter((p) => p.candidateId === (viewId || onboardingProgress[0]?.candidateId)).map((progress) => {
                   const completedSteps = progress.steps.filter(step => step.completed).length;
                   const progressPercentage = (completedSteps / progress.steps.length) * 100;
                   

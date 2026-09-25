@@ -20,8 +20,8 @@ const WorkflowHeader = () => {
   const allWorkflowSteps = [
     // Same order as the sidebar: Dashboard → Jobs → Staffing → CRM → Contracting
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-    { path: '/post-jobs', label: 'Jobs', icon: Briefcase },
     { path: '/jobs', label: 'Attract', icon: FileText, requiresPermission: 'publish_jobs' },
+    { path: '/post-jobs', label: 'Jobs', icon: Briefcase },
     { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/matching', label: 'Match', icon: ArrowRightLeft, requiresPermission: 'create_matches' },
     { path: '/onboarding', label: 'Onboard', icon: CheckSquare },

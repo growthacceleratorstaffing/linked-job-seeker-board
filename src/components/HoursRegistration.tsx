@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +29,7 @@ const calcHours = (s: string, e: string, brk: number) => {
 export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmployees }) => {
   const { toast } = useToast();
   const [week, setWeek] = useState(startOfWeek(new Date()));
+  const [days, setDays] = useState<Date[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [filter, setFilter] = useState('all');
@@ -73,28 +75,45 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
 
   const add = async () => {
     if (!userId) return;
-    if (form.entry_date > iso(new Date())) { toast({ title: 'Date in the future', description: 'You can only register hours for today or earlier.', variant: 'destructive' }); return; }
+    const today = iso(new Date());
+    const dates = days.map((d) => { const x = new Date(d); x.setHours(12); return iso(x); }).filter((d) => d <= today).sort();
+    if (!dates.length) { toast({ title: 'Pick at least one day', variant: 'destructive' }); return; }
     const hours = calcHours(form.start_time, form.end_time, Number(form.break_minutes));
     if (hours <= 0) { toast({ title: 'Check your times', description: 'End time must be after start time.', variant: 'destructive' }); return; }
-    const { error } = await db.from('time_entries').insert({ ...form, break_minutes: Number(form.break_minutes), hours, user_id: userId, status: 'draft' });
+    const rows = dates.map((entry_date) => ({
+      entry_date, start_time: form.start_time, end_time: form.end_time, break_minutes: Number(form.break_minutes),
+      project: form.project || null, hours, user_id: userId, status: 'draft',
+    }));
+    const { error } = await db.from('time_entries').insert(rows);
     if (error) { toast({ title: 'Could not save', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: 'Hours saved', description: `${hours} hours on ${form.entry_date}` });
-    setForm({ ...form, description: '' });
-    const target = startOfWeek(new Date(form.entry_date));
+    toast({ title: 'Hours saved', description: `${rows.length} day${rows.length > 1 ? 's' : ''} · ${(hours * rows.length).toFixed(2)} hours` });
+    setDays([]);
+    const target = startOfWeek(new Date(dates[dates.length - 1]));
     if (iso(target) !== iso(week)) setWeek(target); else load();
+  };
+  const readErr = async (data: any, error: any) => {
+    let msg = data?.error || error?.message;
+    if (error) { try { msg = JSON.parse(await error.context.text()).error; } catch { /* keep */ } }
+    return msg;
   };
   const submit = async () => {
     setSubmitting(true);
     const { data, error } = await supabase.functions.invoke('submit-hours', { body: {} });
     setSubmitting(false);
-    let msg = data?.error || error?.message;
-    if (error) { try { msg = JSON.parse(await (error as any).context.text()).error; } catch { /* keep */ } }
-    if (error || data?.error) { toast({ title: 'Could not submit', description: msg, variant: 'destructive' }); return; }
+    if (error || data?.error) { toast({ title: 'Could not submit', description: await readErr(data, error), variant: 'destructive' }); return; }
     toast({ title: 'Hours submitted', description: `${data.count} entries (${Number(data.total).toFixed(2)} h) sent to the admin.` });
     load();
   };
+  const approveAll = async () => {
+    setSubmitting(true);
+    const { data, error } = await supabase.functions.invoke('approve-hours', { body: { user_id: filter === 'all' ? null : filter } });
+    setSubmitting(false);
+    if (error || data?.error) { toast({ title: 'Could not approve', description: await readErr(data, error), variant: 'destructive' }); return; }
+    toast({ title: 'Hours approved', description: `${data.count} entries (${Number(data.total).toFixed(2)} h) approved. Overview emailed to the admin.` });
+    load();
+  };
   const remove = async (id: string) => { await db.from('time_entries').delete().eq('id', id); load(); };
-  const approve = async (id: string) => { await db.from('time_entries').update({ status: 'approved' }).eq('id', id); load(); };
+  const approve = async (id: string) => { await db.from('time_entries').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', id); load(); };
 
   const nameOf = (uid: string) => employees.find((e) => e.user_id === uid)?.full_name || (uid === userId ? 'Me' : '—');
   const total = entries.reduce((s, e) => s + Number(e.hours), 0);
@@ -113,9 +132,15 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
               Last 12 months · total <b className="text-white">{monthly.reduce((s, m) => s + m.hours, 0).toFixed(2)} hours</b>
             </CardDescription>
           </div>
-          <Button onClick={submit} disabled={submitting || unsubmitted === 0} className="bg-pink-600 hover:bg-pink-700 text-white">
-            <Send className="h-4 w-4 mr-1" /> {submitting ? 'Submitting…' : `Submit my hours${unsubmitted ? ` (${unsubmitted})` : ''}`}
-          </Button>
+          {allEmployees ? (
+            <Button onClick={approveAll} disabled={submitting} className="bg-pink-600 hover:bg-pink-700 text-white">
+              <Check className="h-4 w-4 mr-1" /> {submitting ? 'Approving…' : `Approve hours${filter === 'all' ? ' (everyone)' : ` (${nameOf(filter)})`}`}
+            </Button>
+          ) : (
+            <Button onClick={submit} disabled={submitting || unsubmitted === 0} className="bg-pink-600 hover:bg-pink-700 text-white">
+              <Send className="h-4 w-4 mr-1" /> {submitting ? 'Submitting…' : `Submit my hours${unsubmitted ? ` (${unsubmitted})` : ''}`}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
@@ -165,20 +190,37 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
         </CardContent>
       </Card>
 
-      {true && (
-        <Card className="bg-white/5 border-white/20 text-white">
-          <CardHeader><CardTitle>Register hours</CardTitle><CardDescription className="text-white/70">Pick any date up to today, including past weeks and months.</CardDescription></CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
-            <div className="space-y-1"><Label>Date</Label><Input type="date" max={iso(new Date())} className={field} value={form.entry_date} onChange={(e) => setForm({ ...form, entry_date: e.target.value })} /></div>
+      <Card className="bg-white/5 border-white/20 text-white">
+        <CardHeader>
+          <CardTitle>Register hours</CardTitle>
+          <CardDescription className="text-white/70">Click one or more days in the calendar (up to today). The same times are saved for every selected day.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col lg:flex-row gap-6">
+          <div className="rounded-lg border border-white/15 bg-white text-foreground w-fit">
+            <Calendar
+              mode="multiple"
+              selected={days}
+              onSelect={(d) => setDays(d || [])}
+              disabled={{ after: new Date() }}
+              weekStartsOn={1}
+              className="p-3 pointer-events-auto"
+            />
+          </div>
+          <div className="flex-1 grid grid-cols-2 gap-3 content-start">
             <div className="space-y-1"><Label>Start</Label><Input type="time" className={field} value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></div>
             <div className="space-y-1"><Label>End</Label><Input type="time" className={field} value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></div>
             <div className="space-y-1"><Label>Break (min)</Label><Input type="number" min={0} className={field} value={form.break_minutes} onChange={(e) => setForm({ ...form, break_minutes: Number(e.target.value) })} /></div>
-            <div className="space-y-1 col-span-2"><Label>Client / project</Label><Input className={field} value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} placeholder="e.g. Client BV" /></div>
-            <div className="space-y-1 col-span-2 md:col-span-5"><Label>Description</Label><Input className={field} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What did you work on?" /></div>
-            <Button onClick={add} className="bg-pink-600 hover:bg-pink-700 text-white"><Plus className="h-4 w-4 mr-1" /> Add ({calcHours(form.start_time, form.end_time, form.break_minutes)} h)</Button>
-          </CardContent>
-        </Card>
-      )}
+            <div className="space-y-1"><Label>Client / project</Label><Input className={field} value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} placeholder="e.g. Client BV" /></div>
+            <div className="col-span-2 text-sm text-white/70">
+              {days.length === 0 ? 'No days selected yet.' : `${days.length} day${days.length > 1 ? 's' : ''} selected · ${(days.length * calcHours(form.start_time, form.end_time, form.break_minutes)).toFixed(2)} h in total`}
+            </div>
+            <div className="col-span-2 flex gap-2">
+              <Button onClick={add} disabled={days.length === 0} className="bg-pink-600 hover:bg-pink-700 text-white"><Plus className="h-4 w-4 mr-1" /> Add hours</Button>
+              {days.length > 0 && <Button variant="ghost" onClick={() => setDays([])} className="text-white hover:bg-white/10">Clear selection</Button>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="bg-white/5 border-white/20 text-white">
         <CardHeader><CardTitle>Entries</CardTitle></CardHeader>
@@ -186,7 +228,7 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
           {entries.length === 0 ? <p className="text-white/60 text-sm">No hours registered this week.</p> : (
             <table className="w-full text-sm">
               <thead className="text-white/60 text-left">
-                <tr>{allEmployees && <th className="py-2">Employee</th>}<th>Date</th><th>Time</th><th>Break</th><th>Hours</th><th>Project</th><th>Description</th><th>Status</th><th></th></tr>
+                <tr>{allEmployees && <th className="py-2">Employee</th>}<th>Date</th><th>Time</th><th>Break</th><th>Hours</th><th>Project</th><th>Status</th><th></th></tr>
               </thead>
               <tbody>
                 {entries.map((e) => (
@@ -197,7 +239,6 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
                     <td>{e.break_minutes}m</td>
                     <td className="font-semibold">{Number(e.hours).toFixed(2)}</td>
                     <td>{e.project}</td>
-                    <td className="max-w-xs truncate">{e.description}</td>
                     <td><span className={`px-2 py-0.5 rounded-full text-xs ${e.status === 'approved' ? 'bg-green-500/20 text-green-300' : e.status === 'submitted' ? 'bg-blue-500/20 text-blue-200' : 'bg-yellow-500/20 text-yellow-200'}`}>{e.status}</span></td>
                     <td className="text-right whitespace-nowrap">
                       {allEmployees && e.status !== 'approved' && <Button size="sm" variant="ghost" onClick={() => approve(e.id)} className="text-green-300 hover:bg-white/10"><Check className="h-4 w-4" /></Button>}

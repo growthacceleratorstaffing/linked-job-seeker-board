@@ -1,28 +1,18 @@
-import React, { useState, useEffect } from 'react';
 import Layout from "@/components/Layout";
+import { useNavigate } from "react-router-dom";
 import { VacancyGenerator } from "@/components/VacancyGenerator";
-import { JobsOverview } from "@/components/JobsOverview";
 
 const Jobs = () => {
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  const handleJobPublished = () => {
-    // Trigger refresh of jobs list
-    setRefreshTrigger(prev => prev + 1);
-  };
-
+  const navigate = useNavigate();
   return (
     <Layout>
       <div className="min-h-screen bg-primary-blue text-white">
         <div className="container mx-auto px-6 py-8 space-y-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Create Vacancies</h1>
-            <p className="text-slate-300">Generate compelling job descriptions with AI and publish new positions</p>
+            <p className="text-slate-300">Generate compelling job descriptions with AI. New postings appear under Vacancies.</p>
           </div>
-
-          <VacancyGenerator onJobPublished={handleJobPublished} />
-          
-          <JobsOverview refreshTrigger={refreshTrigger} />
+          <VacancyGenerator onJobPublished={() => navigate('/post-jobs')} />
         </div>
       </div>
     </Layout>
