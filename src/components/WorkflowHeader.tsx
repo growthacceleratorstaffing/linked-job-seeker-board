@@ -18,13 +18,14 @@ const WorkflowHeader = () => {
   const { permissions } = useWorkablePermissions();
 
   const allWorkflowSteps = [
+    // Same order as the sidebar: Dashboard → Jobs → Staffing → CRM → Contracting
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-    { path: '/integrations', label: 'Integrations', icon: Settings },
     { path: '/post-jobs', label: 'Jobs', icon: Briefcase },
-    { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/jobs', label: 'Attract', icon: FileText, requiresPermission: 'publish_jobs' },
+    { path: '/candidates', label: 'Candidates', icon: Users },
     { path: '/matching', label: 'Match', icon: ArrowRightLeft, requiresPermission: 'create_matches' },
     { path: '/onboarding', label: 'Onboard', icon: CheckSquare },
+    { path: '/integrations', label: 'Integrations', icon: Settings },
     { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Hire', icon: FileText, external: true },
   ];
 
