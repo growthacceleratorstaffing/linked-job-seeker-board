@@ -11,12 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 const Data = () => {
   const [connectedIntegrations, setConnectedIntegrations] = useState<any[]>([]);
   const [integrationData, setIntegrationData] = useState<Record<string, any[]>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string | undefined>(searchParams.get('source') || undefined);
   const [editing, setEditing] = useState<{ type: string; index: number; row: Record<string, any> } | null>(null);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -36,6 +38,10 @@ const Data = () => {
           body: { action: 'update_contact', id: editing.row.id, fields },
         });
         if (error || res?.error) throw new Error(res?.error || error?.message);
+      } else if (editing.type === 'linkedin recruiter') {
+        const { id, created_at, ...fields } = editing.row;
+        const { error } = await supabase.from('contacts').update(fields as any).eq('id', id);
+        if (error) throw error;
       }
       setIntegrationData(prev => {
         const list = [...(prev[editing.type] || [])];
@@ -69,7 +75,8 @@ const Data = () => {
       if (error) throw error;
       
       // Include all integrations (CRM and ATS)
-      const allIntegrations = data || [];
+      const allIntegrations = [...(data || []).filter(i => i.integration_type !== 'custom' && i.integration_type !== 'linkedin'), { integration_type: 'linkedin recruiter' }];
+      setActiveTab(prev => prev || allIntegrations[0]?.integration_type);
       
       console.log('🔍 Found integrations:', allIntegrations.map(i => i.integration_type));
       setConnectedIntegrations(allIntegrations);
@@ -89,7 +96,13 @@ const Data = () => {
     try {
       let data = [];
       
-      if (integrationType === 'apollo') {
+      if (integrationType === 'linkedin recruiter') {
+        const { data: rows, error } = await supabase.from('contacts')
+          .select('name,email,phone,title,company,location,linkedin_url,status,notes,created_at,id')
+          .eq('source', 'linkedin_recruiter').order('created_at', { ascending: false });
+        if (error) toast({ title: "LinkedIn data problem", description: error.message, variant: "destructive" });
+        data = rows || [];
+      } else if (integrationType === 'apollo') {
         // Load real Apollo data via edge function
         console.log('🚀 Calling Apollo integration edge function...');
         
@@ -290,7 +303,7 @@ const Data = () => {
       case 'pipedrive': return '📊';
       case 'apollo': return '🚀';
       case 'zoho crm': return '🏢';
-      case 'linkedin sales navigator': return '💼';
+      case 'linkedin recruiter': return '💼';
       case 'jazzhr': return '🎵';
       case 'jobadder': return '➕';
       case 'workable': return '⚡';
@@ -442,7 +455,7 @@ const Data = () => {
           </div>
         </div>
 
-        <Tabs defaultValue={connectedIntegrations[0]?.integration_type} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full mb-6 h-auto bg-transparent gap-4 p-0" style={{ gridTemplateColumns: `repeat(${connectedIntegrations.length}, minmax(0, 1fr))` }}>
             {connectedIntegrations.map((integration) => (
               <TabsTrigger 

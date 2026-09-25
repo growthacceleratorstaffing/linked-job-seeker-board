@@ -354,10 +354,17 @@ const Integrations = () => {
                         <Link to={(crm as any).link}>
                           <Button className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50" variant="outline">
                             <Plus className="h-4 w-4 mr-2" />
-                            Open {crm.name}
+                            Connect {crm.name}
                           </Button>
                         </Link>
                       ) : isConnected ? (
+                        <div className="space-y-2">
+                        <Link to={`/data?source=${encodeURIComponent(crm.name.toLowerCase())}`}>
+                          <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Open {crm.name} data
+                          </Button>
+                        </Link>
                         <Button 
                           onClick={() => handleDisconnectCRM(crm.name)}
                           className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50"
@@ -366,6 +373,7 @@ const Integrations = () => {
                           <Unplug className="h-4 w-4 mr-2" />
                           Disconnect
                         </Button>
+                        </div>
                       ) : (
                         <Button 
                           onClick={() => handleConnectCRM(crm)}
