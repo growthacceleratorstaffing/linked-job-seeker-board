@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
 import Layout from "@/components/Layout";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { SelectGroup, SelectLabel } from "@/components/ui/select";
 
 interface Match {
   id: string;
@@ -37,9 +39,17 @@ interface Candidate {
   email: string;
   current_position?: string;
   company?: string;
+  source_platform?: string | null;
 }
 
+const sourceLabel = (s?: string | null) => {
+  if (!s || s === 'growth accelerator' || s === 'manual') return 'Growth Accelerator';
+  return s.split(/[\s_-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+};
+
 const Matching = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [stats, setStats] = useState({
     candidates: 0,
     openPositions: 0,
@@ -148,12 +158,15 @@ const Matching = () => {
           name, 
           email, 
           current_position, 
-          company
+          company,
+          source_platform
         `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       setCandidates(data || []);
+      const pre = searchParams.get('candidate');
+      if (pre && data?.some(c => c.id === pre)) { setCandidateOption('existing'); setSelectedCandidateId(pre); }
     } catch (error) {
       console.error('Error fetching candidates:', error);
     }
@@ -573,10 +586,17 @@ const Matching = () => {
                         <SelectValue placeholder="Choose an existing candidate" />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-700 border-slate-600">
-                        {candidates.map((candidate) => (
-                          <SelectItem key={candidate.id} value={candidate.id} className="text-white hover:bg-slate-600">
-                            {candidate.name} - {candidate.email} {candidate.current_position && `(${candidate.current_position})`}
-                          </SelectItem>
+                        {Object.entries(candidates.reduce<Record<string, Candidate[]>>((acc, c) => {
+                          const k = sourceLabel(c.source_platform); (acc[k] ||= []).push(c); return acc;
+                        }, {})).sort(([a], [b]) => a === 'Growth Accelerator' ? -1 : b === 'Growth Accelerator' ? 1 : a.localeCompare(b)).map(([group, list]) => (
+                          <SelectGroup key={group}>
+                            <SelectLabel className="text-pink-300">{group} ({list.length})</SelectLabel>
+                            {list.map((candidate) => (
+                              <SelectItem key={candidate.id} value={candidate.id} className="text-white hover:bg-slate-600">
+                                {candidate.name} - {candidate.email} {candidate.current_position && `(${candidate.current_position})`}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         ))}
                       </SelectContent>
                     </Select>
@@ -707,6 +727,13 @@ const Matching = () => {
                         <p className="text-xs text-slate-400">
                           {new Date(match.created_at).toLocaleDateString()}
                         </p>
+                        <Button
+                          size="sm"
+                          className="bg-pink-600 hover:bg-pink-700 text-white"
+                          onClick={() => navigate('/onboarding')}
+                        >
+                          Onboard
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"

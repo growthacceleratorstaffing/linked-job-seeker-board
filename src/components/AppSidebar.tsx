@@ -66,7 +66,7 @@ const AppSidebar = () => {
   const staffingItems = [
     { path: '/candidates', label: 'Candidates', icon: Users, permission: 'candidates' },
     { path: '/matching', label: 'Matching', icon: ArrowRightLeft, permission: 'reviewer' },
-    { path: '/onboarding', label: 'Preboarding', icon: CheckSquare, permission: 'simple' },
+    { path: '/onboarding', label: 'Onboarding', icon: CheckSquare, permission: 'simple' },
   ];
 
   const crmItems = [
