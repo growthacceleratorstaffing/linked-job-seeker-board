@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Mail, Phone, ExternalLink } from "lucide-react";
+import { Mail, Phone, ExternalLink, Pencil } from "lucide-react";
 
 interface WorkableCandidate {
   id: string;
@@ -24,9 +24,10 @@ interface WorkableCandidate {
 interface CandidatesListProps {
   candidates: WorkableCandidate[];
   onJobClick: (jobId: string) => void;
+  onEdit?: (candidate: WorkableCandidate) => void;
 }
 
-const CandidatesList = ({ candidates, onJobClick }: CandidatesListProps) => {
+const CandidatesList = ({ candidates, onJobClick, onEdit }: CandidatesListProps) => {
   const getStageColor = (stage: string) => {
     switch (stage?.toLowerCase()) {
       case 'applied': return 'bg-blue-500/20 text-blue-400 border-blue-400';
@@ -109,7 +110,17 @@ const CandidatesList = ({ candidates, onJobClick }: CandidatesListProps) => {
                       })}
                     </div>
                   </TableCell>
-                  <TableCell className="bg-primary-blue">
+                  <TableCell className="bg-primary-blue whitespace-nowrap">
+                    {onEdit && (
+                      <Button
+                        size="sm"
+                        onClick={() => onEdit(candidate)}
+                        className="bg-pink-600 hover:bg-pink-700 text-white mr-2"
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

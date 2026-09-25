@@ -13,6 +13,7 @@ import CandidatesErrorState from "../components/CandidatesErrorState";
 import CandidatesPagination from "../components/CandidatesPagination";
 import CandidatesList from "../components/CandidatesList";
 import Layout from "@/components/Layout";
+import EditCandidateDialog from "@/components/EditCandidateDialog";
 
 interface WorkableCandidate {
   id: string;
@@ -45,6 +46,7 @@ const Candidates = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedJob, setSelectedJob] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [editing, setEditing] = useState<WorkableCandidate | null>(null);
   const navigate = useNavigate();
 
   // Transform database candidate to match WorkableCandidate interface
@@ -244,7 +246,8 @@ const Candidates = () => {
                     (Page {currentPage} of {totalPages})
                   </span>
                 </div>
-                <CandidatesList candidates={paginatedCandidates} onJobClick={handleJobClick} />
+                <CandidatesList candidates={paginatedCandidates} onJobClick={handleJobClick} onEdit={setEditing} />
+                <EditCandidateDialog candidate={editing} onClose={() => setEditing(null)} onSaved={() => refetch()} />
                 {totalPages > 1 && (
                   <CandidatesPagination
                     currentPage={currentPage}
