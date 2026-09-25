@@ -68,7 +68,7 @@ serve(async (req) => {
 
     // Send password reset email using Resend
     const emailResponse = await resend.emails.send({
-      from: "Growth Accelerator <onboarding@resend.dev>",
+      from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [email],
       subject: "Reset your password - Growth Accelerator",
       html: `

@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     const { error: mailErr } = await resend.emails.send({
-      from: "Growth Accelerator <onboarding@resend.dev>",
+      from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [ADMIN_EMAIL],
       subject: `Approved hours overview (${total.toFixed(2)} h)`,
       html: `<h2>Approved hours overview</h2><p>Approved by ${esc(user.email)} · ${entries.length} entries · <b>${total.toFixed(2)} hours</b></p>${sections}`,
