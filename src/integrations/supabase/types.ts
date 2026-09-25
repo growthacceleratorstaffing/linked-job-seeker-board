@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -194,6 +194,66 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           workable_candidate_id?: string | null
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          last_contact_date: string | null
+          linkedin_url: string | null
+          location: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          profile_image_url: string | null
+          source: string | null
+          status: string | null
+          tags: string[] | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_contact_date?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          profile_image_url?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_contact_date?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          profile_image_url?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -733,6 +793,39 @@ export type Database = {
         }
         Relationships: []
       }
+      linkedin_import_logs: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          imported_data: Json | null
+          profile_url: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          imported_data?: Json | null
+          profile_url: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          imported_data?: Json | null
+          profile_url?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       linkedin_leads: {
         Row: {
           campaign_id: string | null
@@ -927,7 +1020,7 @@ export type Database = {
           event_details: Json | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
           user_id: string | null
         }
@@ -936,7 +1029,7 @@ export type Database = {
           event_details?: Json | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -945,9 +1038,69 @@ export type Database = {
           event_details?: Json | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      trips: {
+        Row: {
+          business_purpose_details: string | null
+          compliance_notes: string | null
+          created_at: string
+          distance_km: number
+          end_datetime: string | null
+          end_location: string
+          id: string
+          is_round_trip: boolean | null
+          notes: string | null
+          odometer_end: number | null
+          odometer_start: number | null
+          purpose: string
+          start_datetime: string
+          start_location: string
+          trip_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_purpose_details?: string | null
+          compliance_notes?: string | null
+          created_at?: string
+          distance_km: number
+          end_datetime?: string | null
+          end_location: string
+          id?: string
+          is_round_trip?: boolean | null
+          notes?: string | null
+          odometer_end?: number | null
+          odometer_start?: number | null
+          purpose: string
+          start_datetime: string
+          start_location: string
+          trip_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_purpose_details?: string | null
+          compliance_notes?: string | null
+          created_at?: string
+          distance_km?: number
+          end_datetime?: string | null
+          end_location?: string
+          id?: string
+          is_round_trip?: boolean | null
+          notes?: string | null
+          odometer_end?: number | null
+          odometer_start?: number | null
+          purpose?: string
+          start_datetime?: string
+          start_location?: string
+          trip_type?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1073,57 +1226,110 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      dutch_tax_compliant_trips: {
+        Row: {
+          business_purpose_details: string | null
+          compliance_notes: string | null
+          created_at: string | null
+          distance_km: number | null
+          dutch_trip_type: string | null
+          end_datetime: string | null
+          end_location: string | null
+          id: string | null
+          is_round_trip: boolean | null
+          notes: string | null
+          odometer_end: number | null
+          odometer_start: number | null
+          purpose: string | null
+          start_datetime: string | null
+          start_location: string | null
+          trip_type: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          business_purpose_details?: string | null
+          compliance_notes?: string | null
+          created_at?: string | null
+          distance_km?: number | null
+          dutch_trip_type?: never
+          end_datetime?: string | null
+          end_location?: string | null
+          id?: string | null
+          is_round_trip?: boolean | null
+          notes?: string | null
+          odometer_end?: number | null
+          odometer_start?: number | null
+          purpose?: string | null
+          start_datetime?: string | null
+          start_location?: string | null
+          trip_type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          business_purpose_details?: string | null
+          compliance_notes?: string | null
+          created_at?: string | null
+          distance_km?: number | null
+          dutch_trip_type?: never
+          end_datetime?: string | null
+          end_location?: string | null
+          id?: string | null
+          is_round_trip?: boolean | null
+          notes?: string | null
+          odometer_end?: number | null
+          odometer_start?: number | null
+          purpose?: string | null
+          start_datetime?: string | null
+          start_location?: string | null
+          trip_type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_access_job: {
-        Args: { _user_id: string; _job_shortcode: string }
+        Args: { _job_shortcode: string; _user_id: string }
         Returns: boolean
       }
       get_current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
-      has_workable_admin_role: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
+      has_workable_admin_role: { Args: { _user_id: string }; Returns: boolean }
       has_workable_permission: {
-        Args: { _user_id: string; _permission: string }
+        Args: { _permission: string; _user_id: string }
         Returns: boolean
       }
       has_workable_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["workable_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       log_security_event: {
         Args: {
-          p_user_id: string
-          p_event_type: string
           p_event_details?: Json
+          p_event_type: string
           p_ip_address?: unknown
           p_user_agent?: string
+          p_user_id: string
         }
         Returns: string
       }
-      make_first_user_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      trigger_workable_sync: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      make_first_user_admin: { Args: never; Returns: undefined }
+      trigger_workable_sync: { Args: never; Returns: undefined }
       validate_workable_email: {
         Args: { email_to_check: string }
         Returns: boolean
@@ -1172,12 +1378,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1201,11 +1407,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1226,11 +1432,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1251,11 +1457,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1268,11 +1474,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
