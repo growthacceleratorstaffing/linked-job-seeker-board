@@ -1142,6 +1142,7 @@ export type Database = {
       }
       time_entries: {
         Row: {
+          approved_at: string | null
           break_minutes: number
           created_at: string
           description: string | null
@@ -1157,6 +1158,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approved_at?: string | null
           break_minutes?: number
           created_at?: string
           description?: string | null
@@ -1172,6 +1174,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approved_at?: string | null
           break_minutes?: number
           created_at?: string
           description?: string | null
