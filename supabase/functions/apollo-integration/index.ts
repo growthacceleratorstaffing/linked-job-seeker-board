@@ -66,26 +66,40 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .eq('integration_type', 'apollo')
       .eq('is_enabled', true)
-      .single()
+      .maybeSingle()
 
-    if (integrationError) {
+    if (integrationError || !integration) {
       console.error('❌ Error fetching integration settings:', integrationError)
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch integration settings' }),
+        JSON.stringify({ error: 'Apollo is not connected yet. Save your API key first.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    if (!integration?.settings?.api_key) {
-      console.error('❌ Apollo API key not found in integration settings')
+    const apiKey = String(integration?.settings?.api_key ?? '').trim()
+    if (!apiKey) {
       return new Response(
         JSON.stringify({ error: 'Apollo API key not found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const apiKey = integration.settings.api_key
-    console.log(`🔑 Apollo API key found: ${apiKey.substring(0, 8)}...`)
+    if (action === 'test_connection') {
+      const r = await fetch('https://api.apollo.io/api/v1/auth/health', {
+        headers: { 'X-Api-Key': apiKey, 'Cache-Control': 'no-cache' },
+      })
+      const body = await r.text()
+      let ok = r.ok
+      try { const j = JSON.parse(body); if (j.is_logged_in === false) ok = false } catch { /* ignore */ }
+      if (!ok) {
+        console.error('❌ Apollo test failed:', r.status, body)
+        return new Response(
+          JSON.stringify({ error: `Apollo rejected the API key (${r.status}): ${body}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
 
     if (action === 'get_contacts') {
       console.log('🔍 Fetching all contacts from Apollo API...')
@@ -93,13 +107,13 @@ serve(async (req) => {
       let allContacts: any[] = []
       let currentPage = 1
       let hasMorePages = true
-      const maxPages = 10 // Safety limit to prevent infinite loops
+      const maxPages = 10
       
       while (hasMorePages && currentPage <= maxPages) {
         console.log(`📄 Fetching page ${currentPage}...`)
         
-        // Call Apollo API to get contacts for this page
-        const apolloResponse = await fetch('https://api.apollo.io/v1/mixed_people/search', {
+        // New Apollo people search endpoint (old /v1/mixed_people/search is deprecated for API keys)
+        const apolloResponse = await fetch('https://api.apollo.io/api/v1/mixed_people/api_search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -108,8 +122,8 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             page: currentPage,
-            per_page: 200, // Apollo's maximum per page
-            person_seniorities: ["senior", "manager", "director", "vp", "c_level"]
+            per_page: 100,
+            person_seniorities: ["senior", "manager", "director", "vp", "c_suite"]
           })
         })
 

@@ -65,27 +65,36 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .eq('integration_type', 'jazzhr')
       .eq('is_enabled', true)
-      .single()
+      .maybeSingle()
 
-    if (integrationError) {
+    if (integrationError || !integration) {
       console.error('❌ Error fetching integration settings:', integrationError)
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch integration settings' }),
+        JSON.stringify({ error: 'JazzHR is not connected yet. Save your API key first.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    if (!integration?.settings?.api_key || !integration?.settings?.username) {
-      console.error('❌ JazzHR API credentials not found in integration settings')
+    const apiKey = String(integration?.settings?.api_key ?? '').trim()
+    if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'JazzHR API credentials not found' }),
+        JSON.stringify({ error: 'JazzHR API key not found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const apiKey = integration.settings.api_key
-    const username = integration.settings.username
-    console.log(`🔑 JazzHR API key found: ${apiKey.substring(0, 8)}...`)
+    if (action === 'test_connection') {
+      const r = await fetch(`https://api.resumatorapi.com/v1/users?apikey=${encodeURIComponent(apiKey)}`)
+      const body = await r.text()
+      if (!r.ok || body.includes('invalid api key')) {
+        console.error('❌ JazzHR test failed:', r.status, body)
+        return new Response(
+          JSON.stringify({ error: `JazzHR rejected the API key (${r.status}): ${body}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
 
     if (action === 'get_candidates') {
       console.log('🔍 Fetching candidates from JazzHR API...')
