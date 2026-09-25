@@ -182,20 +182,15 @@ const Onboarding = () => {
       if (error) throw error;
 
       if (data?.success) {
-        // Create onboarding progress with first step completed
-        const newSteps = createInitialSteps();
-        newSteps[0].completed = true; // Mark welcome email as completed
-        
-        const newProgress: OnboardingProgress = {
-          candidateId: selectedCandidate.id,
-          candidateName: selectedCandidate.name,
-          candidateEmail: selectedCandidate.email,
-          currentStep: 1,
-          steps: newSteps,
-          startedAt: new Date().toISOString()
-        };
-
-        setOnboardingProgress(prev => [...prev, newProgress]);
+        const { error: saveErr } = await db.from('onboarding_progress').upsert({
+          candidate_id: selectedCandidate.id,
+          candidate_name: selectedCandidate.name,
+          candidate_email: selectedCandidate.email,
+          job_title: selectedCandidate.current_position || null,
+          welcome_email_at: new Date().toISOString(),
+        }, { onConflict: 'candidate_id' });
+        if (saveErr) throw saveErr;
+        await loadProgress();
         
         toast({
           title: "Onboarding Started! 📧",
@@ -241,28 +236,14 @@ const Onboarding = () => {
     completeStep(accountFor.candidateId, 1);
   };
 
-  const completeStep = (candidateId: string, stepIndex: number) => {
-    setOnboardingProgress(prev => prev.map(progress => {
-      if (progress.candidateId === candidateId) {
-        const updatedSteps = [...progress.steps];
-        updatedSteps[stepIndex].completed = true;
-        
-        return {
-          ...progress,
-          steps: updatedSteps,
-          currentStep: Math.min(stepIndex + 1, updatedSteps.length - 1)
-        };
-      }
-      return progress;
-    }));
-
+  const completeStep = async (candidateId: string, stepIndex: number) => {
+    const { error } = await db.from('onboarding_progress')
+      .update({ [STEP_COLUMNS[stepIndex]]: new Date().toISOString() })
+      .eq('candidate_id', candidateId);
+    if (error) { toast({ title: 'Could not save step', description: error.message, variant: 'destructive' }); return; }
     const candidateName = onboardingProgress.find(p => p.candidateId === candidateId)?.candidateName;
-    const stepName = createInitialSteps()[stepIndex].name;
-    
-    toast({
-      title: "Step Completed! ✅",
-      description: `${stepName} completed for ${candidateName}`,
-    });
+    toast({ title: "Step Completed! ✅", description: `${createInitialSteps()[stepIndex].name} completed for ${candidateName}` });
+    loadProgress();
   };
 
   const selectedCandidate = candidates.find(c => c.id === selectedCandidateId);
