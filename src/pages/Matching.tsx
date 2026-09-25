@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, Briefcase, User, Building2, Lock } from "lucide-react";
+import { Users, Briefcase, User, Building2, Lock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkablePermissions } from "@/hooks/useWorkablePermissions";
@@ -707,6 +707,21 @@ const Matching = () => {
                         <p className="text-xs text-slate-400">
                           {new Date(match.created_at).toLocaleDateString()}
                         </p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Delete match"
+                          className="text-pink-300 hover:bg-white/10"
+                          onClick={async () => {
+                            if (!confirm(`Delete match for ${match.candidate_name}?`)) return;
+                            const { error } = await supabase.from('candidate_responses').delete().eq('id', match.id);
+                            if (error) { toast({ title: 'Could not delete', description: error.message, variant: 'destructive' }); return; }
+                            toast({ title: 'Match deleted' });
+                            fetchMatchingData();
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
