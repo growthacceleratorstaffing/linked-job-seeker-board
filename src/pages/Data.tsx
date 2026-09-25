@@ -314,6 +314,7 @@ const Data = () => {
       case 'apollo': return '🚀';
       case 'zoho crm': return '🏢';
       case 'linkedin recruiter': return '💼';
+      case 'growth accelerator': return '🚀';
       case 'jazzhr': return '🎵';
       case 'jobadder': return '➕';
       case 'workable': return '⚡';
