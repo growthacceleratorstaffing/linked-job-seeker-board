@@ -28,7 +28,7 @@ serve(async (req) => {
 
     // Send confirmation email using Resend
     const emailResponse = await resend.emails.send({
-      from: "Workable Flow Central <onboarding@resend.dev>",
+      from: Deno.env.get("RESEND_FROM_EMAIL") || "Workable Flow Central <onboarding@resend.dev>",
       to: [userEmail],
       subject: "Confirm your email address",
       html: `

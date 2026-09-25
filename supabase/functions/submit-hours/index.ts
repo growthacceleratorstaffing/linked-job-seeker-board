@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { Resend } from "npm:resend@2.0.0";
 
-const ADMIN_EMAIL = "bart@growthaccelerator.nl";
+const ADMIN_EMAIL = "bart@startupaccelerator.nl";
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     const { error: mailErr } = await resend.emails.send({
-      from: "Growth Accelerator <onboarding@resend.dev>",
+      from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [ADMIN_EMAIL],
       reply_to: user.email,
       subject: `Hours submitted by ${name} (${total.toFixed(2)} h)`,

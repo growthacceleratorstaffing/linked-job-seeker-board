@@ -27,7 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { candidateName, candidateEmail, jobTitle, companyName, location }: OnboardingEmailRequest = await req.json();
 
     const emailResponse = await resend.emails.send({
-      from: "Growth Accelerator <onboarding@resend.dev>",
+      from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [candidateEmail],
       subject: `Great news! You've been matched with ${jobTitle} at ${companyName}`,
       html: `
@@ -47,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="margin-top: 20px;">Our team has identified you as an excellent fit for this position. We believe your skills and experience align perfectly with what they're looking for.</p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="mailto:bart@growthaccelerator.nl?subject=Re: ${jobTitle} Match" 
+              <a href="mailto:bart@startupaccelerator.nl?subject=Re: ${jobTitle} Match" 
                  style="background-color: #ec4899; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                 Get in Touch
               </a>
@@ -66,6 +66,13 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
+    if ((emailResponse as any)?.error) {
+      const err = (emailResponse as any).error;
+      console.error("Resend rejected onboarding email:", err);
+      return new Response(JSON.stringify({ error: `Email not sent: ${err.message || JSON.stringify(err)}` }), {
+        status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
     console.log("Onboarding email sent successfully:", emailResponse);
 
     return new Response(JSON.stringify({ 

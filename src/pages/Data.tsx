@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
+import { UserCheck } from "lucide-react";
 
 const Data = () => {
   const [connectedIntegrations, setConnectedIntegrations] = useState<any[]>([]);
@@ -21,6 +23,45 @@ const Data = () => {
   const [activeTab, setActiveTab] = useState<string | undefined>(searchParams.get('source') || undefined);
   const [editing, setEditing] = useState<{ type: string; index: number; row: Record<string, any> } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<Record<string, number[]>>({});
+  const navigate = useNavigate();
+
+  const toggleRow = (type: string, index: number) => setSelectedRows(prev => {
+    const cur = prev[type] || [];
+    return { ...prev, [type]: cur.includes(index) ? cur.filter(i => i !== index) : [...cur, index] };
+  });
+
+  const matchSelected = async (type: string) => {
+    const rows = (selectedRows[type] || []).map(i => integrationData[type]?.[i]).filter(Boolean);
+    if (rows.length === 0) {
+      toast({ title: "Select a candidate", description: "Tick one or more candidates in the list first." });
+      return;
+    }
+    try {
+      const ids: string[] = [];
+      for (const r of rows) {
+        if (type === 'growth accelerator') { ids.push(r.id); continue; }
+        const name = r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || r.email || 'Unknown';
+        const email = String(r.email || '').trim().toLowerCase();
+        if (!email) throw new Error(`${name} has no email address and can't be matched.`);
+        const { data: existing } = await supabase.from('candidates').select('id').eq('email', email).maybeSingle();
+        if (existing) { ids.push(existing.id); continue; }
+        const { data: created, error } = await supabase.from('candidates').insert({
+          name, email, phone: r.phone || null,
+          current_position: r.title || r.job_title || r.current_position || null,
+          company: typeof r.company === 'string' ? r.company : (r.organization_name || null),
+          location: r.location || null,
+          linkedin_profile_url: r.linkedin_url || r.linkedin_profile_url || null,
+          source_platform: type,
+        } as any).select('id').single();
+        if (error) throw error;
+        ids.push(created.id);
+      }
+      navigate(`/matching?candidate=${ids[0]}`);
+    } catch (e: any) {
+      toast({ title: "Could not prepare match", description: e.message, variant: "destructive" });
+    }
+  };
   const { toast } = useToast();
 
   const APOLLO_EDITABLE = ['first_name', 'last_name', 'email', 'title', 'company', 'company_website', 'phone', 'linkedin_url', 'twitter_url'];
@@ -364,6 +405,14 @@ const Data = () => {
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Sync
             </Button>
+            <Button
+              onClick={() => matchSelected(integrationType)}
+              className="bg-pink-600 hover:bg-pink-700 text-white"
+              size="sm"
+            >
+              <UserCheck className="h-4 w-4 mr-2" />
+              Match{(selectedRows[integrationType]?.length ?? 0) > 0 ? ` (${selectedRows[integrationType].length})` : ''}
+            </Button>
             <Button 
               onClick={() => exportData(integrationType)}
               className="bg-pink-900/20 hover:bg-pink-700/50 text-pink-200 border-pink-500"
@@ -380,6 +429,7 @@ const Data = () => {
           <Table>
             <TableHeader>
               <TableRow className="border-white/20">
+                <TableHead className="w-10" />
                 {columns.map((column) => (
                   <TableHead key={column} className="text-white font-medium capitalize">
                     {column.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
@@ -394,6 +444,13 @@ const Data = () => {
                   className="border-white/20 cursor-pointer hover:bg-white/10"
                   onClick={() => { setEditing({ type: integrationType, index, row: { ...row } }); }}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      aria-label="Select for matching"
+                      checked={(selectedRows[integrationType] || []).includes(index)}
+                      onCheckedChange={() => toggleRow(integrationType, index)}
+                    />
+                  </TableCell>
                   {columns.map((column) => (
                     <TableCell key={column} className="text-white/90 whitespace-nowrap">
                       {String(row[column] ?? '')}
@@ -404,7 +461,7 @@ const Data = () => {
             </TableBody>
           </Table>
         </div>
-        <p className="text-white/60 text-sm">Click a row to edit it.</p>
+        <p className="text-white/60 text-sm">Click a row to edit it. Tick candidates and press Match to match them to a job.</p>
       </div>
     );
   };
