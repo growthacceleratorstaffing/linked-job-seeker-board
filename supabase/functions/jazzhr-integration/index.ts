@@ -121,8 +121,8 @@ serve(async (req) => {
           const errorText = await jazzhrResponse.text()
           console.error(`❌ JazzHR API error on page ${page}:`, errorText)
           return new Response(
-            JSON.stringify({ error: `JazzHR API error: ${jazzhrResponse.status} ${errorText}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: jazzhrResponse.status === 401 ? "JazzHR rejected your API key. Please re-enter a valid key on the Integrations page." : `JazzHR API error: ${jazzhrResponse.status} ${errorText}`, code: jazzhrResponse.status === 401 ? "invalid_api_key" : "api_error" }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
@@ -181,8 +181,8 @@ serve(async (req) => {
         const errorText = await jazzhrResponse.text()
         console.error('❌ JazzHR API error:', errorText)
         return new Response(
-          JSON.stringify({ error: `JazzHR API error: ${jazzhrResponse.status} ${errorText}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: jazzhrResponse.status === 401 ? "JazzHR rejected your API key. Please re-enter a valid key on the Integrations page." : `JazzHR API error: ${jazzhrResponse.status} ${errorText}` }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
