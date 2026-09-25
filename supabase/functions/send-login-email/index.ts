@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { sendResendEmail } from "../_shared/resend-email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,8 +24,8 @@ serve(async (req) => {
 
     console.log("Sending confirmation email to:", userEmail);
 
-    // Send confirmation email using Resend
-    const emailResponse = await resend.emails.send({
+    // Send confirmation email via the Resend connection gateway
+    const mail = await sendResendEmail({
       from: Deno.env.get("RESEND_FROM_EMAIL") || "Workable Flow Central <onboarding@resend.dev>",
       to: [userEmail],
       subject: "Confirm your email address",
@@ -54,7 +52,8 @@ serve(async (req) => {
       `,
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    if (!mail.ok) throw new Error(mail.error || "Email not sent");
+    console.log("Email sent successfully");
 
     return new Response(
       JSON.stringify({ success: true, message: "Confirmation email sent" }),

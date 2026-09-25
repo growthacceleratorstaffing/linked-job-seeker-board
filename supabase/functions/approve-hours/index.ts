@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { Resend } from "npm:resend@2.0.0";
+import { sendResendEmail } from "../_shared/resend-email.ts";
 
 const ADMIN_EMAIL = "bart@startupaccelerator.nl";
 const json = (b: unknown, status = 200) =>
@@ -49,14 +49,13 @@ Deno.serve(async (req) => {
       .update({ status: "approved", approved_at: now }).in("id", entries.map((e) => e.id));
     if (upErr) return json({ error: upErr.message }, 400);
 
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    const { error: mailErr } = await resend.emails.send({
+    const mailErr = (await sendResendEmail({
       from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [ADMIN_EMAIL],
       subject: `Approved hours overview (${total.toFixed(2)} h)`,
       html: `<h2>Approved hours overview</h2><p>Approved by ${esc(user.email)} · ${entries.length} entries · <b>${total.toFixed(2)} hours</b></p>${sections}`,
-    });
-    return json({ success: true, count: entries.length, total, emailError: mailErr?.message ?? null });
+    })).error ?? null;
+    return json({ success: true, count: entries.length, total, emailError: mailErr });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
   }

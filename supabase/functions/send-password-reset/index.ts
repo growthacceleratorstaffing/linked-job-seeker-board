@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { sendResendEmail } from "../_shared/resend-email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,8 +64,8 @@ serve(async (req) => {
       throw new Error("Failed to generate reset link");
     }
 
-    // Send password reset email using Resend
-    const emailResponse = await resend.emails.send({
+    // Send password reset email via the Resend connection gateway
+    const mail = await sendResendEmail({
       from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [email],
       subject: "Reset your password - Growth Accelerator",
@@ -100,7 +98,8 @@ serve(async (req) => {
       `,
     });
 
-    console.log("✅ Password reset email sent successfully:", emailResponse);
+    if (!mail.ok) throw new Error(mail.error || "Email not sent");
+    console.log("✅ Password reset email sent successfully");
 
     return new Response(
       JSON.stringify({ 

@@ -1,7 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { sendResendEmail } from "../_shared/resend-email.ts";
 const APP_URL = Deno.env.get("APP_URL") || "https://growthaccelerator.lovable.app";
 
 const corsHeaders = {
@@ -59,7 +57,7 @@ Deno.serve(async (req) => {
 
     // Email the login details to the new employee
     const loginUrl = `${APP_URL}/auth`;
-    const { error: mailErr } = await resend.emails.send({
+    const mailErr = (await sendResendEmail({
       from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [email],
       reply_to: "bart@startupaccelerator.nl",
@@ -84,10 +82,10 @@ Deno.serve(async (req) => {
           </div>
         </div>
       `,
-    });
+    }));
     if (mailErr) {
       console.error("Resend rejected account email:", mailErr);
-      return json({ success: true, email, password, user_id: userId, email_sent: false, email_error: mailErr.message || String(mailErr) });
+      return json({ success: true, email, password, user_id: userId, email_sent: false, email_error: mailErr });
     }
 
     return json({ success: true, email, password, user_id: userId, email_sent: true });
