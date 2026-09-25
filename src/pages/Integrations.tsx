@@ -373,6 +373,7 @@ const Integrations = () => {
                           <Unplug className="h-4 w-4 mr-2" />
                           Disconnect
                         </Button>
+                        </div>
                       ) : (
                         <Button 
                           onClick={() => handleConnectCRM(crm)}
