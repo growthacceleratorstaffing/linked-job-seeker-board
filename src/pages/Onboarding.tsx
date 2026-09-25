@@ -80,37 +80,56 @@ const Onboarding = () => {
     }
   ];
 
+  const STEP_COLUMNS = ['welcome_email_at', 'account_created_at', 'contract_signed_at', 'team_intro_at'] as const;
+  const db = supabase as any;
+
+  // Only candidates that were selected (matched) on the Matching page
   const fetchCandidates = async () => {
     setIsLoading(true);
     try {
-      // Fetch all candidates from talent pool
       const { data, error } = await supabase
-        .from('candidates')
-        .select(`
-          id, 
-          name, 
-          email, 
-          current_position, 
-          company
-        `)
+        .from('candidate_responses')
+        .select('candidate_id, status, candidates ( id, name, email, current_position, company )')
+        .eq('status', 'matched')
         .order('created_at', { ascending: false });
-      
       if (error) throw error;
-      setCandidates(data || []);
-    } catch (error) {
-      console.error('Error fetching candidates:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch candidates",
-        variant: "destructive",
+      const seen = new Set<string>();
+      const list: Candidate[] = [];
+      (data || []).forEach((r: any) => {
+        if (r.candidates && !seen.has(r.candidates.id)) { seen.add(r.candidates.id); list.push(r.candidates); }
       });
+      setCandidates(list);
+    } catch (error) {
+      console.error('Error fetching matched candidates:', error);
+      toast({ title: "Error", description: "Failed to fetch matched candidates", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const loadProgress = async () => {
+    const { data, error } = await db.from('onboarding_progress').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    const ids = (data || []).map((r: any) => r.candidate_id);
+    const { data: emps } = ids.length
+      ? await db.from('employees').select('candidate_id, contract_signed_at').in('candidate_id', ids)
+      : { data: [] };
+    setOnboardingProgress((data || []).map((r: any) => {
+      const signed = r.contract_signed_at || emps?.find((e: any) => e.candidate_id === r.candidate_id)?.contract_signed_at;
+      const row = { ...r, contract_signed_at: signed };
+      const steps = createInitialSteps().map((s, i) => ({ ...s, completed: !!row[STEP_COLUMNS[i]] }));
+      const firstOpen = steps.findIndex((s) => !s.completed);
+      return {
+        candidateId: r.candidate_id, candidateName: r.candidate_name, candidateEmail: r.candidate_email,
+        currentStep: firstOpen === -1 ? steps.length - 1 : firstOpen, steps, startedAt: r.created_at,
+        dates: STEP_COLUMNS.map((c) => row[c] as string | null),
+      } as OnboardingProgress & { dates: (string | null)[] };
+    }));
+  };
+
   useEffect(() => {
     fetchCandidates();
+    loadProgress();
   }, []);
 
   const handleBeginOnboarding = async () => {
