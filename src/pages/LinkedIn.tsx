@@ -33,7 +33,7 @@ const LinkedIn: React.FC = () => {
     setImporting(false);
     if (error) { toast({ title: 'Import failed', description: error.message, variant: 'destructive' }); return; }
     setResults(data.results);
-    toast({ title: 'Recruiter import finished', description: `${data.imported} candidates imported into Data.` });
+    toast({ title: 'Recruiter import finished', description: `${data.imported} candidates imported — also visible under Data → LinkedIn Recruiter.` });
   };
 
   useEffect(() => {
@@ -41,12 +41,9 @@ const LinkedIn: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const connect = async () => {
-    const { data, error } = await supabase.functions.invoke('linkedin-oauth', {
-      body: { action: 'getAuthUrl', redirectUrl: `${window.location.origin}/linkedin-callback`, scopes: ['openid', 'profile', 'email'] },
-    });
-    if (error || !data?.authUrl) { toast({ title: 'Could not start LinkedIn sign-in', variant: 'destructive' }); return; }
-    window.location.href = data.authUrl;
+  const connect = () => {
+    // Opened in a new tab: LinkedIn refuses to load inside the preview frame (that caused the blank page).
+    window.open('https://www.linkedin.com/login-cap', '_blank', 'noopener,noreferrer');
   };
 
   const connected = !!status?.connected;

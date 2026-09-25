@@ -38,6 +38,10 @@ const Data = () => {
           body: { action: 'update_contact', id: editing.row.id, fields },
         });
         if (error || res?.error) throw new Error(res?.error || error?.message);
+      } else if (editing.type === 'linkedin recruiter') {
+        const { id, created_at, ...fields } = editing.row;
+        const { error } = await supabase.from('contacts').update(fields).eq('id', id);
+        if (error) throw error;
       }
       setIntegrationData(prev => {
         const list = [...(prev[editing.type] || [])];
