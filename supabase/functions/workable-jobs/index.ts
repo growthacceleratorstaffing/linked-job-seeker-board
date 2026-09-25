@@ -72,9 +72,10 @@ serve(async (req) => {
     )
   } catch (error) {
     console.error('Error in workable-jobs function:', error)
+    // Return an empty list so the app keeps working when Workable refuses the key
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify([]),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Workable-Error': String(error?.message ?? 'error') } }
     )
   }
 })

@@ -91,9 +91,10 @@ serve(async (req) => {
     )
   } catch (error) {
     console.error('Error in workable-candidates function:', error)
+    // 200 with an error object: the app falls back to saved candidates instead of crashing
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error.message, code: 'workable_unavailable' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
