@@ -64,17 +64,16 @@ const Data = () => {
         
         console.log('🔍 Apollo function response:', { apolloResult, error });
         
-        if (apolloResult && !error) {
+        if (apolloResult?.error) {
+          toast({ title: "Apollo connection problem", description: apolloResult.error, variant: "destructive" });
+          data = [];
+        } else if (apolloResult && !error) {
           data = apolloResult.contacts || [];
           console.log(`✅ Successfully loaded ${data.length} Apollo contacts`);
-          
-          if (data.length === 0) {
-            console.log('⚠️ Apollo returned 0 contacts - API might be empty or have issues');
-          }
         } else {
           console.error('❌ Apollo API call failed:', error);
-          console.log('🔄 Falling back to sample data...');
-          data = generateSampleData(integrationType);
+          toast({ title: "Apollo connection problem", description: "Could not load Apollo contacts.", variant: "destructive" });
+          data = [];
         }
       } else if (integrationType === 'jazzhr') {
         // Load JazzHR data via edge function
