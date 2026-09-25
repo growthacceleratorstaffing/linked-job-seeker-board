@@ -107,24 +107,20 @@ serve(async (req) => {
       let allContacts: any[] = []
       let currentPage = 1
       let hasMorePages = true
-      const maxPages = 10
-      
+      const maxPages = 50 // up to 5,000 contacts
+
       while (hasMorePages && currentPage <= maxPages) {
         console.log(`📄 Fetching page ${currentPage}...`)
-        
-        // New Apollo people search endpoint (old /v1/mixed_people/search is deprecated for API keys)
-        const apolloResponse = await fetch('https://api.apollo.io/api/v1/mixed_people/api_search', {
+
+        // Contacts saved in the user's OWN Apollo account (not Apollo's global people database)
+        const apolloResponse = await fetch('https://api.apollo.io/api/v1/contacts/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-cache',
             'X-Api-Key': apiKey,
           },
-          body: JSON.stringify({
-            page: currentPage,
-            per_page: 100,
-            person_seniorities: ["senior", "manager", "director", "vp", "c_suite"]
-          })
+          body: JSON.stringify({ page: currentPage, per_page: 100, sort_by_field: 'contact_created_at', sort_ascending: false })
         })
 
         console.log(`📡 Apollo API response status for page ${currentPage}: ${apolloResponse.status}`)
@@ -133,39 +129,34 @@ serve(async (req) => {
           const errorText = await apolloResponse.text()
           console.error('❌ Apollo API error:', errorText)
           return new Response(
-            JSON.stringify({ error: `Apollo API error: ${apolloResponse.status} ${errorText}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: apolloResponse.status === 403 ? `Your Apollo API key can't read your contacts. In Apollo go to Settings → Integrations → API and use a master key (or enable the contacts search endpoint). Details: ${errorText}` : `Apollo API error: ${apolloResponse.status} ${errorText}` }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
         const apolloData = await apolloResponse.json()
-        console.log(`📊 Page ${currentPage}: received ${apolloData.people?.length || 0} contacts`)
-        
-        if (apolloData.people && apolloData.people.length > 0) {
-          allContacts = allContacts.concat(apolloData.people)
-          
-          // Check if there are more pages
-          if (apolloData.people.length < 200) {
-            hasMorePages = false
-          } else {
-            currentPage++
-          }
-        } else {
+        const pageContacts = apolloData.contacts || []
+        console.log(`📊 Page ${currentPage}: received ${pageContacts.length} contacts`)
+        allContacts = allContacts.concat(pageContacts)
+
+        const totalPages = apolloData.pagination?.total_pages ?? currentPage
+        if (pageContacts.length === 0 || currentPage >= totalPages) {
           hasMorePages = false
+        } else {
+          currentPage++
         }
       }
-      
+
       console.log(`📊 Total contacts fetched: ${allContacts.length}`)
-      
-      // Transform Apollo data to consistent format
+
       const contacts = allContacts.map((person: any) => ({
         id: person.id,
-        name: `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Unknown',
+        name: person.name || `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Unknown',
         email: person.email || 'No email',
         title: person.title || 'No title',
-        company: person.organization?.name || 'No company',
+        company: person.organization_name || person.organization?.name || 'No company',
         industry: person.organization?.industry || 'No industry',
-        location: person.city || 'No location',
+        location: [person.city, person.country].filter(Boolean).join(', ') || 'No location',
         linkedin_url: person.linkedin_url || null
       }))
 
