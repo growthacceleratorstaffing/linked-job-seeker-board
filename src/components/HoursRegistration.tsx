@@ -108,6 +108,33 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
       <Card className="bg-white/5 border-white/20 text-white">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
+            <CardTitle>Hours per month</CardTitle>
+            <CardDescription className="text-white/70">
+              Last 12 months · total <b className="text-white">{monthly.reduce((s, m) => s + m.hours, 0).toFixed(2)} hours</b>
+            </CardDescription>
+          </div>
+          <Button onClick={submit} disabled={submitting || unsubmitted === 0} className="bg-pink-600 hover:bg-pink-700 text-white">
+            <Send className="h-4 w-4 mr-1" /> {submitting ? 'Submitting…' : `Submit my hours${unsubmitted ? ` (${unsubmitted})` : ''}`}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
+            {monthly.map((m) => (
+              <div key={m.key} className="rounded-lg border border-white/15 bg-white/5 p-2 text-center">
+                <div className="h-16 flex items-end justify-center">
+                  <div className="w-4 rounded-t bg-pink-500" style={{ height: `${(m.hours / maxMonth) * 100}%` }} />
+                </div>
+                <div className="text-xs text-white/60 mt-1">{m.label}</div>
+                <div className="text-sm font-semibold">{m.hours ? m.hours.toFixed(1) : '–'}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/5 border-white/20 text-white">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
             <CardTitle>Week of {week.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })} – {weekEnd.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}</CardTitle>
             <CardDescription className="text-white/70">Total this week: <b className="text-white">{total.toFixed(2)} hours</b></CardDescription>
           </div>
@@ -138,7 +165,7 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
         </CardContent>
       </Card>
 
-      {!allEmployees && (
+      {true && (
         <Card className="bg-white/5 border-white/20 text-white">
           <CardHeader><CardTitle>Register hours</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
