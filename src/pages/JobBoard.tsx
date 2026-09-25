@@ -119,7 +119,7 @@ const useJobSearch = () => {
 
       // Filter out unwanted job listings by title
       const unwantedTitles = [
-        'bart@growthaccelerator.nl',
+        'bart@startupaccelerator.nl',
         'midden-nederland',
         'zuid-holland',
         'zuid-nederland',

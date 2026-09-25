@@ -444,11 +444,14 @@ const Data = () => {
                   className="border-white/20 cursor-pointer hover:bg-white/10"
                   onClick={() => { setEditing({ type: integrationType, index, row: { ...row } }); }}
                 >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell
+                    className="w-10 cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); toggleRow(integrationType, index); }}
+                  >
                     <Checkbox
                       aria-label="Select for matching"
+                      className="h-5 w-5 border-2 border-white/80 data-[state=checked]:bg-secondary-pink data-[state=checked]:border-secondary-pink pointer-events-none"
                       checked={(selectedRows[integrationType] || []).includes(index)}
-                      onCheckedChange={() => toggleRow(integrationType, index)}
                     />
                   </TableCell>
                   {columns.map((column) => (

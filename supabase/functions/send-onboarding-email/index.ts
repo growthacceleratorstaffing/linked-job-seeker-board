@@ -29,6 +29,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [candidateEmail],
+      reply_to: "bart@startupaccelerator.nl",
       subject: `Great news! You've been matched with ${jobTitle} at ${companyName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
