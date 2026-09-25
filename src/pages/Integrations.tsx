@@ -111,7 +111,35 @@ const popularCRMs = [
       { name: "subdomain", label: "Subdomain", type: "text", placeholder: "yourcompany" },
       { name: "api_token", label: "API Token", type: "password", placeholder: "your_api_token..." }
     ]
-  }
+  },
+  // CRM systems
+  { name: "Microsoft Dynamics 365", description: "Microsoft's CRM for sales and customer service", logo: "🪟", status: "available", type: "crm",
+    fields: [{ name: "instance_url", label: "Instance URL", type: "text", placeholder: "https://yourorg.crm4.dynamics.com" }, { name: "client_id", label: "Client ID", type: "text", placeholder: "..." }, { name: "client_secret", label: "Client Secret", type: "password", placeholder: "..." }] },
+  { name: "Monday CRM", description: "Flexible CRM built on monday.com work boards", logo: "📅", status: "available", type: "crm",
+    fields: [{ name: "api_token", label: "API Token", type: "password", placeholder: "eyJhbGciOi..." }] },
+  { name: "Freshsales", description: "Freshworks CRM with built-in phone and email", logo: "🍃", status: "available", type: "crm",
+    fields: [{ name: "domain", label: "Domain", type: "text", placeholder: "yourcompany.myfreshworks.com" }, { name: "api_key", label: "API Key", type: "password", placeholder: "..." }] },
+  { name: "Copper", description: "CRM designed for Google Workspace", logo: "🟠", status: "available", type: "crm",
+    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "..." }, { name: "email", label: "User Email", type: "text", placeholder: "you@company.com" }] },
+  { name: "Close", description: "Sales CRM with calling and email sequences", logo: "📞", status: "available", type: "crm",
+    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "api_..." }] },
+  { name: "Teamleader", description: "Popular Benelux CRM, invoicing and projects", logo: "🇧🇪", status: "available", type: "crm",
+    fields: [{ name: "client_id", label: "Client ID", type: "text", placeholder: "..." }, { name: "client_secret", label: "Client Secret", type: "password", placeholder: "..." }] },
+  // ATS systems
+  { name: "Greenhouse", description: "Structured hiring ATS for growing companies", logo: "🌱", status: "available", type: "ats",
+    fields: [{ name: "api_key", label: "Harvest API Key", type: "password", placeholder: "..." }] },
+  { name: "Lever", description: "ATS and CRM combined for talent teams", logo: "🎚️", status: "available", type: "ats",
+    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "..." }] },
+  { name: "Recruitee", description: "Collaborative hiring software (Tellent)", logo: "🧲", status: "available", type: "ats",
+    fields: [{ name: "company_id", label: "Company ID", type: "text", placeholder: "12345" }, { name: "api_token", label: "API Token", type: "password", placeholder: "..." }] },
+  { name: "Teamtailor", description: "Employer branding and ATS in one", logo: "🧵", status: "available", type: "ats",
+    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "..." }] },
+  { name: "SmartRecruiters", description: "Enterprise talent acquisition suite", logo: "🧠", status: "available", type: "ats",
+    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "..." }] },
+  { name: "Bullhorn", description: "Leading ATS and CRM for staffing agencies", logo: "🐂", status: "available", type: "ats",
+    fields: [{ name: "client_id", label: "Client ID", type: "text", placeholder: "..." }, { name: "client_secret", label: "Client Secret", type: "password", placeholder: "..." }, { name: "username", label: "API Username", type: "text", placeholder: "..." }, { name: "password", label: "API Password", type: "password", placeholder: "..." }] },
+  { name: "Personio", description: "HR and recruiting platform for European SMBs", logo: "👥", status: "available", type: "ats",
+    fields: [{ name: "client_id", label: "Client ID", type: "text", placeholder: "..." }, { name: "client_secret", label: "Client Secret", type: "password", placeholder: "..." }] },
 ];
 
 const Integrations = () => {
