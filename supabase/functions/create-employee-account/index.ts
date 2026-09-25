@@ -1,4 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { Resend } from "npm:resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const APP_URL = Deno.env.get("APP_URL") || "https://growthaccelerator.lovable.app";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
