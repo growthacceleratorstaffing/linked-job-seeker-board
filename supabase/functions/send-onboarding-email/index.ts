@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { sendResendEmail } from "../_shared/resend-email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,7 +24,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { candidateName, candidateEmail, jobTitle, companyName, location }: OnboardingEmailRequest = await req.json();
 
-    const emailResponse = await resend.emails.send({
+    const mail = await sendResendEmail({
       from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [candidateEmail],
       reply_to: "bart@startupaccelerator.nl",
@@ -67,19 +65,15 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    if ((emailResponse as any)?.error) {
-      const err = (emailResponse as any).error;
-      console.error("Resend rejected onboarding email:", err);
-      return new Response(JSON.stringify({ error: `Email not sent: ${err.message || JSON.stringify(err)}` }), {
+    if (!mail.ok) {
+      console.error("Resend rejected onboarding email:", mail.error);
+      return new Response(JSON.stringify({ error: `Email not sent: ${mail.error}` }), {
         status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-    console.log("Onboarding email sent successfully:", emailResponse);
+    console.log("Onboarding email sent successfully");
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      data: emailResponse 
-    }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",

@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { Resend } from "npm:resend@2.0.0";
+import { sendResendEmail } from "../_shared/resend-email.ts";
 
 const ADMIN_EMAIL = "bart@startupaccelerator.nl";
 const json = (b: unknown, status = 200) =>
@@ -30,16 +30,15 @@ Deno.serve(async (req) => {
       `<tr><td>${e.entry_date}</td><td>${esc(e.start_time?.slice(0, 5))}–${esc(e.end_time?.slice(0, 5))}</td><td>${e.break_minutes}m</td><td><b>${Number(e.hours).toFixed(2)}</b></td><td>${esc(e.project)}</td><td>${esc(e.description)}</td></tr>`
     ).join("");
 
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    const { error: mailErr } = await resend.emails.send({
+    const mailErr = (await sendResendEmail({
       from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [ADMIN_EMAIL],
       reply_to: user.email,
       subject: `Hours submitted by ${name} (${total.toFixed(2)} h)`,
       html: `<h2>Hours submitted by ${esc(name)}</h2><p>${esc(user.email)} — ${entries.length} entries, <b>${total.toFixed(2)} hours</b></p>
         <table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Date</th><th>Time</th><th>Break</th><th>Hours</th><th>Project</th><th>Description</th></tr>${rows}</table>`,
-    });
-    if (mailErr) return json({ error: `Email failed: ${mailErr.message}` }, 400);
+    })).error ?? null;
+    if (mailErr) return json({ error: `Email failed: ${mailErr}` }, 400);
 
     const now = new Date().toISOString();
     await supabase.from("time_entries").update({ submitted_at: now, status: "submitted" })
