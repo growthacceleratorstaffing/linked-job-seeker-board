@@ -82,11 +82,12 @@ export const IntegrationSyncPanel = () => {
         });
       }
 
-      if (settingsToCreate.length > 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (settingsToCreate.length > 0 && user) {
         console.log('Creating missing integration settings:', settingsToCreate);
         const { error: insertError } = await supabase
           .from("integration_settings")
-          .insert(settingsToCreate);
+          .upsert(settingsToCreate.map(s => ({ ...s, user_id: user.id })), { onConflict: 'user_id,integration_type', ignoreDuplicates: true });
 
         if (insertError) {
           console.error('Error creating integration settings:', insertError);
