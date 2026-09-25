@@ -73,32 +73,24 @@ const Matching = () => {
   const { permissions } = useWorkablePermissions();
   const { toast } = useToast();
   
-  // Fetch jobs using the same approach as JobsOverview
-  const { data: workableJobs = [], isLoading: jobsLoading } = useQuery({
-    queryKey: ['workable-integration-jobs'],
+  // Load jobs from the Vacancies page (jobs table)
+  const { data: vacancyJobs = [], isLoading: jobsLoading } = useQuery({
+    queryKey: ['matching-vacancies'],
     queryFn: async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('workable-integration', {
-          body: { action: 'sync_jobs' }
-        });
-        if (error) throw error;
-        return data?.jobs || [];
-      } catch (error) {
-        console.error('Error fetching jobs:', error);
-        return [];
-      }
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id, title, company_name, location_name')
+        .order('created_at', { ascending: false });
+      if (error) { console.error('Error fetching vacancies:', error); return []; }
+      return data || [];
     },
-    refetchInterval: 30 * 60 * 1000,
-    staleTime: 25 * 60 * 1000,
-    retry: 1,
   });
-  
-  // Transform jobs to match our interface
-  const jobs: Job[] = workableJobs.map((job: any) => ({
+
+  const jobs: Job[] = vacancyJobs.map((job: any) => ({
     id: job.id,
     title: job.title,
-    company: 'Company',
-    location: job.location || 'Remote'
+    company: job.company_name || 'Growth Accelerator',
+    location: job.location_name || ''
   }));
 
   const fetchMatches = async () => {
@@ -180,15 +172,11 @@ const Matching = () => {
         .from('candidate_responses')
         .select('*', { count: 'exact', head: true });
 
-      // Count open positions from Workable jobs (using the hook data)
-      const integrationJobs = jobs.filter((job: any) => job.state !== 'archived').length;
-
-      // Fetch app-posted jobs count
       const { count: appJobsCount } = await supabase
         .from('jobs')
         .select('*', { count: 'exact', head: true });
 
-      const totalOpenPositions = integrationJobs + (appJobsCount || 0);
+      const totalOpenPositions = appJobsCount || 0;
 
       setStats({
         candidates: candidatesCount || 0,
@@ -281,9 +269,9 @@ const Matching = () => {
         const { data: existingJob, error: findError } = await supabase
           .from('crawled_jobs')
           .select('id')
-          .eq('source', 'workable')
-          .eq('url', `workable-${selectedJobId}`)
-          .single();
+          .eq('source', 'vacancy')
+          .eq('url', `vacancy-${selectedJobId}`)
+          .maybeSingle();
 
         if (findError && findError.code !== 'PGRST116') { // PGRST116 is "not found" error
           throw findError;
@@ -299,9 +287,9 @@ const Matching = () => {
               title: selectedJob.title,
               company: selectedJob.company,
               location: selectedJob.location || '',
-              description: `Integration job: ${selectedJob.title}`,
-              source: 'workable',
-              url: `workable-${selectedJobId}`
+              description: `Vacancy: ${selectedJob.title}`,
+              source: 'vacancy',
+              url: `vacancy-${selectedJobId}`
             }])
             .select()
             .single();
@@ -520,7 +508,7 @@ const Matching = () => {
                       <SelectContent className="bg-slate-800 border-slate-700 z-50">
                         {jobsLoading ? (
                           <SelectItem value="loading" disabled className="text-slate-400">
-                            Loading jobs from Workable...
+                            Loading vacancies...
                           </SelectItem>
                         ) : jobs.length === 0 ? (
                           <SelectItem value="no-jobs" disabled className="text-slate-400">

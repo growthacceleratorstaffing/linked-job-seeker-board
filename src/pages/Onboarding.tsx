@@ -80,37 +80,56 @@ const Onboarding = () => {
     }
   ];
 
+  const STEP_COLUMNS = ['welcome_email_at', 'account_created_at', 'contract_signed_at', 'team_intro_at'] as const;
+  const db = supabase as any;
+
+  // Only candidates that were selected (matched) on the Matching page
   const fetchCandidates = async () => {
     setIsLoading(true);
     try {
-      // Fetch all candidates from talent pool
       const { data, error } = await supabase
-        .from('candidates')
-        .select(`
-          id, 
-          name, 
-          email, 
-          current_position, 
-          company
-        `)
+        .from('candidate_responses')
+        .select('candidate_id, status, candidates ( id, name, email, current_position, company )')
+        .eq('status', 'matched')
         .order('created_at', { ascending: false });
-      
       if (error) throw error;
-      setCandidates(data || []);
-    } catch (error) {
-      console.error('Error fetching candidates:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch candidates",
-        variant: "destructive",
+      const seen = new Set<string>();
+      const list: Candidate[] = [];
+      (data || []).forEach((r: any) => {
+        if (r.candidates && !seen.has(r.candidates.id)) { seen.add(r.candidates.id); list.push(r.candidates); }
       });
+      setCandidates(list);
+    } catch (error) {
+      console.error('Error fetching matched candidates:', error);
+      toast({ title: "Error", description: "Failed to fetch matched candidates", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const loadProgress = async () => {
+    const { data, error } = await db.from('onboarding_progress').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    const ids = (data || []).map((r: any) => r.candidate_id);
+    const { data: emps } = ids.length
+      ? await db.from('employees').select('candidate_id, contract_signed_at').in('candidate_id', ids)
+      : { data: [] };
+    setOnboardingProgress((data || []).map((r: any) => {
+      const signed = r.contract_signed_at || emps?.find((e: any) => e.candidate_id === r.candidate_id)?.contract_signed_at;
+      const row = { ...r, contract_signed_at: signed };
+      const steps = createInitialSteps().map((s, i) => ({ ...s, completed: !!row[STEP_COLUMNS[i]] }));
+      const firstOpen = steps.findIndex((s) => !s.completed);
+      return {
+        candidateId: r.candidate_id, candidateName: r.candidate_name, candidateEmail: r.candidate_email,
+        currentStep: firstOpen === -1 ? steps.length - 1 : firstOpen, steps, startedAt: r.created_at,
+        dates: STEP_COLUMNS.map((c) => row[c] as string | null),
+      } as OnboardingProgress & { dates: (string | null)[] };
+    }));
+  };
+
   useEffect(() => {
     fetchCandidates();
+    loadProgress();
   }, []);
 
   const handleBeginOnboarding = async () => {
@@ -163,20 +182,15 @@ const Onboarding = () => {
       if (error) throw error;
 
       if (data?.success) {
-        // Create onboarding progress with first step completed
-        const newSteps = createInitialSteps();
-        newSteps[0].completed = true; // Mark welcome email as completed
-        
-        const newProgress: OnboardingProgress = {
-          candidateId: selectedCandidate.id,
-          candidateName: selectedCandidate.name,
-          candidateEmail: selectedCandidate.email,
-          currentStep: 1,
-          steps: newSteps,
-          startedAt: new Date().toISOString()
-        };
-
-        setOnboardingProgress(prev => [...prev, newProgress]);
+        const { error: saveErr } = await db.from('onboarding_progress').upsert({
+          candidate_id: selectedCandidate.id,
+          candidate_name: selectedCandidate.name,
+          candidate_email: selectedCandidate.email,
+          job_title: selectedCandidate.current_position || null,
+          welcome_email_at: new Date().toISOString(),
+        }, { onConflict: 'candidate_id' });
+        if (saveErr) throw saveErr;
+        await loadProgress();
         
         toast({
           title: "Onboarding Started! 📧",
@@ -222,28 +236,14 @@ const Onboarding = () => {
     completeStep(accountFor.candidateId, 1);
   };
 
-  const completeStep = (candidateId: string, stepIndex: number) => {
-    setOnboardingProgress(prev => prev.map(progress => {
-      if (progress.candidateId === candidateId) {
-        const updatedSteps = [...progress.steps];
-        updatedSteps[stepIndex].completed = true;
-        
-        return {
-          ...progress,
-          steps: updatedSteps,
-          currentStep: Math.min(stepIndex + 1, updatedSteps.length - 1)
-        };
-      }
-      return progress;
-    }));
-
+  const completeStep = async (candidateId: string, stepIndex: number) => {
+    const { error } = await db.from('onboarding_progress')
+      .update({ [STEP_COLUMNS[stepIndex]]: new Date().toISOString() })
+      .eq('candidate_id', candidateId);
+    if (error) { toast({ title: 'Could not save step', description: error.message, variant: 'destructive' }); return; }
     const candidateName = onboardingProgress.find(p => p.candidateId === candidateId)?.candidateName;
-    const stepName = createInitialSteps()[stepIndex].name;
-    
-    toast({
-      title: "Step Completed! ✅",
-      description: `${stepName} completed for ${candidateName}`,
-    });
+    toast({ title: "Step Completed! ✅", description: `${createInitialSteps()[stepIndex].name} completed for ${candidateName}` });
+    loadProgress();
   };
 
   const selectedCandidate = candidates.find(c => c.id === selectedCandidateId);
@@ -263,7 +263,7 @@ const Onboarding = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{candidates.length}</div>
-              <p className="text-xs text-slate-400">Available for onboarding</p>
+              <p className="text-xs text-slate-400">Selected at Matching, available for onboarding</p>
             </CardContent>
           </Card>
         </div>
@@ -284,7 +284,7 @@ const Onboarding = () => {
               <Label htmlFor="candidate-select" className="text-white">Choose Candidate</Label>
               <Select value={selectedCandidateId} onValueChange={setSelectedCandidateId}>
                 <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue placeholder={isLoading ? "Loading candidates..." : "Select a candidate for onboarding"} />
+                  <SelectValue placeholder={isLoading ? "Loading candidates..." : candidates.length === 0 ? "No matched candidates yet — match someone on the Matching page first" : "Select a matched candidate"} />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-700 border-slate-600">
                   {candidates.map((candidate) => (
@@ -378,7 +378,37 @@ const Onboarding = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-white mb-4">Active Onboarding Processes</h3>
+                <h3 className="text-xl font-semibold text-white mb-2">People who received the onboarding email</h3>
+                <div className="overflow-x-auto rounded-lg border border-white/15">
+                  <table className="w-full text-sm text-white">
+                    <thead className="bg-white/5 text-left text-slate-300">
+                      <tr>
+                        <th className="p-3">Name</th><th className="p-3">Email</th>
+                        {createInitialSteps().map((s) => <th key={s.id} className="p-3">{s.name}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {onboardingProgress.map((p: any) => (
+                        <tr key={p.candidateId} className="border-t border-white/10">
+                          <td className="p-3 font-medium">{p.candidateName}</td>
+                          <td className="p-3 text-slate-300">{p.candidateEmail}</td>
+                          {p.steps.map((s: OnboardingStep, i: number) => (
+                            <td key={s.id} className="p-3">
+                              {s.completed ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-300">
+                                  <CheckCircle className="h-3 w-3" />{p.dates?.[i] ? new Date(p.dates[i]).toLocaleDateString('nl-NL') : 'Done'}
+                                </span>
+                              ) : (
+                                <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-200">Pending</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-4 pt-4">Active Onboarding Processes</h3>
                 
                 {onboardingProgress.map((progress) => {
                   const completedSteps = progress.steps.filter(step => step.completed).length;
