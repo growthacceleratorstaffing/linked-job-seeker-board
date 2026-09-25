@@ -17,3 +17,5 @@ verify_jwt = false
 
 [functions.update-user-password]
 verify_jwt = false
+[functions.linkedin-job-feed]
+verify_jwt = false
