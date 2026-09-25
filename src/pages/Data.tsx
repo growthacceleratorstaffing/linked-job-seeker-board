@@ -86,13 +86,16 @@ const Data = () => {
         
         console.log('🔍 JazzHR function response:', { jazzhrResult, error });
         
-        if (jazzhrResult && !error) {
+        if (jazzhrResult?.error) {
+          toast({ title: "JazzHR connection problem", description: jazzhrResult.error, variant: "destructive" });
+          data = [];
+        } else if (jazzhrResult && !error) {
           data = jazzhrResult.candidates || [];
           console.log(`✅ Successfully loaded ${data.length} JazzHR candidates`);
         } else {
           console.error('❌ JazzHR API call failed:', error);
-          console.log('🔄 Falling back to sample data...');
-          data = generateSampleData(integrationType);
+          toast({ title: "JazzHR connection problem", description: "Could not load JazzHR data.", variant: "destructive" });
+          data = [];
         }
       } else if (integrationType === 'jobadder') {
         // Load JobAdder data via edge function
