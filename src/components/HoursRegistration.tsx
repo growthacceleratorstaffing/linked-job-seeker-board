@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -167,9 +167,9 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
 
       {true && (
         <Card className="bg-white/5 border-white/20 text-white">
-          <CardHeader><CardTitle>Register hours</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Register hours</CardTitle><CardDescription className="text-white/70">Pick any date up to today, including past weeks and months.</CardDescription></CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
-            <div className="space-y-1"><Label>Date</Label><Input type="date" className={field} value={form.entry_date} onChange={(e) => setForm({ ...form, entry_date: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Date</Label><Input type="date" max={iso(new Date())} className={field} value={form.entry_date} onChange={(e) => setForm({ ...form, entry_date: e.target.value })} /></div>
             <div className="space-y-1"><Label>Start</Label><Input type="time" className={field} value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></div>
             <div className="space-y-1"><Label>End</Label><Input type="time" className={field} value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></div>
             <div className="space-y-1"><Label>Break (min)</Label><Input type="number" min={0} className={field} value={form.break_minutes} onChange={(e) => setForm({ ...form, break_minutes: Number(e.target.value) })} /></div>
@@ -198,7 +198,7 @@ export const HoursRegistration: React.FC<{ allEmployees?: boolean }> = ({ allEmp
                     <td className="font-semibold">{Number(e.hours).toFixed(2)}</td>
                     <td>{e.project}</td>
                     <td className="max-w-xs truncate">{e.description}</td>
-                    <td><span className={`px-2 py-0.5 rounded-full text-xs ${e.status === 'approved' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-200'}`}>{e.status}</span></td>
+                    <td><span className={`px-2 py-0.5 rounded-full text-xs ${e.status === 'approved' ? 'bg-green-500/20 text-green-300' : e.status === 'submitted' ? 'bg-blue-500/20 text-blue-200' : 'bg-yellow-500/20 text-yellow-200'}`}>{e.status}</span></td>
                     <td className="text-right whitespace-nowrap">
                       {allEmployees && e.status !== 'approved' && <Button size="sm" variant="ghost" onClick={() => approve(e.id)} className="text-green-300 hover:bg-white/10"><Check className="h-4 w-4" /></Button>}
                       {(allEmployees || e.status !== 'approved') && <Button size="sm" variant="ghost" onClick={() => remove(e.id)} className="text-pink-300 hover:bg-white/10"><Trash2 className="h-4 w-4" /></Button>}
