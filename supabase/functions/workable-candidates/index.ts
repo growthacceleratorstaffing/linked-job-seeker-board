@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const WORKABLE_SUBDOMAIN = Deno.env.get('WORKABLE_SUBDOMAIN')
+    const WORKABLE_SUBDOMAIN = (Deno.env.get("WORKABLE_SUBDOMAIN") || "").trim().replace(/^https?:\/\//, "").replace(/\.workable\.com.*$/, "")
     const WORKABLE_API_TOKEN = Deno.env.get('WORKABLE_API_TOKEN')
 
     if (!WORKABLE_SUBDOMAIN || !WORKABLE_API_TOKEN) {
