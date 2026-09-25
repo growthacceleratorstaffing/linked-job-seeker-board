@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RefreshCw, Download, ArrowLeft, Users, Building, FileText, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -14,7 +17,39 @@ const Data = () => {
   const [connectedIntegrations, setConnectedIntegrations] = useState<any[]>([]);
   const [integrationData, setIntegrationData] = useState<Record<string, any[]>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [editing, setEditing] = useState<{ type: string; index: number; row: Record<string, any> } | null>(null);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  const APOLLO_EDITABLE = ['first_name', 'last_name', 'email', 'title', 'company', 'company_website', 'phone', 'linkedin_url', 'twitter_url'];
+  const isFieldEditable = (type: string, key: string) =>
+    key !== 'id' && (type !== 'apollo' || APOLLO_EDITABLE.includes(key));
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      if (editing.type === 'apollo') {
+        const fields: Record<string, string> = {};
+        APOLLO_EDITABLE.forEach(k => { if (k in editing.row) fields[k] = String(editing.row[k] ?? ''); });
+        const { data: res, error } = await supabase.functions.invoke('apollo-integration', {
+          body: { action: 'update_contact', id: editing.row.id, fields },
+        });
+        if (error || res?.error) throw new Error(res?.error || error?.message);
+      }
+      setIntegrationData(prev => {
+        const list = [...(prev[editing.type] || [])];
+        list[editing.index] = editing.row;
+        return { ...prev, [editing.type]: list };
+      });
+      toast({ title: "Saved", description: editing.type === 'apollo' ? "Contact updated in Apollo." : "Record updated." });
+      setEditing(null);
+    } catch (e: any) {
+      toast({ title: "Could not save", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     loadConnectedIntegrations();
@@ -330,10 +365,14 @@ const Data = () => {
             </TableHeader>
             <TableBody>
               {data.map((row, index) => (
-                <TableRow key={index} className="border-white/20">
+                <TableRow
+                  key={index}
+                  className="border-white/20 cursor-pointer hover:bg-white/10"
+                  onClick={() => { setEditing({ type: integrationType, index, row: { ...row } }); }}
+                >
                   {columns.map((column) => (
-                    <TableCell key={column} className="text-white/90">
-                      {row[column]}
+                    <TableCell key={column} className="text-white/90 whitespace-nowrap">
+                      {String(row[column] ?? '')}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -341,6 +380,7 @@ const Data = () => {
             </TableBody>
           </Table>
         </div>
+        <p className="text-white/60 text-sm">Click a row to edit it.</p>
       </div>
     );
   };
@@ -434,6 +474,36 @@ const Data = () => {
           ))}
         </Tabs>
       </div>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit record</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {Object.keys(editing.row).map((key) => {
+                const editable = isFieldEditable(editing.type, key);
+                return (
+                  <div key={key} className="space-y-1">
+                    <Label className="capitalize">{key.replace(/_/g, ' ')}{!editable && ' (read-only)'}</Label>
+                    <Input
+                      value={String(editing.row[key] ?? '')}
+                      disabled={!editable}
+                      onChange={(e) => setEditing({ ...editing, row: { ...editing.row, [key]: e.target.value } })}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={saving} className="bg-pink-600 hover:bg-pink-700">
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

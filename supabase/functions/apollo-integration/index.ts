@@ -43,7 +43,8 @@ serve(async (req) => {
     )
 
     console.log('📋 Parsing request body...')
-    const { action } = await req.json()
+    const body = await req.json()
+    const { action } = body
     console.log(`🎯 Action requested: ${action}`)
     
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
@@ -149,15 +150,36 @@ serve(async (req) => {
 
       console.log(`📊 Total contacts fetched: ${allContacts.length}`)
 
-      const contacts = allContacts.map((person: any) => ({
-        id: person.id,
-        name: person.name || `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Unknown',
-        email: person.email || 'No email',
-        title: person.title || 'No title',
-        company: person.organization_name || person.organization?.name || 'No company',
-        industry: person.organization?.industry || 'No industry',
-        location: [person.city, person.country].filter(Boolean).join(', ') || 'No location',
-        linkedin_url: person.linkedin_url || null
+      const phone = (p: any) => (p.phone_numbers || []).map((n: any) => n.sanitized_number || n.raw_number).filter(Boolean).join(', ')
+      const contacts = allContacts.map((p: any) => ({
+        first_name: p.first_name ?? '',
+        last_name: p.last_name ?? '',
+        email: p.email ?? '',
+        email_status: p.email_status ?? '',
+        title: p.title ?? '',
+        headline: p.headline ?? '',
+        seniority: p.seniority ?? '',
+        departments: (p.departments || []).join(', '),
+        company: p.organization_name || p.organization?.name || '',
+        company_website: p.organization?.website_url ?? '',
+        company_domain: p.organization?.primary_domain ?? '',
+        industry: p.organization?.industry ?? '',
+        company_size: p.organization?.estimated_num_employees ?? '',
+        phone: phone(p),
+        city: p.city ?? '',
+        state: p.state ?? '',
+        country: p.country ?? '',
+        time_zone: p.time_zone ?? '',
+        linkedin_url: p.linkedin_url ?? '',
+        twitter_url: p.twitter_url ?? '',
+        stage: p.contact_stage_id ?? '',
+        owner_id: p.owner_id ?? '',
+        labels: (p.label_ids || []).join(', '),
+        source: p.source ?? '',
+        last_activity: p.last_activity_date ?? '',
+        created_at: p.created_at ?? '',
+        updated_at: p.updated_at ?? '',
+        id: p.id,
       }))
 
       console.log(`✅ Successfully transformed ${contacts.length} contacts from Apollo`)
@@ -166,6 +188,32 @@ serve(async (req) => {
         JSON.stringify({ contacts }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    if (action === 'update_contact') {
+      const allowed = ['first_name', 'last_name', 'email', 'title', 'organization_name', 'website_url', 'present_raw_address', 'direct_phone', 'linkedin_url', 'twitter_url']
+      const id = String(body.id ?? '')
+      if (!/^[a-zA-Z0-9]+$/.test(id)) {
+        return new Response(JSON.stringify({ error: 'Invalid contact id' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      const f = body.fields ?? {}
+      const payload: Record<string, string> = {}
+      const map: Record<string, string> = { company: 'organization_name', company_website: 'website_url', phone: 'direct_phone' }
+      for (const [k, v] of Object.entries(f)) {
+        const key = map[k] ?? k
+        if (allowed.includes(key) && typeof v === 'string') payload[key] = v.slice(0, 500)
+      }
+      const r = await fetch(`https://api.apollo.io/api/v1/contacts/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Key': apiKey },
+        body: JSON.stringify(payload),
+      })
+      const text = await r.text()
+      if (!r.ok) {
+        console.error('❌ Apollo update failed:', r.status, text)
+        return new Response(JSON.stringify({ error: `Apollo couldn't save the change (${r.status}): ${text}` }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     console.log(`❌ Invalid action: ${action}`)
