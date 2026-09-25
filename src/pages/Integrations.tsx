@@ -37,14 +37,13 @@ const popularCRMs = [
     ]
   },
   {
-    name: "LinkedIn Sales Navigator",
-    description: "Professional networking and sales tool",
+    name: "LinkedIn Recruiter",
+    description: "Import projects, pipeline candidates, InMails and notes from your Recruiter seat",
     logo: "💼",
     status: "available",
-    type: "crm",
-    fields: [
-      { name: "access_token", label: "Access Token", type: "password", placeholder: "AQV..." }
-    ]
+    type: "ats",
+    link: "/linkedin",
+    fields: [] as { name: string; label: string; type: string; placeholder: string }[]
   },
   {
     name: "Apollo",
@@ -117,6 +116,16 @@ const popularCRMs = [
 
 const Integrations = () => {
   const [customWebhook, setCustomWebhook] = useState("");
+  const [customApiKey, setCustomApiKey] = useState("");
+
+  useEffect(() => {
+    supabase.from('integration_settings').select('settings').eq('integration_type', 'custom').maybeSingle()
+      .then(({ data }) => {
+        const s = (data?.settings || {}) as Record<string, string>;
+        if (s.webhook_url) setCustomWebhook(s.webhook_url);
+        if (s.api_key) setCustomApiKey(s.api_key);
+      });
+  }, []);
   const [selectedCRM, setSelectedCRM] = useState<typeof popularCRMs[0] | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionForm, setConnectionForm] = useState<Record<string, string>>({});
@@ -274,20 +283,24 @@ const Integrations = () => {
     }
   };
 
-  const handleSaveWebhook = () => {
-    if (!customWebhook) {
-      toast({
-        title: "Error",
-        description: "Please enter a webhook URL",
-        variant: "destructive",
-      });
+  const handleSaveWebhook = async () => {
+    if (!customWebhook.startsWith("https://")) {
+      toast({ title: "Error", description: "Please enter a webhook URL starting with https://", variant: "destructive" });
       return;
     }
-
-    toast({
-      title: "Webhook Saved",
-      description: "Your custom webhook has been configured successfully.",
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.from('integration_settings').upsert({
+      integration_type: 'custom',
+      is_enabled: true,
+      settings: { webhook_url: customWebhook, api_key: customApiKey },
+      user_id: user.id,
+    }, { onConflict: 'user_id,integration_type' });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Custom Integration Saved", description: "Your webhook URL and API key have been saved." });
   };
 
   return (
@@ -310,7 +323,7 @@ const Integrations = () => {
         <Tabs defaultValue="crm" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="crm">CRM/ATS Integrations</TabsTrigger>
-            <TabsTrigger value="custom">Custom Webhooks</TabsTrigger>
+            <TabsTrigger value="custom">Custom Integration</TabsTrigger>
           </TabsList>
 
           <TabsContent value="crm" className="space-y-6">
@@ -337,7 +350,14 @@ const Integrations = () => {
                       <CardDescription className="mb-4 text-white/80">
                         {crm.description}
                       </CardDescription>
-                      {isConnected ? (
+                      {(crm as any).link ? (
+                        <Link to={(crm as any).link}>
+                          <Button className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50" variant="outline">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Open {crm.name}
+                          </Button>
+                        </Link>
+                      ) : isConnected ? (
                         <Button 
                           onClick={() => handleDisconnectCRM(crm.name)}
                           className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50"
@@ -415,9 +435,9 @@ const Integrations = () => {
           <TabsContent value="custom" className="space-y-6">
             <Card className="bg-primary-blue border-white/20 text-white" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
               <CardHeader>
-                <CardTitle className="text-white">Custom Webhook Integration</CardTitle>
+                <CardTitle className="text-white">Custom Integration</CardTitle>
                 <CardDescription className="text-white/80">
-                  Connect any CRM or system using webhooks for real-time data sync
+                  Connect any CRM, ATS or internal system with a webhook URL and (optionally) an API key
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -430,12 +450,22 @@ const Integrations = () => {
                     onChange={(e) => setCustomWebhook(e.target.value)}
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                   />
-                  <p className="text-sm text-white/70">
-                    We'll send candidate data to this endpoint when changes occur
-                  </p>
+                  <p className="text-sm text-white/70">We send candidate data to this address whenever something changes.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custom-api-key" className="text-white">API Key</Label>
+                  <Input
+                    id="custom-api-key"
+                    type="password"
+                    placeholder="Your system's API key"
+                    value={customApiKey}
+                    onChange={(e) => setCustomApiKey(e.target.value)}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                  />
+                  <p className="text-sm text-white/70">Sent with every request so your system knows the data comes from us.</p>
                 </div>
                 <Button onClick={handleSaveWebhook} className="bg-pink-600 hover:bg-pink-700 text-white">
-                  Save Webhook Configuration
+                  Save Custom Integration
                 </Button>
               </CardContent>
             </Card>
@@ -443,16 +473,31 @@ const Integrations = () => {
             <Card className="bg-primary-blue border-white/20 text-white" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
               <CardHeader>
                 <CardTitle className="text-white">Webhook Documentation</CardTitle>
-                <CardDescription className="text-white/80">
-                  Learn how to set up custom integrations
-                </CardDescription>
+                <CardDescription className="text-white/80">Everything your developer needs to receive our data</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="border rounded p-4 bg-white/5 border-white/20">
-                    <h4 className="font-medium mb-2 text-white">Payload Structure</h4>
-                    <pre className="text-sm bg-black/20 p-2 rounded border border-white/10 overflow-x-auto text-white/90">
-{`{
+              <CardContent className="space-y-5 text-sm text-white/85">
+                <div>
+                  <h4 className="font-medium mb-1 text-white">1. How we send it</h4>
+                  <p>An HTTPS <code className="bg-black/30 px-1 rounded">POST</code> request with a JSON body to your Webhook URL.</p>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1 text-white">2. Headers</h4>
+                  <pre className="bg-black/20 p-2 rounded border border-white/10 overflow-x-auto">{`Content-Type: application/json
+Authorization: Bearer <your API key>
+X-GA-Event: candidate.updated`}</pre>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1 text-white">3. Events</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><code>candidate.created</code> — a new candidate was added</li>
+                    <li><code>candidate.updated</code> — candidate details or status changed</li>
+                    <li><code>job.created</code> / <code>job.updated</code> — a vacancy was added or changed</li>
+                    <li><code>placement.created</code> — a candidate was placed / onboarded</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1 text-white">4. Example body</h4>
+                  <pre className="bg-black/20 p-2 rounded border border-white/10 overflow-x-auto">{`{
   "event": "candidate.updated",
   "candidate": {
     "id": "123",
@@ -461,16 +506,12 @@ const Integrations = () => {
     "status": "interviewed",
     "job_id": "456"
   },
-  "timestamp": "2024-01-15T10:30:00Z"
-}`}
-                    </pre>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <ExternalLink className="h-4 w-4 text-white/70" />
-                    <a href="#" className="text-white hover:text-white/80 hover:underline">
-                      View full API documentation
-                    </a>
-                  </div>
+  "timestamp": "2026-01-15T10:30:00Z"
+}`}</pre>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1 text-white">5. Your response</h4>
+                  <p>Reply with any <code>2xx</code> status within 10 seconds. Other responses are retried up to 3 times (after 1, 5 and 30 minutes).</p>
                 </div>
               </CardContent>
             </Card>

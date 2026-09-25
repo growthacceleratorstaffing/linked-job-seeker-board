@@ -26,6 +26,10 @@ import LinkedIn from "./pages/LinkedIn";
 import LinkedInCallback from "./pages/LinkedInCallback";
 import Data from "./pages/Data";
 import Advertising from "./pages/Advertising";
+import Backoffice from "./pages/Backoffice";
+import PortalHome from "./pages/portal/PortalHome";
+import PortalOnboarding from "./pages/portal/PortalOnboarding";
+import PortalBackoffice from "./pages/portal/PortalBackoffice";
 
 import NotFound from "./pages/NotFound";
 
@@ -113,6 +117,10 @@ const App = () => (
                 <Onboarding />
               </ProtectedRoute>
             } />
+            <Route path="/backoffice" element={<ProtectedRoute><Backoffice /></ProtectedRoute>} />
+            <Route path="/portal" element={<ProtectedRoute audience="employee"><PortalHome /></ProtectedRoute>} />
+            <Route path="/portal/onboarding" element={<ProtectedRoute audience="employee"><PortalOnboarding /></ProtectedRoute>} />
+            <Route path="/portal/backoffice" element={<ProtectedRoute audience="employee"><PortalBackoffice /></ProtectedRoute>} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

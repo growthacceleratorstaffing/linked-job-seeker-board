@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { UserCheck, Users, Calendar, CheckCircle, Mail, Loader2, FileText, UserPlus, PenTool, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -196,6 +198,28 @@ const Onboarding = () => {
     } finally {
       setIsSendingEmail(false);
     }
+  };
+
+  const [accountFor, setAccountFor] = useState<OnboardingProgress | null>(null);
+  const [accountForm, setAccountForm] = useState({ job_title: '', client_company: '', hourly_rate: '', start_date: '' });
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [createdLogin, setCreatedLogin] = useState<{ email: string; password: string } | null>(null);
+
+  const createAccount = async () => {
+    if (!accountFor) return;
+    setCreatingAccount(true);
+    const { data, error } = await supabase.functions.invoke('create-employee-account', {
+      body: { full_name: accountFor.candidateName, email: accountFor.candidateEmail, candidate_id: accountFor.candidateId, ...accountForm },
+    });
+    setCreatingAccount(false);
+    if (error || data?.error) {
+      let msg = data?.error || error?.message;
+      try { msg = JSON.parse(await (error as any).context.text()).error; } catch { /* keep */ }
+      toast({ title: 'Could not create account', description: msg, variant: 'destructive' });
+      return;
+    }
+    setCreatedLogin({ email: data.email, password: data.password });
+    completeStep(accountFor.candidateId, 1);
   };
 
   const completeStep = (candidateId: string, stepIndex: number) => {
@@ -413,10 +437,12 @@ const Onboarding = () => {
                                 {!step.completed && isCurrentStep && (
                                   <Button
                                     size="sm"
-                                    onClick={() => completeStep(progress.candidateId, index)}
+                                    onClick={() => step.id === 'create-account'
+                                      ? (setAccountFor(progress), setCreatedLogin(null))
+                                      : completeStep(progress.candidateId, index)}
                                     className="w-full bg-secondary-pink hover:bg-secondary-pink/80 text-white text-xs"
                                   >
-                                    Mark Complete
+                                    {step.id === 'create-account' ? 'Create Account' : 'Mark Complete'}
                                   </Button>
                                 )}
                                 
@@ -435,6 +461,43 @@ const Onboarding = () => {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={!!accountFor} onOpenChange={(o) => !o && setAccountFor(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create backoffice account</DialogTitle>
+              <DialogDescription>
+                {accountFor?.candidateName} ({accountFor?.candidateEmail}) gets their own login with only Onboarding and Backoffice.
+              </DialogDescription>
+            </DialogHeader>
+            {createdLogin ? (
+              <div className="space-y-2 text-sm">
+                <p>Account ready. Share these login details with the new hire:</p>
+                <div className="rounded bg-muted p-3 font-mono">
+                  <div>Email: {createdLogin.email}</div>
+                  <div>Password: {createdLogin.password}</div>
+                  <div>Login: {window.location.origin}/auth</div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1 col-span-2"><Label>Position</Label><Input value={accountForm.job_title} onChange={(e) => setAccountForm({ ...accountForm, job_title: e.target.value })} /></div>
+                <div className="space-y-1 col-span-2"><Label>Client company</Label><Input value={accountForm.client_company} onChange={(e) => setAccountForm({ ...accountForm, client_company: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Hourly wage (€)</Label><Input type="number" value={accountForm.hourly_rate} onChange={(e) => setAccountForm({ ...accountForm, hourly_rate: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Start date</Label><Input type="date" value={accountForm.start_date} onChange={(e) => setAccountForm({ ...accountForm, start_date: e.target.value })} /></div>
+              </div>
+            )}
+            <DialogFooter>
+              {createdLogin ? (
+                <Button onClick={() => setAccountFor(null)} className="bg-pink-600 hover:bg-pink-700 text-white">Done</Button>
+              ) : (
+                <Button onClick={createAccount} disabled={creatingAccount} className="bg-pink-600 hover:bg-pink-700 text-white">
+                  {creatingAccount && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create account
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

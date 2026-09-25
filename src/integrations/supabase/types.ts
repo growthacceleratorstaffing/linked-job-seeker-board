@@ -491,6 +491,57 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          candidate_id: string | null
+          client_company: string | null
+          contract_signature: string | null
+          contract_signed_at: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          full_name: string
+          hourly_rate: number | null
+          id: string
+          job_title: string | null
+          start_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          client_company?: string | null
+          contract_signature?: string | null
+          contract_signed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          full_name: string
+          hourly_rate?: number | null
+          id?: string
+          job_title?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          candidate_id?: string | null
+          client_company?: string | null
+          contract_signature?: string | null
+          contract_signed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          full_name?: string
+          hourly_rate?: number | null
+          id?: string
+          job_title?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           api_rate_limit_remaining: number | null
@@ -1044,6 +1095,51 @@ export type Database = {
         }
         Relationships: []
       }
+      time_entries: {
+        Row: {
+          break_minutes: number
+          created_at: string
+          description: string | null
+          end_time: string | null
+          entry_date: string
+          hours: number
+          id: string
+          project: string | null
+          start_time: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          break_minutes?: number
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          entry_date: string
+          hours?: number
+          id?: string
+          project?: string | null
+          start_time?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          break_minutes?: number
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          entry_date?: string
+          hours?: number
+          id?: string
+          project?: string | null
+          start_time?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       trips: {
         Row: {
           business_purpose_details: string | null
@@ -1318,6 +1414,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_employee: { Args: { _user_id: string }; Returns: boolean }
       log_security_event: {
         Args: {
           p_event_details?: Json
