@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
           </div>
         </div>
       `,
-    });
+    }));
     if (mailErr) {
       console.error("Resend rejected account email:", mailErr);
       return json({ success: true, email, password, user_id: userId, email_sent: false, email_error: mailErr });
