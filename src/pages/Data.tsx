@@ -233,8 +233,8 @@ const Data = () => {
           console.log(`✅ Successfully loaded ${data.length} JobAdder candidates`);
         } else {
           console.error('❌ JobAdder API call failed:', error);
-          console.log('🔄 Falling back to sample data...');
-          data = generateSampleData(integrationType);
+          toast({ title: "JobAdder connection problem", description: "Could not load live JobAdder data.", variant: "destructive" });
+          data = [];
         }
       } else if (integrationType === 'workable') {
         // Load Workable data using existing candidates function
@@ -259,8 +259,8 @@ const Data = () => {
           console.log(`✅ Successfully loaded ${data.length} Workable candidates`);
         } else {
           console.error('❌ Workable API call failed:', error);
-          console.log('🔄 Falling back to sample data...');
-          data = generateSampleData(integrationType);
+          toast({ title: "Workable connection problem", description: "Could not load live Workable data.", variant: "destructive" });
+          data = [];
         }
       } else {
         data = [];
