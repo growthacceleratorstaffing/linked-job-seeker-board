@@ -1,0 +1,29 @@
+export type MatchCandidate = { id: string; name: string; email: string; current_position?: string | null; company?: string | null; location?: string | null; experience_years?: number | null; skills?: unknown; profile_completeness_score?: number | null; source_platform?: string | null };
+export type MatchJob = { id: string; title: string; company_name?: string | null; location_name?: string | null; job_description?: string | null; skill_tags?: string[] | null; work_type_name?: string | null };
+export type CandidateMatch = MatchCandidate & { score: number; reasons: string[] };
+
+const words = (value: unknown) => String(value ?? "").toLowerCase().match(/[a-z0-9+#.]{2,}/g) ?? [];
+const skills = (value: unknown) => Array.isArray(value) ? value.map(String) : words(value);
+
+export function rankCandidates(job: MatchJob, candidates: MatchCandidate[]): CandidateMatch[] {
+  const jobSkills = new Set(skills(job.skill_tags));
+  const jobTerms = new Set(words(`${job.title} ${job.job_description ?? ""}`));
+  const jobLocation = String(job.location_name ?? "").toLowerCase();
+  return candidates.map((candidate) => {
+    let score = 0;
+    const reasons: string[] = [];
+    const candidateSkills = skills(candidate.skills);
+    const sharedSkills = candidateSkills.filter((skill) => jobSkills.has(skill.toLowerCase()) || jobTerms.has(skill.toLowerCase()));
+    if (sharedSkills.length) { score += Math.min(45, sharedSkills.length * 9); reasons.push(`Skills: ${sharedSkills.slice(0, 4).join(", ")}`); }
+    const titleOverlap = words(candidate.current_position).filter((term) => jobTerms.has(term)).length;
+    if (titleOverlap) { score += Math.min(25, titleOverlap * 8); reasons.push("Current role aligns with the vacancy"); }
+    const profileTerms = new Set(words(`${candidate.current_position ?? ""} ${candidate.company ?? ""} ${candidateSkills.join(" ")}`));
+    const termOverlap = [...jobTerms].filter((term) => profileTerms.has(term)).length;
+    if (termOverlap) { score += Math.min(15, termOverlap * 2); reasons.push("Profile terminology overlaps with the job"); }
+    if (candidate.experience_years) { score += Math.min(7, candidate.experience_years); reasons.push(`${candidate.experience_years} years of experience`); }
+    if (jobLocation && candidate.location && jobLocation.includes(candidate.location.toLowerCase())) { score += 5; reasons.push("Location matches"); }
+    score += Math.round(Math.min(3, (candidate.profile_completeness_score ?? 0) * 0.03));
+    if (!reasons.length) reasons.push("Limited profile information available");
+    return { ...candidate, score: Math.min(100, score), reasons };
+  }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 10);
+}
