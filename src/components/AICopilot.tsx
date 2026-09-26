@@ -71,6 +71,7 @@ function AssistantTool({ part, approve }: { part: AssistantToolPart; approve: (i
 
 export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMessage }) => {
   const [input, setInput] = useState("");
+  const [requestError, setRequestError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const transport = useMemo(() => new DefaultChatTransport<UIMessage>({
     api: assistantEndpoint,
@@ -90,7 +91,17 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onFinish: () => textareaRef.current?.focus(),
+    onError: () => setRequestError("The AI Assistant is temporarily unavailable. Your app and data are unaffected."),
   });
+
+  const sendSafely = async (message: { text: string }) => {
+    setRequestError(null);
+    try {
+      await sendMessage(message);
+    } catch {
+      setRequestError("The AI Assistant is temporarily unavailable. Your app and data are unaffected.");
+    }
+  };
 
   useEffect(() => {
     if (isOpen) window.setTimeout(() => textareaRef.current?.focus(), 50);
@@ -103,7 +114,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
       const question = (event as CustomEvent<string>).detail;
       if (question?.trim()) {
         setInput("");
-        void sendMessage({ text: question.trim() });
+        void sendSafely({ text: question.trim() });
       }
     };
     window.addEventListener("quickQuestion", handleQuickQuestion);
@@ -115,10 +126,15 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
     const value = input.trim();
     if (!value || status === "submitted" || status === "streaming") return;
     setInput("");
-    void sendMessage({ text: value });
+    void sendSafely({ text: value });
   };
-  const approve = (id: string, approved: boolean) => {
-    void addToolApprovalResponse({ id, approved, reason: approved ? "Approved by the signed-in staff member." : "Declined by the signed-in staff member." });
+  const approve = async (id: string, approved: boolean) => {
+    setRequestError(null);
+    try {
+      await addToolApprovalResponse({ id, approved, reason: approved ? "Approved by the signed-in staff member." : "Declined by the signed-in staff member." });
+    } catch {
+      setRequestError("The approved action could not be completed. No additional changes were made.");
+    }
   };
 
   if (!isOpen) return null;
@@ -131,7 +147,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
             <div><CardTitle className="text-lg">AI Assistant</CardTitle><p className="text-xs text-muted-foreground">Growth Accelerator Staffing</p></div>
           </div>
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon" title="New conversation" onClick={() => { stop(); setMessages([]); setInput(""); textareaRef.current?.focus(); }}><RotateCcw className="size-4" /><span className="sr-only">New conversation</span></Button>
+            <Button variant="ghost" size="icon" title="New conversation" onClick={() => { stop(); setMessages([]); setInput(""); setRequestError(null); textareaRef.current?.focus(); }}><RotateCcw className="size-4" /><span className="sr-only">New conversation</span></Button>
             <Button variant="ghost" size="icon" title="Close" onClick={onClose}><X className="size-4" /><span className="sr-only">Close</span></Button>
           </div>
         </CardHeader>
@@ -151,7 +167,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
                 </Message>
               ))}
               {status === "submitted" && <Message from="assistant"><MessageContent><Shimmer>Checking your workspace…</Shimmer></MessageContent></Message>}
-              {error && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error.message}</div>}
+              {(requestError || error) && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{requestError ?? "The AI Assistant is temporarily unavailable. Your app and data are unaffected."}</div>}
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
