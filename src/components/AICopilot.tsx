@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, isToolUIPart, lastAssistantMessageIsCompleteWithApprovalResponses, type ToolUIPart, type UIMessage } from "ai";
+import { DefaultChatTransport, isToolUIPart, lastAssistantMessageIsCompleteWithApprovalResponses, type ToolPart, type UIMessage } from "ai";
 import { Bot, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,16 +35,16 @@ const TOOL_LABELS: Record<string, string> = {
 
 const assistantEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/myowncopilot-chat`;
 
-function getToolName(part: ToolUIPart) {
-  return part.type.replace(/^tool-/, "");
+function getToolName(part: ToolPart) {
+  return part.type === "dynamic-tool" ? part.toolName : part.type.replace(/^tool-/, "");
 }
 
-function AssistantTool({ part, approve }: { part: ToolUIPart; approve: (id: string, approved: boolean) => void }) {
+function AssistantTool({ part, approve }: { part: ToolPart; approve: (id: string, approved: boolean) => void }) {
   const name = getToolName(part);
   return (
     <div className="w-full">
       <Tool defaultOpen={false}>
-        <ToolHeader title={TOOL_LABELS[name] ?? name} type={part.type} state={part.state} />
+        <ToolHeader title={TOOL_LABELS[name] ?? name} type={part.type} state={part.state} {...(part.type === "dynamic-tool" ? { toolName: part.toolName } : {})} />
         <ToolContent>
           <ToolInput input={part.input} />
           <ToolOutput output={"output" in part ? part.output : undefined} errorText={"errorText" in part ? part.errorText : undefined} />
@@ -106,7 +106,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
     return () => window.removeEventListener("quickQuestion", handleQuickQuestion);
   }, [sendMessage]);
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = (_message: unknown, event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = input.trim();
     if (!value || status === "submitted" || status === "streaming") return;

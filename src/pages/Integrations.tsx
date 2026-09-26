@@ -145,7 +145,7 @@ const Integrations = () => {
   return (
     <Layout>
       <div className="container mx-auto space-y-6 p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-bold">Integrations</h1><p className="mt-2 text-primary-foreground/70">Connect recruitment and enrichment systems.</p></div><Link to="/data"><Button className="bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90">View integration data</Button></Link></div>
+        <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-bold">Providers</h1><p className="mt-2 text-primary-foreground/70">Connect recruitment and enrichment systems.</p></div><Link to="/data"><Button className="bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90">View imported data</Button></Link></div>
         <Tabs defaultValue="ats">
           <TabsList className="grid h-auto w-full grid-cols-2 bg-transparent p-0 md:grid-cols-4">
             {['ats', 'recruitment', 'enrichment', 'custom'].map((tab, index) => <TabsTrigger key={tab} value={tab} className={`rounded-none border-b-2 border-primary-foreground/20 py-3 capitalize data-[state=active]:border-secondary-pink data-[state=active]:text-secondary-pink ${index > 0 ? 'border-l border-l-secondary-pink' : ''}`}>{tab === 'enrichment' ? 'Data Enrichment' : tab === 'ats' ? 'ATS' : tab === 'custom' ? 'Custom Integration' : 'Recruitment'}</TabsTrigger>)}

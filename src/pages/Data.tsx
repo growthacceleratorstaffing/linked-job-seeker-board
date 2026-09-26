@@ -459,7 +459,7 @@ const Data = () => {
                 Back to Integrations
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold text-white">CRM/ATS Data</h1>
+            <h1 className="text-3xl font-bold text-white">Imported Data</h1>
           </div>
           
           <Card className="bg-primary-blue border-white/20 text-white text-center py-12" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
@@ -493,7 +493,7 @@ const Data = () => {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-white">CRM/ATS Data</h1>
+              <h1 className="text-3xl font-bold text-white">Imported Data</h1>
               <p className="text-white/70 mt-2">
                 View and manage data from your connected CRM and ATS integrations
               </p>

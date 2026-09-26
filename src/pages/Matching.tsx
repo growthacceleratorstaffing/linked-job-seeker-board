@@ -591,7 +591,7 @@ const Matching = () => {
                         }, {})).sort(([a], [b]) => a === 'Growth Accelerator' ? -1 : b === 'Growth Accelerator' ? 1 : a.localeCompare(b)).map(([group, list]) => (
                           <SelectGroup key={group}>
                             <SelectLabel className="text-pink-300">{group} ({list.length})</SelectLabel>
-                            {list.map((candidate) => (
+                            {[...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).map((candidate) => (
                               <SelectItem key={candidate.id} value={candidate.id} className="text-white hover:bg-slate-600">
                                 {candidate.name} - {candidate.email} {candidate.current_position && `(${candidate.current_position})`}
                               </SelectItem>
