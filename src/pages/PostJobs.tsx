@@ -26,6 +26,16 @@ interface IntegrationJob {
     location_str: string;
     workplace_type: string;
   };
+  description?: string | null;
+  company?: string | null;
+  category?: string | null;
+  skills?: string[] | null;
+  salary?: {
+    low?: number | null;
+    high?: number | null;
+    currency?: string | null;
+    period?: string | null;
+  };
 }
 
 const PostJobs = () => {
@@ -71,7 +81,17 @@ const PostJobs = () => {
         location: {
           location_str: job.location_name || 'Not specified',
           workplace_type: job.work_type_name || 'onsite'
-        }
+        },
+        description: job.job_description,
+        company: job.company_name,
+        category: job.category_name,
+        skills: job.skill_tags,
+        salary: {
+          low: job.salary_rate_low,
+          high: job.salary_rate_high,
+          currency: job.salary_currency,
+          period: job.salary_rate_per,
+        },
       }));
 
       // Then try to load from integration (if available)
@@ -191,7 +211,10 @@ const PostJobs = () => {
         location: {
           location_str: newJob.location || 'Not specified',
           workplace_type: newJob.workplace_type
-        }
+        },
+        description: newJob.description || 'Job description to be added.',
+        company: newJob.company,
+        category: 'General',
       };
 
       // Add to current jobs list
@@ -450,10 +473,47 @@ const PostJobs = () => {
           </Card>
 
           <Dialog open={Boolean(viewingJob)} onOpenChange={(open) => !open && setViewingJob(null)}>
-            <DialogContent className="bg-primary-blue border-slate-700 text-white">
-              <DialogHeader><DialogTitle>{viewingJob?.title}</DialogTitle><DialogDescription className="text-slate-300">{viewingJob?.location.location_str}</DialogDescription></DialogHeader>
-              <p className="text-sm text-slate-300">This vacancy was created in Growth Accelerator and is managed in this app.</p>
-              <DialogFooter><Button variant="outline" onClick={() => setViewingJob(null)}>Close</Button></DialogFooter>
+            <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto border-slate-700 bg-primary-blue text-primary-foreground">
+              <DialogHeader>
+                <DialogTitle className="text-2xl">{viewingJob?.title}</DialogTitle>
+                <DialogDescription className="text-slate-300">
+                  {[viewingJob?.company, viewingJob?.location.location_str, viewingJob?.location.workplace_type]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-5 py-2">
+                <div className="flex flex-wrap gap-2">
+                  {viewingJob?.state && <Badge>{viewingJob.state}</Badge>}
+                  {viewingJob?.category && <Badge variant="outline" className="border-primary-foreground/30 text-primary-foreground">{viewingJob.category}</Badge>}
+                  {viewingJob?.salary && (viewingJob.salary.low || viewingJob.salary.high) && (
+                    <Badge variant="outline" className="border-primary-foreground/30 text-primary-foreground">
+                      {viewingJob.salary.currency || 'EUR'} {viewingJob.salary.low ?? ''}{viewingJob.salary.low && viewingJob.salary.high ? ' – ' : ''}{viewingJob.salary.high ?? ''}{viewingJob.salary.period ? ` / ${viewingJob.salary.period}` : ''}
+                    </Badge>
+                  )}
+                </div>
+
+                <section>
+                  <h3 className="mb-2 font-semibold">Vacancy description</h3>
+                  <div className="whitespace-pre-wrap text-sm leading-6 text-slate-200">
+                    {viewingJob?.description || 'No vacancy description has been added yet.'}
+                  </div>
+                </section>
+
+                {Boolean(viewingJob?.skills?.length) && (
+                  <section>
+                    <h3 className="mb-2 font-semibold">Skills</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {viewingJob?.skills?.map((skill) => <Badge key={skill} variant="secondary">{skill}</Badge>)}
+                    </div>
+                  </section>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button className="bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90" onClick={() => setViewingJob(null)}>Close</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
 

@@ -199,22 +199,6 @@ const AppSidebar = () => {
           </SidebarGroup>
         )}
 
-        {/* Integrations Section */}
-        {filteredCrmItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-              INTEGRATIONS
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredCrmItems.map((item) => (
-                  <NavItem key={item.path} {...item} />
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
         {/* Contracting Section - Only show if user has contracting permissions */}
         {filteredContractingItems.length > 0 && (
           <SidebarGroup>
@@ -224,6 +208,22 @@ const AppSidebar = () => {
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredContractingItems.map((item) => (
+                  <NavItem key={item.path} {...item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Integrations Section */}
+        {filteredCrmItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+              INTEGRATIONS
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredCrmItems.map((item) => (
                   <NavItem key={item.path} {...item} />
                 ))}
               </SidebarMenu>
