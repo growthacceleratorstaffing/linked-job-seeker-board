@@ -1,144 +1,113 @@
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  BarChart3, 
-  Briefcase, 
-  Users, 
-  ArrowRightLeft, 
-  CheckSquare, 
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  ArrowRightLeft,
+  BarChart3,
+  Briefcase,
+  CheckSquare,
   FileText,
-  Settings
+  Home,
+  Settings,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
+
+type HeaderItem = {
+  path: string;
+  label: string;
+  icon: typeof Home;
+  permission?: string;
+};
+
+const groups: { label: string; items: HeaderItem[] }[] = [
+  {
+    label: 'MAIN',
+    items: [
+      { path: '/', label: 'Home', icon: Home },
+      { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'JOBS',
+    items: [
+      { path: '/jobs', label: 'Job Posting', icon: FileText, permission: 'jobs' },
+      { path: '/post-jobs', label: 'Vacancies', icon: Briefcase, permission: 'jobs' },
+      { path: '/advertising', label: 'Advertising', icon: BarChart3, permission: 'jobs' },
+    ],
+  },
+  {
+    label: 'STAFFING',
+    items: [
+      { path: '/candidates', label: 'Candidates', icon: Users, permission: 'candidates' },
+      { path: '/matching', label: 'Matching', icon: ArrowRightLeft, permission: 'reviewer' },
+      { path: '/onboarding', label: 'Onboarding', icon: CheckSquare, permission: 'simple' },
+    ],
+  },
+  {
+    label: 'CRM/ATS',
+    items: [
+      { path: '/integrations', label: 'Integrations', icon: Settings },
+      { path: '/data', label: 'Data', icon: Users },
+    ],
+  },
+  {
+    label: 'CONTRACTING',
+    items: [{ path: '/backoffice', label: 'Backoffice', icon: FileText }],
+  },
+];
 
 const WorkflowHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { permissions } = useWorkablePermissions();
+  const hasLoadedPermissions = Object.keys(permissions).length > 0;
 
-  const allWorkflowSteps = [
-    // Same order as the sidebar: Dashboard → Jobs → Staffing → CRM → Contracting
-    { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-    { path: '/jobs', label: 'Attract', icon: FileText, requiresPermission: 'publish_jobs' },
-    { path: '/post-jobs', label: 'Jobs', icon: Briefcase },
-    { path: '/candidates', label: 'Candidates', icon: Users },
-    { path: '/matching', label: 'Match', icon: ArrowRightLeft, requiresPermission: 'create_matches' },
-    { path: '/onboarding', label: 'Onboard', icon: CheckSquare },
-    { path: '/integrations', label: 'Integrations', icon: Settings },
-    { path: 'https://mijn.cootje.com/personen/aanmaken', label: 'Hire', icon: FileText, external: true },
-  ];
-
-  // Filter workflow steps based on user permissions
-  const workflowSteps = allWorkflowSteps.filter(step => {
-    if (!step.requiresPermission) return true;
-    return permissions[step.requiresPermission as keyof typeof permissions];
-  });
-
-  const getCurrentStepIndex = () => {
-    return workflowSteps.findIndex(step => step.path === location.pathname);
-  };
-
-  const getNextStep = () => {
-    const currentIndex = getCurrentStepIndex();
-    if (currentIndex >= 0 && currentIndex < workflowSteps.length - 1) {
-      return workflowSteps[currentIndex + 1];
-    }
-    return null;
-  };
-
-  const handleStepClick = (path: string, external?: boolean) => {
-    if (external) {
-      window.open(path, '_blank');
-    } else {
-      navigate(path);
-    }
-  };
-
-  const WorkflowStep = ({ step, index, isActive }: { 
-    step: any; 
-    index: number; 
-    isActive: boolean;
-  }) => {
-    const Icon = step.icon;
-    
-    return (
-      <div className="flex flex-col items-center">
-        <Button
-          onClick={() => handleStepClick(step.path, step.external)}
-          variant="ghost"
-          className={`rounded-full w-12 h-12 sm:w-16 sm:h-16 p-0 border-2 transition-all ${
-            isActive 
-              ? 'border-secondary-pink bg-secondary-pink/10 text-secondary-pink' 
-              : 'border-white/30 text-white hover:border-white/50 hover:bg-white/10'
-          }`}
-        >
-          <Icon size={20} className="sm:w-6 sm:h-6" />
-        </Button>
-        
-        <div className="mt-2 sm:mt-3 text-center">
-          <h3 className="text-white font-medium text-xs sm:text-sm">{step.label}</h3>
-          <Button
-            onClick={() => handleStepClick(step.path, step.external)}
-            variant="ghost"
-            size="sm"
-            className={`mt-1 text-xs h-5 sm:h-6 px-2 sm:px-3 ${
-              isActive 
-                ? 'bg-secondary-pink text-white' 
-                : 'text-white/70 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            {isActive ? 'Current' : 'Go to'}
-          </Button>
-        </div>
-        
-        {/* Connection line - hidden on mobile */}
-        {index < workflowSteps.length - 1 && (
-          <div className="hidden lg:block absolute top-6 sm:top-8 left-full w-16 sm:w-24 h-0.5 bg-white/20 transform -translate-y-1/2" />
-        )}
-      </div>
-    );
-  };
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) =>
+        !item.permission || !hasLoadedPermissions || permissions[item.permission as keyof typeof permissions]
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
-    <div className="bg-primary-blue border-b border-white/10">
-      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        <div className="text-center mb-4 sm:mb-8">
-          <h1 className="text-xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">
-            Growth Accelerator Staffing Platform
-          </h1>
-          <p className="text-secondary-pink text-sm sm:text-lg font-medium">
-            Attract. Match. Onboard. Hire.
-          </p>
-        </div>
-        
-        {/* Desktop View */}
-        <div className="hidden lg:flex justify-center items-center space-x-16 xl:space-x-24 relative">
-          {workflowSteps.map((step, index) => (
-            <div key={step.path} className="relative">
-              {/* Vertical line before Attract to emphasize the tagline section */}
-              {step.label === 'Attract' && (
-                <div className="absolute -left-8 top-0 h-full w-0.5 bg-secondary-pink opacity-60" />
-              )}
-              <WorkflowStep 
-                step={step} 
-                index={index}
-                isActive={location.pathname === step.path}
-              />
-            </div>
-          ))}
+    <div className="border-b border-border bg-primary-blue">
+      <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6">
+        <div className="mb-5 text-center">
+          <h1 className="text-2xl font-bold text-primary-foreground sm:text-3xl">Growth Accelerator Staffing</h1>
+          <p className="mt-1 font-medium text-secondary-pink">Attract. Match. Onboard. Hire.</p>
         </div>
 
-        {/* Mobile/Tablet View - Horizontal Scroll */}
-        <div className="lg:hidden overflow-x-auto pb-4">
-          <div className="flex space-x-8 min-w-max px-4">
-            {workflowSteps.map((step, index) => (
-              <div key={step.path} className="flex-shrink-0">
-                <WorkflowStep 
-                  step={step} 
-                  index={index}
-                  isActive={location.pathname === step.path}
-                />
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max items-stretch justify-center">
+            {visibleGroups.map((group, groupIndex) => (
+              <div key={group.label} className="flex items-stretch">
+                {groupIndex > 0 && <div className="mx-5 w-px self-stretch bg-secondary-pink" />}
+                <section aria-label={group.label}>
+                  <p className="mb-2 text-center text-xs font-bold uppercase text-secondary-pink">{group.label}</p>
+                  <div className="flex gap-2">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = location.pathname === item.path;
+                      return (
+                        <Button
+                          key={item.path}
+                          variant="ghost"
+                          onClick={() => navigate(item.path)}
+                          className={`h-auto min-w-20 flex-col gap-1 px-3 py-2 text-xs ${
+                            active
+                              ? 'bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90'
+                              : 'text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground'
+                          }`}
+                        >
+                          <Icon className="h-5 w-5" />
+                          <span>{item.label}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </section>
               </div>
             ))}
           </div>

@@ -42,13 +42,21 @@ export const useWorkablePermissions = () => {
       }
 
       // Get user's Workable role
-      const { data: workableUser } = await supabase
-        .from('workable_users')
-        .select('workable_role')
-        .eq('user_id', user.id)
-        .single();
+      const [{ data: workableUser }, { data: appRole }] = await Promise.all([
+        supabase
+          .from('workable_users')
+          .select('workable_role')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle(),
+      ]);
 
-      if (!workableUser) {
+      if (!workableUser && !appRole) {
         return {
           admin: false,
           simple: false,
@@ -61,7 +69,7 @@ export const useWorkablePermissions = () => {
         };
       }
 
-      const role = workableUser.workable_role;
+      const role = appRole?.role === 'admin' ? 'admin' : workableUser?.workable_role || null;
 
       // Check permissions based on role hierarchy following Workable's standard permissions
       // Standard members (simple) have access to publish jobs, create matches, and view assigned jobs/candidates

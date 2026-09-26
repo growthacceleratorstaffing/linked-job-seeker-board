@@ -30,6 +30,7 @@ import Backoffice from "./pages/Backoffice";
 import PortalHome from "./pages/portal/PortalHome";
 import PortalOnboarding from "./pages/portal/PortalOnboarding";
 import PortalBackoffice from "./pages/portal/PortalBackoffice";
+import AccessPending from "./pages/AccessPending";
 
 import NotFound from "./pages/NotFound";
 
@@ -44,6 +45,7 @@ const App = () => (
           <Sonner />
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/access-pending" element={<AccessPending />} />
             
             <Route path="/auth/workable/callback" element={<WorkableCallback />} />
             <Route path="/" element={

@@ -1,119 +1,77 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const BodySchema = z.object({
+  message: z.string().trim().min(1).max(8000),
+  conversationHistory: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().max(20000),
+  })).max(100).default([]),
+});
+
+const systemPrompt = `You are the Growth Accelerator Staffing recruitment assistant. Help staff create vacancies, improve job descriptions, prepare interviews, evaluate candidates, and plan hiring processes. Be practical, professional, concise, and use clear markdown. Never claim to have changed application data or contacted a candidate unless a tool result explicitly confirms it.`;
+
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
-    const { message, conversationHistory } = await req.json();
-    
-    if (!message || typeof message !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Message is required and must be a string' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    const authorization = req.headers.get('Authorization');
+    if (!authorization) return new Response(JSON.stringify({ error: 'Please sign in again.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    const azureApiKey = Deno.env.get('AZURE_OPENAI_API_KEY');
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authorization } } },
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return new Response(JSON.stringify({ error: 'Please sign in again.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    if (!azureApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'Azure OpenAI API key missing' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    const parsed = BodySchema.safeParse(await req.json());
+    if (!parsed.success) return new Response(JSON.stringify({ error: 'The message or conversation history is invalid.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    console.log('Sending message to Azure OpenAI:', message.substring(0, 100) + '...');
+    const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!apiKey) return new Response(JSON.stringify({ error: 'Claude is not configured.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    // Format conversation history for Azure OpenAI
-    const messages = [
-      {
-        role: 'system',
-        content: `You are an expert HR recruitment assistant specializing in job creation, hiring processes, and talent acquisition. You help users:
-
-1. Create compelling job vacancies and descriptions
-2. Improve existing job postings
-3. Suggest interview questions for specific roles
-4. Provide hiring best practices and insights
-5. Offer advice on candidate evaluation
-6. Help with recruitment strategy
-
-Be conversational, helpful, and professional. Keep responses concise and to the point - aim for 2-3 short paragraphs maximum. When creating job vacancies, use a clear structure with sections like job title, about the role, key responsibilities, requirements, and what the company offers. Focus on being helpful rather than overly detailed.`
-      }
-    ];
-
-    // Add conversation history
-    if (conversationHistory && Array.isArray(conversationHistory)) {
-      messages.push(...conversationHistory);
-    }
-
-    // Add current user message
-    messages.push({
-      role: 'user',
-      content: message
-    });
-
-    const response = await fetch('https://aistudioaiservices773784968662.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview', {
+    const messages = [...parsed.data.conversationHistory, { role: 'user' as const, content: parsed.data.message }];
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'api-key': azureApiKey,
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        ...(Deno.env.get('ANTHROPIC_WORKSPACE_ID')
+          ? { 'anthropic-workspace-id': Deno.env.get('ANTHROPIC_WORKSPACE_ID')! }
+          : {}),
       },
       body: JSON.stringify({
-        messages: messages.slice(-10), // Limit conversation history to last 10 messages to reduce tokens
-        temperature: 0.7,
-        max_tokens: 500, // Reduced from 800 to 500 tokens
-        presence_penalty: 0.1, // Small penalty to reduce repetition
-        frequency_penalty: 0.1, // Small penalty to reduce repetition
+        model: 'claude-sonnet-4-5-20250929',
+        system: systemPrompt,
+        messages,
+        max_tokens: 1200,
       }),
     });
 
+    const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Azure OpenAI error:', error);
-      return new Response(
-        JSON.stringify({ error: `Azure OpenAI error: ${response.status}` }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      const safeMessage = payload?.error?.message || `Claude request failed (${response.status}).`;
+      return new Response(JSON.stringify({ error: safeMessage }), { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
-    
-    console.log('Successfully received response from Azure OpenAI');
+    const text = Array.isArray(payload?.content)
+      ? payload.content.filter((part: { type?: string }) => part.type === 'text').map((part: { text?: string }) => part.text || '').join('\n')
+      : '';
+    if (!text) return new Response(JSON.stringify({ error: 'Claude returned no response.' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    return new Response(
-      JSON.stringify({ response: aiResponse }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
-
+    return new Response(JSON.stringify({ response: text }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
-    console.error('Error in myowncopilot-chat function:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    console.error('Claude assistant error:', error);
+    return new Response(JSON.stringify({ error: 'The AI assistant could not complete this request.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

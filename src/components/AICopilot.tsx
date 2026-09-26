@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, User, Send, Sparkles, X, MessageSquare, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -124,8 +125,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
     setIsTyping(true);
 
     try {
-      // Limit conversation history to last 6 messages to reduce token costs
-      const conversationHistory = messages.slice(-6).map(msg => ({
+      const conversationHistory = messages.map(msg => ({
         role: msg.role,
         content: msg.content
       }));
@@ -138,6 +138,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -251,9 +252,9 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, onVacancy
                             : 'bg-gradient-to-r from-slate-700 to-slate-800 text-slate-100 rounded-bl-sm border border-slate-600'
                         }`}
                       >
-                        <div className="whitespace-pre-wrap leading-relaxed break-words overflow-wrap-anywhere">
-                          {message.content}
-                        </div>
+                         <div className="prose prose-sm prose-invert max-w-none break-words">
+                           {message.role === 'assistant' ? <ReactMarkdown>{message.content}</ReactMarkdown> : message.content}
+                         </div>
                         
                         {message.role === 'assistant' && (message.content.includes('Job Title') || message.content.includes('Position:') || message.content.includes('# ')) && (
                           <Button
