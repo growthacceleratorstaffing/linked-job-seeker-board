@@ -46,6 +46,9 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
+        ...(Deno.env.get('ANTHROPIC_WORKSPACE_ID')
+          ? { 'anthropic-workspace-id': Deno.env.get('ANTHROPIC_WORKSPACE_ID')! }
+          : {}),
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5-20250929',

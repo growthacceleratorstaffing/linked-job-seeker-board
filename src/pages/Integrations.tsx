@@ -54,9 +54,14 @@ const Integrations = () => {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const { data, error } = await supabase.from('integration_settings').select('integration_type,is_enabled,settings').eq('user_id', user.id);
+      const [{ data, error }, { data: linkedInToken }] = await Promise.all([
+        supabase.from('integration_settings').select('integration_type,is_enabled,settings').eq('user_id', user.id),
+        supabase.from('linkedin_user_tokens').select('id').eq('user_id', user.id).maybeSingle(),
+      ]);
       if (error) return;
-      setConnected(Object.fromEntries((data || []).filter((row) => row.is_enabled).map((row) => [row.integration_type, true])));
+      const connectionState = Object.fromEntries((data || []).filter((row) => row.is_enabled).map((row) => [row.integration_type, true]));
+      if (linkedInToken) connectionState['linkedin recruiter'] = true;
+      setConnected(connectionState);
       const custom = (data || []).find((row) => row.integration_type === 'custom');
       const settings = (custom?.settings || {}) as Record<string, string>;
       setCustomWebhook(settings.webhook_url || '');
@@ -124,7 +129,7 @@ const Integrations = () => {
             </CardHeader>
             <CardContent className="space-y-2">
               {item.link ? (
-                <Link to={item.link}><Button className="w-full bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90"><ExternalLink className="mr-2 h-4 w-4" />Open LinkedIn Recruiter</Button></Link>
+                <Link to={item.link}><Button className="w-full bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90"><ExternalLink className="mr-2 h-4 w-4" />{isConnected ? 'Open LinkedIn Recruiter' : 'Connect LinkedIn Recruiter'}</Button></Link>
               ) : isConnected ? (
                 <><Link to={`/data?source=${encodeURIComponent(keyFor(item.name))}`}><Button className="w-full bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90"><ExternalLink className="mr-2 h-4 w-4" />Open data</Button></Link><Button variant="outline" className="w-full border-secondary-pink text-secondary-pink" onClick={() => disconnect(item.name)}><Unplug className="mr-2 h-4 w-4" />Disconnect</Button></>
               ) : (
