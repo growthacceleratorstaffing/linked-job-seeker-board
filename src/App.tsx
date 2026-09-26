@@ -12,6 +12,7 @@ import WorkableCallback from "@/pages/WorkableCallback";
 import Index from "./pages/Index";
 import CRM from "./pages/CRM";
 import Matching from "./pages/Matching";
+import AIMatching from "./pages/AIMatching";
 import Candidates from "./pages/Candidates";
 import PostJobs from "./pages/PostJobs";
 import Jobs from "./pages/Jobs";
@@ -28,8 +29,7 @@ import Data from "./pages/Data";
 import Advertising from "./pages/Advertising";
 import Backoffice from "./pages/Backoffice";
 import PortalHome from "./pages/portal/PortalHome";
-import PortalOnboarding from "./pages/portal/PortalOnboarding";
-import PortalBackoffice from "./pages/portal/PortalBackoffice";
+import PortalAuth from "./pages/PortalAuth";
 import AccessPending from "./pages/AccessPending";
 
 import NotFound from "./pages/NotFound";
@@ -45,6 +45,7 @@ const App = () => (
           <Sonner />
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/portal/login" element={<PortalAuth />} />
             <Route path="/access-pending" element={<AccessPending />} />
             
             <Route path="/auth/workable/callback" element={<WorkableCallback />} />
@@ -68,6 +69,7 @@ const App = () => (
                 <Matching />
               </ProtectedRoute>
             } />
+            <Route path="/ai-matching" element={<ProtectedRoute><AIMatching /></ProtectedRoute>} />
             <Route path="/candidates" element={
               <ProtectedRoute>
                 <Candidates />
@@ -121,8 +123,6 @@ const App = () => (
             } />
             <Route path="/backoffice" element={<ProtectedRoute><Backoffice /></ProtectedRoute>} />
             <Route path="/portal" element={<ProtectedRoute audience="employee"><PortalHome /></ProtectedRoute>} />
-            <Route path="/portal/onboarding" element={<ProtectedRoute audience="employee"><PortalOnboarding /></ProtectedRoute>} />
-            <Route path="/portal/backoffice" element={<ProtectedRoute audience="employee"><PortalBackoffice /></ProtectedRoute>} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

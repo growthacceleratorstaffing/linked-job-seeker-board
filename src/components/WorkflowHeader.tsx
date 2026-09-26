@@ -8,6 +8,7 @@ import {
   Home,
   Settings,
   Users,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
@@ -40,14 +41,15 @@ const groups: { label: string; items: HeaderItem[] }[] = [
     items: [
       { path: '/candidates', label: 'Candidates', icon: Users, permission: 'candidates' },
       { path: '/matching', label: 'Matching', icon: ArrowRightLeft, permission: 'reviewer' },
+      { path: '/ai-matching', label: 'AI Matching', icon: Sparkles, permission: 'reviewer' },
       { path: '/onboarding', label: 'Onboarding', icon: CheckSquare, permission: 'simple' },
     ],
   },
   {
-    label: 'CRM/ATS',
+    label: 'INTEGRATIONS',
     items: [
-      { path: '/integrations', label: 'Integrations', icon: Settings },
-      { path: '/data', label: 'Data', icon: Users },
+      { path: '/integrations', label: 'Providers', icon: Settings },
+      { path: '/data', label: 'Imported Data', icon: Users },
     ],
   },
   {

@@ -1,10 +1,8 @@
-import { useState, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCandidatesFiltering } from "../hooks/useCandidatesFiltering";
 import { usePagination } from "../hooks/usePagination";
-import { useAccessibleCandidates } from "../hooks/useAccessibleCandidates";
 import CandidatesHeader from "../components/CandidatesHeader";
 import CandidatesFilters from "../components/CandidatesFilters";
 import CandidatesLoadingState from "../components/CandidatesLoadingState";
@@ -33,6 +31,7 @@ interface WorkableCandidate {
   created_at: string;
   updated_at: string;
   source_platform?: string | null;
+  resume_url?: string | null;
 }
 
 interface WorkableJob {
@@ -51,7 +50,6 @@ const Candidates = () => {
   const [selectedSource, setSelectedSource] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [editing, setEditing] = useState<WorkableCandidate | null>(null);
-  const navigate = useNavigate();
 
   // Transform database candidate to match WorkableCandidate interface
   const transformDbCandidate = (dbCandidate: any): WorkableCandidate => ({
@@ -69,21 +67,24 @@ const Candidates = () => {
     },
     created_at: dbCandidate.created_at,
     updated_at: dbCandidate.updated_at || dbCandidate.created_at,
-    source_platform: dbCandidate.source_platform || 'growth accelerator'
+    source_platform: dbCandidate.source_platform || 'growth accelerator',
+    resume_url: dbCandidate.resume_url || null,
   });
 
   const { data: allCandidates = [], isLoading, error, refetch } = useQuery({
     queryKey: ['workable-candidates'],
     queryFn: async (): Promise<WorkableCandidate[]> => {
-      console.log('Fetching candidates from Workable...');
-      
       try {
-        // First try the fast workable-candidates function
-        const { data, error: workableError } = await supabase.functions.invoke('workable-candidates');
-        
-        if (!workableError && data && Array.isArray(data)) {
-          console.log('Successfully fetched candidates from Workable:', data.length);
-          return data.map((candidate: any) => ({
+        const { data: { user } } = await supabase.auth.getUser();
+        const [{ data: dbCandidates, error: dbError }, settingsResult] = await Promise.all([
+          supabase.from('candidates').select('*').order('created_at', { ascending: false }),
+          user ? supabase.from('integration_settings').select('integration_type').eq('user_id', user.id).eq('is_enabled', true) : Promise.resolve({ data: [] }),
+        ]);
+        if (dbError) throw dbError;
+        const merged = (dbCandidates || []).map(transformDbCandidate);
+        const enabled = new Set((settingsResult.data || []).map((row) => row.integration_type));
+        const loaders: Promise<WorkableCandidate[]>[] = [];
+        if (enabled.has('workable')) loaders.push(supabase.functions.invoke('workable-candidates').then(({ data }) => Array.isArray(data) ? data.map((candidate: any) => ({
             id: candidate.id,
             name: candidate.name,
             firstname: candidate.firstname || candidate.name?.split(' ')[0] || '',
@@ -98,22 +99,14 @@ const Candidates = () => {
             },
             created_at: candidate.created_at,
             updated_at: candidate.updated_at || candidate.created_at,
-            source_platform: candidate.source_platform || 'workable'
-          }));
-        }
-        
-        // Fallback to database if Workable API fails
-        console.log('Workable API failed, falling back to database...');
-        const { data: dbCandidates, error: dbError } = await supabase
-          .from('candidates')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (dbError) throw dbError;
-        
-        console.log('Using database candidates:', dbCandidates?.length || 0);
-        return (dbCandidates || []).map(transformDbCandidate);
-        
+            source_platform: 'workable', resume_url: candidate.resume_url || null,
+          })) : []));
+        if (enabled.has('apollo')) loaders.push(supabase.functions.invoke('apollo-integration', { body: { action: 'get_contacts' } }).then(({ data }) => (data?.contacts || []).map((candidate: any) => ({ id: `apollo-${candidate.id}`, name: [candidate.first_name, candidate.last_name].filter(Boolean).join(' ') || candidate.email, firstname: candidate.first_name || '', lastname: candidate.last_name || '', email: candidate.email || '', phone: candidate.phone || '', stage: 'sourced', job: { id: 'unknown', title: candidate.title || 'Unknown Position', shortcode: 'unknown' }, created_at: candidate.created_at || new Date().toISOString(), updated_at: candidate.updated_at || candidate.created_at || new Date().toISOString(), source_platform: 'apollo', resume_url: candidate.resume_url || null }))));
+        if (enabled.has('jazzhr')) loaders.push(supabase.functions.invoke('jazzhr-integration', { body: { action: 'get_candidates' } }).then(({ data }) => (data?.candidates || []).map((candidate: any) => ({ id: `jazzhr-${candidate.id}`, name: candidate.name, firstname: candidate.name?.split(' ')[0] || '', lastname: candidate.name?.split(' ').slice(1).join(' ') || '', email: candidate.email || '', phone: candidate.phone || '', stage: candidate.status || 'applied', job: { id: 'unknown', title: candidate.job_title || 'Unknown Position', shortcode: 'unknown' }, created_at: candidate.applied_date || new Date().toISOString(), updated_at: candidate.applied_date || new Date().toISOString(), source_platform: 'jazzhr', resume_url: candidate.resume_url || null }))));
+        const external = (await Promise.allSettled(loaders)).flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+        const seen = new Set(merged.map((candidate) => candidate.email.toLowerCase()).filter(Boolean));
+        external.forEach((candidate) => { const key = candidate.email.toLowerCase(); if (!key || !seen.has(key)) { merged.push(candidate); if (key) seen.add(key); } });
+        return merged;
       } catch (error) {
         console.error('Failed to fetch candidates:', error);
         
@@ -197,7 +190,6 @@ const Candidates = () => {
       }));
   }, [availableJobs]);
 
-  const handleJobClick = useCallback((jobId: string) => navigate("/post-jobs"), [navigate]);
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -274,7 +266,7 @@ const Candidates = () => {
                     (Page {currentPage} of {totalPages})
                   </span>
                 </div>
-                <CandidatesList candidates={paginatedCandidates} onJobClick={handleJobClick} onEdit={setEditing} />
+                <CandidatesList candidates={paginatedCandidates} onEdit={setEditing} />
                 <EditCandidateDialog candidate={editing} onClose={() => setEditing(null)} onSaved={() => refetch()} />
                 {totalPages > 1 && (
                   <CandidatesPagination

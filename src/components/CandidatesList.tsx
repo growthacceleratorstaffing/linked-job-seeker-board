@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Mail, Phone, ExternalLink, Pencil } from "lucide-react";
+import { Mail, Phone, ExternalLink, Pencil, FileText } from "lucide-react";
 
 interface WorkableCandidate {
   id: string;
@@ -19,15 +19,16 @@ interface WorkableCandidate {
   };
   created_at: string;
   updated_at: string;
+  resume_url?: string | null;
+  source_platform?: string | null;
 }
 
 interface CandidatesListProps {
   candidates: WorkableCandidate[];
-  onJobClick: (jobId: string) => void;
   onEdit?: (candidate: WorkableCandidate) => void;
 }
 
-const CandidatesList = ({ candidates, onJobClick, onEdit }: CandidatesListProps) => {
+const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
   const getStageColor = (stage: string) => {
     switch (stage?.toLowerCase()) {
       case 'applied': return 'bg-blue-500/20 text-blue-400 border-blue-400';
@@ -121,15 +122,13 @@ const CandidatesList = ({ candidates, onJobClick, onEdit }: CandidatesListProps)
                         Edit
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onJobClick(candidate.job.id)}
-                      className="text-secondary-pink hover:text-secondary-pink/80 hover:bg-white/10"
-                    >
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      View Job
-                    </Button>
+                    {candidate.resume_url ? (
+                      <Button variant="ghost" size="sm" asChild className="text-secondary-pink hover:text-secondary-pink/80 hover:bg-white/10">
+                        <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3 mr-1" />View CV</a>
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" disabled className="text-primary-foreground/40"><FileText className="h-3 w-3 mr-1" />CV unavailable</Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

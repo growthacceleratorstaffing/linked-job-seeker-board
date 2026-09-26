@@ -27,7 +27,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, audience = 's
     );
   }
 
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) return <Navigate to={audience === 'employee' ? "/portal/login" : "/auth"} replace />;
   if (audience === 'staff' && employee) return <Navigate to="/portal" replace />;
   if (audience === 'staff' && !role) return <Navigate to="/access-pending" replace />;
   if (audience === 'employee' && !employee) return <Navigate to="/" replace />;

@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     if (empErr) return json({ error: empErr.message }, 400);
 
     // Email the login details to the new employee
-    const loginUrl = `${APP_URL}/auth`;
+    const loginUrl = `${APP_URL}/portal/login`;
     const mailErr = (await sendResendEmail({
       from: Deno.env.get("RESEND_FROM_EMAIL") || "Growth Accelerator <onboarding@resend.dev>",
       to: [email],
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
               <p><strong>Email:</strong> ${email}</p>
               <p><strong>Temporary password:</strong> ${password}</p>
             </div>
-            <p style="margin-top: 20px;">After signing in you can view your onboarding and register your hours in the backoffice. We recommend changing your password after your first login.</p>
+            <p style="margin-top: 20px;">After signing in you can open the Backoffice provider connected to your assignment. We recommend changing your password after your first login.</p>
             <div style="text-align: center; margin: 30px 0;">
               <a href="${loginUrl}" style="background-color: #ec4899; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Sign in to your account</a>
             </div>

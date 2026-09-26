@@ -139,6 +139,7 @@ export type Database = {
           phone: string | null
           profile_completeness_score: number | null
           profile_picture_url: string | null
+          resume_url: string | null
           skills: Json | null
           source_platform: string | null
           updated_at: string
@@ -164,6 +165,7 @@ export type Database = {
           phone?: string | null
           profile_completeness_score?: number | null
           profile_picture_url?: string | null
+          resume_url?: string | null
           skills?: Json | null
           source_platform?: string | null
           updated_at?: string
@@ -189,6 +191,7 @@ export type Database = {
           phone?: string | null
           profile_completeness_score?: number | null
           profile_picture_url?: string | null
+          resume_url?: string | null
           skills?: Json | null
           source_platform?: string | null
           updated_at?: string
