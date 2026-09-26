@@ -132,6 +132,8 @@ export type Database = {
           id: string
           interview_stage: Database["public"]["Enums"]["interview_stage"] | null
           last_synced_at: string | null
+          linked_job_id: string | null
+          linkedin_headline: string | null
           linkedin_id: string | null
           linkedin_profile_url: string | null
           location: string | null
@@ -139,6 +141,7 @@ export type Database = {
           phone: string | null
           profile_completeness_score: number | null
           profile_picture_url: string | null
+          resume_text: string | null
           resume_url: string | null
           skills: Json | null
           source_platform: string | null
@@ -158,6 +161,8 @@ export type Database = {
             | Database["public"]["Enums"]["interview_stage"]
             | null
           last_synced_at?: string | null
+          linked_job_id?: string | null
+          linkedin_headline?: string | null
           linkedin_id?: string | null
           linkedin_profile_url?: string | null
           location?: string | null
@@ -165,6 +170,7 @@ export type Database = {
           phone?: string | null
           profile_completeness_score?: number | null
           profile_picture_url?: string | null
+          resume_text?: string | null
           resume_url?: string | null
           skills?: Json | null
           source_platform?: string | null
@@ -184,6 +190,8 @@ export type Database = {
             | Database["public"]["Enums"]["interview_stage"]
             | null
           last_synced_at?: string | null
+          linked_job_id?: string | null
+          linkedin_headline?: string | null
           linkedin_id?: string | null
           linkedin_profile_url?: string | null
           location?: string | null
@@ -191,6 +199,7 @@ export type Database = {
           phone?: string | null
           profile_completeness_score?: number | null
           profile_picture_url?: string | null
+          resume_text?: string | null
           resume_url?: string | null
           skills?: Json | null
           source_platform?: string | null
@@ -198,7 +207,15 @@ export type Database = {
           user_id?: string | null
           workable_candidate_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "candidates_linked_job_id_fkey"
+            columns: ["linked_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contacts: {
         Row: {
