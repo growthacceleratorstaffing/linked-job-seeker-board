@@ -2,7 +2,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Mail, Phone, ExternalLink, Pencil, FileText } from "lucide-react";
+import { Mail, Phone, ExternalLink, Pencil, FileText, Linkedin, MapPin } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+const openCv = async (url: string) => {
+  if (!url.startsWith("candidate-cvs/")) { window.open(url, "_blank", "noopener,noreferrer"); return; }
+  const win = window.open("", "_blank");
+  const { data } = await supabase.storage.from("candidate-cvs").createSignedUrl(url.replace("candidate-cvs/", ""), 600);
+  if (win && data?.signedUrl) win.location.href = data.signedUrl; else win?.close();
+};
 
 interface WorkableCandidate {
   id: string;
@@ -21,6 +29,10 @@ interface WorkableCandidate {
   updated_at: string;
   resume_url?: string | null;
   source_platform?: string | null;
+  location?: string | null;
+  current_position?: string | null;
+  company?: string | null;
+  linkedin_profile_url?: string | null;
 }
 
 interface CandidatesListProps {
@@ -57,6 +69,9 @@ const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
               <TableRow className="border-white/20 hover:bg-white/5">
                 <TableHead className="text-slate-300">Candidate</TableHead>
                 <TableHead className="text-slate-300">Contact</TableHead>
+                <TableHead className="text-slate-300">Position & company</TableHead>
+                <TableHead className="text-slate-300">Location</TableHead>
+                <TableHead className="text-slate-300">Source</TableHead>
                 <TableHead className="text-slate-300">Job</TableHead>
                 <TableHead className="text-slate-300">Stage</TableHead>
                 <TableHead className="text-slate-300">Applied</TableHead>
@@ -82,8 +97,21 @@ const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
                           {candidate.phone}
                         </div>
                       )}
+                      {candidate.linkedin_profile_url && (
+                        <a href={candidate.linkedin_profile_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-secondary-pink hover:underline">
+                          <Linkedin className="h-3 w-3" />LinkedIn
+                        </a>
+                      )}
                     </div>
                   </TableCell>
+                  <TableCell className="bg-primary-blue">
+                    <div className="text-sm text-white">{candidate.current_position || '—'}</div>
+                    <div className="text-xs text-slate-400">{candidate.company || ''}</div>
+                  </TableCell>
+                  <TableCell className="bg-primary-blue text-sm text-slate-300">
+                    {candidate.location ? <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{candidate.location}</span> : '—'}
+                  </TableCell>
+                  <TableCell className="bg-primary-blue text-sm text-slate-300 capitalize">{candidate.source_platform || 'growth accelerator'}</TableCell>
                   <TableCell className="bg-primary-blue">
                     <div className="text-sm text-white font-medium">
                       {candidate.job.title}
@@ -123,8 +151,8 @@ const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
                       </Button>
                     )}
                     {candidate.resume_url ? (
-                      <Button variant="ghost" size="sm" asChild className="text-secondary-pink hover:text-secondary-pink/80 hover:bg-white/10">
-                        <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3 mr-1" />View CV</a>
+                      <Button variant="ghost" size="sm" onClick={() => openCv(candidate.resume_url!)} className="text-secondary-pink hover:text-secondary-pink/80 hover:bg-white/10">
+                        <ExternalLink className="h-3 w-3 mr-1" />View CV
                       </Button>
                     ) : (
                       <Button variant="ghost" size="sm" disabled className="text-primary-foreground/40"><FileText className="h-3 w-3 mr-1" />CV unavailable</Button>
