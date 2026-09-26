@@ -204,7 +204,7 @@ serve(async (req) => {
       }),
       createJobPosting: tool({
         description: "Create a job posting that appears in Vacancies. Always requires explicit user approval.",
-        inputSchema: z.object({ title: text, company_name: text, location_name: nullableText, job_description: text, employment_type: nullableText }),
+        inputSchema: z.object({ title: text, company_name: text, location_name: nullableText, job_description: text, work_type_name: nullableText }),
         execute: async (input) => {
           const { data, error } = await admin.from("jobs").insert({ ...input, created_by: user.id, source: "assistant" }).select("id,title,company_name,location_name").single();
           if (error) throw new Error(error.message);
