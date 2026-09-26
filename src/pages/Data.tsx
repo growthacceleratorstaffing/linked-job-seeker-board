@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Download, ArrowLeft, Users, Building, FileText, Calendar } from "lucide-react";
+import { RefreshCw, Download, ArrowLeft, Users, FileText, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,7 +66,11 @@ const Data = () => {
 
   const APOLLO_EDITABLE = ['first_name', 'last_name', 'email', 'title', 'company', 'company_website', 'phone', 'linkedin_url', 'twitter_url'];
   const isFieldEditable = (type: string, key: string) =>
-    key !== 'id' && (type !== 'apollo' || APOLLO_EDITABLE.includes(key));
+    key !== 'id' && (
+      type === 'growth accelerator' ||
+      type === 'linkedin recruiter' ||
+      (type === 'apollo' && APOLLO_EDITABLE.includes(key))
+    );
 
   const saveEdit = async () => {
     if (!editing) return;
@@ -79,6 +83,18 @@ const Data = () => {
           body: { action: 'update_contact', id: editing.row.id, fields },
         });
         if (error || res?.error) throw new Error(res?.error || error?.message);
+        const email = String(editing.row.email || '').trim().toLowerCase();
+        if (email) {
+          const name = [editing.row.first_name, editing.row.last_name].filter(Boolean).join(' ') || email;
+          const { error: localError } = await supabase.from('candidates').update({
+            name,
+            phone: editing.row.phone || null,
+            current_position: editing.row.title || null,
+            company: editing.row.company || null,
+            linkedin_profile_url: editing.row.linkedin_url || null,
+          } as any).eq('email', email);
+          if (localError) throw localError;
+        }
       } else if (editing.type === 'growth accelerator') {
         const { id, created_at, ...fields } = editing.row;
         const { error } = await supabase.from('candidates').update(fields as any).eq('id', id);
@@ -93,7 +109,7 @@ const Data = () => {
         list[editing.index] = editing.row;
         return { ...prev, [editing.type]: list };
       });
-      toast({ title: "Saved", description: editing.type === 'apollo' ? "Contact updated in Apollo." : "Record updated." });
+      toast({ title: "Saved", description: editing.type === 'apollo' ? "Contact updated in Apollo and Growth Accelerator." : "Record updated." });
       setEditing(null);
     } catch (e: any) {
       toast({ title: "Could not save", description: e.message, variant: "destructive" });
@@ -119,8 +135,15 @@ const Data = () => {
       
       if (error) throw error;
       
-      // Include all integrations (CRM and ATS)
-      const allIntegrations = [{ integration_type: 'growth accelerator' }, ...(data || []).filter(i => i.integration_type !== 'custom' && i.integration_type !== 'linkedin'), { integration_type: 'linkedin recruiter' }];
+      const external = (data || []).filter(i =>
+        !['custom', 'linkedin', 'linkedin recruiter', 'exact online', 'afas', 'deel', 'nmbrs', 'twinfield', 'visma'].includes(i.integration_type)
+      );
+      const hasLinkedInRecruiter = (data || []).some(i => ['linkedin', 'linkedin recruiter'].includes(i.integration_type));
+      const allIntegrations = [
+        { integration_type: 'growth accelerator' },
+        ...external,
+        ...(hasLinkedInRecruiter ? [{ integration_type: 'linkedin recruiter' }] : []),
+      ];
       setActiveTab(prev => prev || allIntegrations[0]?.integration_type);
       
       console.log('🔍 Found integrations:', allIntegrations.map(i => i.integration_type));
@@ -240,9 +263,12 @@ const Data = () => {
           data = generateSampleData(integrationType);
         }
       } else {
-        // For other integrations, show sample data for now
-        console.log(`📊 Loading sample data for ${integrationType}`);
-        data = generateSampleData(integrationType);
+        data = [];
+        toast({
+          title: `${integrationType} data is not available yet`,
+          description: "The connection is saved, but live importing has not been configured for this provider.",
+          variant: "destructive",
+        });
       }
       
       setIntegrationData(prev => ({
@@ -256,65 +282,18 @@ const Data = () => {
       });
     } catch (error) {
       console.error('❌ Critical error loading integration data:', error);
-      // Fallback to sample data on error
-      const fallbackData = generateSampleData(integrationType);
       setIntegrationData(prev => ({
         ...prev,
-        [integrationType]: fallbackData
+        [integrationType]: []
       }));
       
       toast({
         title: "Error Loading Data",
-        description: "Failed to load live data, showing sample data instead. Check console for details.",
+        description: "Failed to load live data. No sample records were shown.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const generateSampleData = (integrationType: string) => {
-    switch (integrationType) {
-      case 'hubspot':
-        return [
-          { id: 1, name: "John Smith", email: "john@company.com", status: "Lead", company: "Tech Corp", lastActivity: "2024-01-15" },
-          { id: 2, name: "Sarah Johnson", email: "sarah@startup.io", status: "Customer", company: "StartupIO", lastActivity: "2024-01-14" },
-          { id: 3, name: "Mike Wilson", email: "mike@enterprise.com", status: "Prospect", company: "Enterprise Ltd", lastActivity: "2024-01-13" },
-        ];
-      case 'salesforce':
-        return [
-          { id: 1, name: "Alice Brown", email: "alice@global.com", status: "Qualified", company: "Global Inc", opportunity: "$50,000" },
-          { id: 2, name: "Bob Davis", email: "bob@local.org", status: "Contacted", company: "Local Org", opportunity: "$25,000" },
-        ];
-      case 'pipedrive':
-        return [
-          { id: 1, name: "Emma Wilson", email: "emma@retailco.com", stage: "Proposal", company: "Retail Co", value: "$75,000" },
-          { id: 2, name: "James Taylor", email: "james@manufacturing.net", stage: "Negotiation", company: "Manufacturing Net", value: "$100,000" },
-        ];
-      case 'apollo':
-        return [
-          { id: 1, name: "Apollo Contact", email: "contact@apollo.com", title: "Sales Manager", company: "Apollo Corp", industry: "Technology" },
-          { id: 2, name: "Demo User", email: "demo@example.com", title: "Marketing Director", company: "Demo Inc", industry: "Marketing" },
-        ];
-      case 'jazzhr':
-        return [
-          { id: 1, name: "Jazz Candidate", email: "candidate@example.com", phone: "+1234567890", status: "Applied", job_title: "Software Engineer", applied_date: "2024-01-15", source: "JazzHR" },
-          { id: 2, name: "HR Demo", email: "demo@jazzhr.com", phone: "+1234567891", status: "Screening", job_title: "Product Manager", applied_date: "2024-01-14", source: "JazzHR" },
-        ];
-      case 'jobadder':
-        return [
-          { id: 1, name: "John Developer", email: "john@example.com", phone: "+1234567890", status: "Active", job_title: "Software Engineer", applied_date: "2024-01-15", source: "JobAdder" },
-          { id: 2, name: "Jane Designer", email: "jane@example.com", phone: "+1234567891", status: "Interviewing", job_title: "UI/UX Designer", applied_date: "2024-01-14", source: "JobAdder" },
-        ];
-      case 'workable':
-        return [
-          { id: 1, name: "Workable Candidate", email: "candidate@workable.com", phone: "+1234567890", status: "Applied", job_title: "Full Stack Developer", applied_date: "2024-01-15", source: "Workable" },
-          { id: 2, name: "ATS Demo", email: "demo@workable.com", phone: "+1234567891", status: "Interview", job_title: "Data Scientist", applied_date: "2024-01-14", source: "Workable" },
-        ];
-      default:
-        return [
-          { id: 1, name: "Sample Contact", email: "contact@example.com", status: "Active", company: "Example Corp", date: "2024-01-15" }
-        ];
     }
   };
 

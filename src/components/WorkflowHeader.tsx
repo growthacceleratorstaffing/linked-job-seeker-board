@@ -12,7 +12,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
 
-const groups = [
+type HeaderItem = {
+  path: string;
+  label: string;
+  icon: typeof Home;
+  permission?: string;
+};
+
+const groups: { label: string; items: HeaderItem[] }[] = [
   {
     label: 'MAIN',
     items: [

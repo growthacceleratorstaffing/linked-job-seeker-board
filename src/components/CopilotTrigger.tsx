@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Bot } from "lucide-react";
 import { AICopilot } from './AICopilot';
 
 interface CopilotTriggerProps {
@@ -19,7 +19,7 @@ export const CopilotTrigger: React.FC<CopilotTriggerProps> = ({ onVacancyGenerat
             onClick={() => setIsOpen(true)}
             className="h-11 rounded-full px-4 bg-gradient-to-r from-secondary-pink to-primary-blue hover:from-secondary-pink/80 hover:to-primary-blue/80 text-white shadow-lg transition-transform hover:scale-105"
           >
-            <Sparkles className="w-4 h-4 mr-2" />
+             <Bot className="w-4 h-4 mr-2" />
             AI Assistant
           </Button>
         </div>

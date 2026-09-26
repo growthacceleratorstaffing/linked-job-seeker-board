@@ -1,605 +1,160 @@
-import { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Settings, Check, ExternalLink, Unplug } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from 'react';
+import { Check, ExternalLink, Plus, Settings, Unplug } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import Layout from '@/components/Layout';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-const popularCRMs = [
-  {
-    name: "HubSpot",
-    description: "Comprehensive CRM and marketing platform",
-    logo: "🔶",
-    status: "available",
-    type: "crm",
-    fields: [
-      { name: "api_key", label: "API Key", type: "password", placeholder: "pat-na1-..." },
-      { name: "portal_id", label: "Portal ID", type: "text", placeholder: "12345678" }
-    ]
-  },
-  {
-    name: "Salesforce",
-    description: "World's leading CRM platform",
-    logo: "☁️",
-    status: "available",
-    type: "crm",
-    fields: [
-      { name: "username", label: "Username", type: "text", placeholder: "user@company.com" },
-      { name: "password", label: "Password", type: "password", placeholder: "Password" },
-      { name: "security_token", label: "Security Token", type: "password", placeholder: "ABC123..." }
-    ]
-  },
-  {
-    name: "LinkedIn Recruiter",
-    description: "Import projects, pipeline candidates, InMails and notes from your Recruiter seat",
-    logo: "💼",
-    status: "available",
-    type: "ats",
-    link: "/linkedin",
-    fields: [] as { name: string; label: string; type: string; placeholder: string }[]
-  },
-  {
-    name: "Apollo",
-    description: "Sales intelligence and engagement platform",
-    logo: "🚀",
-    status: "available",
-    type: "crm",
-    fields: [
-      { name: "api_key", label: "API Key", type: "password", placeholder: "api_key_..." }
-    ]
-  },
-  {
-    name: "Pipedrive",
-    description: "Sales-focused CRM software",
-    logo: "📊",
-    status: "available",
-    type: "crm",
-    fields: [
-      { name: "api_token", label: "API Token", type: "password", placeholder: "abc123..." },
-      { name: "company_domain", label: "Company Domain", type: "text", placeholder: "yourcompany" }
-    ]
-  },
-  {
-    name: "Zoho CRM",
-    description: "Complete customer relationship management",
-    logo: "🏢",
-    status: "available",
-    type: "crm",
-    fields: [
-      { name: "client_id", label: "Client ID", type: "text", placeholder: "1000.ABC123..." },
-      { name: "client_secret", label: "Client Secret", type: "password", placeholder: "abc123..." },
-      { name: "refresh_token", label: "Refresh Token", type: "password", placeholder: "1000.abc123..." }
-    ]
-  },
-  {
-    name: "JazzHR",
-    description: "Modern applicant tracking system for growing companies",
-    logo: "🎵",
-    status: "available",
-    type: "ats",
-    fields: [
-      { name: "api_key", label: "API Key", type: "password", placeholder: "your_api_key..." },
-      { name: "username", label: "Username", type: "text", placeholder: "your_username" }
-    ]
-  },
-  {
-    name: "JobAdder",
-    description: "Cloud-based recruitment software for teams",
-    logo: "➕",
-    status: "available",
-    type: "ats",
-    fields: [
-      { name: "client_id", label: "Client ID", type: "text", placeholder: "your_client_id..." },
-      { name: "client_secret", label: "Client Secret", type: "password", placeholder: "your_client_secret..." },
-      { name: "redirect_uri", label: "Redirect URI", type: "text", placeholder: "https://your-app.com/callback" }
-    ]
-  },
-  {
-    name: "Workable",
-    description: "All-in-one recruiting software for modern teams",
-    logo: "⚡",
-    status: "connected",
-    type: "ats",
-    fields: [
-      { name: "subdomain", label: "Subdomain", type: "text", placeholder: "yourcompany" },
-      { name: "api_token", label: "API Token", type: "password", placeholder: "your_api_token..." }
-    ]
-  },
-  // CRM systems
-  { name: "Microsoft Dynamics 365", description: "Microsoft's CRM for sales and customer service", logo: "🪟", status: "available", type: "crm",
-    fields: [{ name: "instance_url", label: "Instance URL", type: "text", placeholder: "https://yourorg.crm4.dynamics.com" }, { name: "client_id", label: "Client ID", type: "text", placeholder: "..." }, { name: "client_secret", label: "Client Secret", type: "password", placeholder: "..." }] },
-  { name: "Monday CRM", description: "Flexible CRM built on monday.com work boards", logo: "📅", status: "available", type: "crm",
-    fields: [{ name: "api_token", label: "API Token", type: "password", placeholder: "eyJhbGciOi..." }] },
-  { name: "Freshsales", description: "Freshworks CRM with built-in phone and email", logo: "🍃", status: "available", type: "crm",
-    fields: [{ name: "domain", label: "Domain", type: "text", placeholder: "yourcompany.myfreshworks.com" }, { name: "api_key", label: "API Key", type: "password", placeholder: "..." }] },
-  { name: "Copper", description: "CRM designed for Google Workspace", logo: "🟠", status: "available", type: "crm",
-    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "..." }, { name: "email", label: "User Email", type: "text", placeholder: "you@company.com" }] },
-  { name: "Close", description: "Sales CRM with calling and email sequences", logo: "📞", status: "available", type: "crm",
-    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "api_..." }] },
-  { name: "Teamleader", description: "Popular Benelux CRM, invoicing and projects", logo: "🇧🇪", status: "available", type: "crm",
-    fields: [{ name: "client_id", label: "Client ID", type: "text", placeholder: "..." }, { name: "client_secret", label: "Client Secret", type: "password", placeholder: "..." }] },
-  // ATS systems
-  { name: "Greenhouse", description: "Structured hiring ATS for growing companies", logo: "🌱", status: "available", type: "ats",
-    fields: [{ name: "api_key", label: "Harvest API Key", type: "password", placeholder: "..." }] },
-  { name: "Lever", description: "ATS and CRM combined for talent teams", logo: "🎚️", status: "available", type: "ats",
-    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "..." }] },
-  { name: "Recruitee", description: "Collaborative hiring software (Tellent)", logo: "🧲", status: "available", type: "ats",
-    fields: [{ name: "company_id", label: "Company ID", type: "text", placeholder: "12345" }, { name: "api_token", label: "API Token", type: "password", placeholder: "..." }] },
-  { name: "Teamtailor", description: "Employer branding and ATS in one", logo: "🧵", status: "available", type: "ats",
-    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "..." }] },
-  { name: "SmartRecruiters", description: "Enterprise talent acquisition suite", logo: "🧠", status: "available", type: "ats",
-    fields: [{ name: "api_key", label: "API Key", type: "password", placeholder: "..." }] },
-  { name: "Bullhorn", description: "Leading ATS and CRM for staffing agencies", logo: "🐂", status: "available", type: "ats",
-    fields: [{ name: "client_id", label: "Client ID", type: "text", placeholder: "..." }, { name: "client_secret", label: "Client Secret", type: "password", placeholder: "..." }, { name: "username", label: "API Username", type: "text", placeholder: "..." }, { name: "password", label: "API Password", type: "password", placeholder: "..." }] },
-  { name: "Personio", description: "HR and recruiting platform for European SMBs", logo: "👥", status: "available", type: "ats",
-    fields: [{ name: "client_id", label: "Client ID", type: "text", placeholder: "..." }, { name: "client_secret", label: "Client Secret", type: "password", placeholder: "..." }] },
+type Category = 'ats' | 'recruitment' | 'enrichment';
+type Field = { name: string; label: string; type: string; placeholder: string };
+type Integration = { name: string; description: string; logo: string; category: Category; fields: Field[]; link?: string };
+
+const field = (name: string, label: string, type = 'password', placeholder = 'Enter credential'): Field => ({ name, label, type, placeholder });
+
+const integrations: Integration[] = [
+  { name: 'Workable', description: 'Recruiting software for jobs, candidates and hiring teams.', logo: '⚡', category: 'ats', fields: [field('subdomain', 'Subdomain', 'text', 'yourcompany'), field('api_token', 'API Token')] },
+  { name: 'JazzHR', description: 'Applicant tracking for growing recruitment teams.', logo: '🎵', category: 'ats', fields: [field('api_key', 'API Key'), field('username', 'Username', 'text', 'you@company.com')] },
+  { name: 'JobAdder', description: 'Recruitment management for agencies and in-house teams.', logo: '➕', category: 'ats', fields: [field('client_id', 'Client ID', 'text'), field('client_secret', 'Client Secret')] },
+  { name: 'Greenhouse', description: 'Structured hiring and applicant tracking.', logo: '🌱', category: 'ats', fields: [field('api_key', 'Harvest API Key')] },
+  { name: 'Lever', description: 'Talent acquisition and applicant tracking.', logo: '🎚️', category: 'ats', fields: [field('api_key', 'API Key')] },
+  { name: 'Recruitee', description: 'Collaborative hiring software from Tellent.', logo: '🧲', category: 'ats', fields: [field('company_id', 'Company ID', 'text'), field('api_token', 'API Token')] },
+  { name: 'Teamtailor', description: 'Employer branding and applicant tracking.', logo: '🧵', category: 'ats', fields: [field('api_key', 'API Key')] },
+  { name: 'SmartRecruiters', description: 'Enterprise talent acquisition suite.', logo: '🧠', category: 'ats', fields: [field('api_key', 'API Key')] },
+  { name: 'Bullhorn', description: 'ATS platform for staffing agencies.', logo: '🐂', category: 'ats', fields: [field('client_id', 'Client ID', 'text'), field('client_secret', 'Client Secret'), field('username', 'API Username', 'text'), field('password', 'API Password')] },
+  { name: 'Personio', description: 'HR and recruitment platform for European teams.', logo: '👥', category: 'ats', fields: [field('client_id', 'Client ID', 'text'), field('client_secret', 'Client Secret')] },
+  { name: 'Breezy HR', description: 'Visual recruiting pipelines and candidate management.', logo: '🌬️', category: 'ats', fields: [field('api_key', 'API Key')] },
+  { name: 'Ashby', description: 'Recruiting operations and applicant tracking.', logo: '◼️', category: 'ats', fields: [field('api_key', 'API Key')] },
+  { name: 'LinkedIn Recruiter', description: 'Recruiter projects, candidates, InMails and notes.', logo: '💼', category: 'recruitment', fields: [], link: '/linkedin' },
+  { name: 'Apollo', description: 'Contact and company data enrichment with CRM write-back.', logo: '🚀', category: 'enrichment', fields: [field('api_key', 'API Key')] },
+  { name: 'Clearbit by HubSpot', description: 'Enrich company and contact records with firmographic data.', logo: '🔶', category: 'enrichment', fields: [field('api_key', 'API Key')] },
+  { name: 'Lusha', description: 'Verified business contact and company information.', logo: '🔍', category: 'enrichment', fields: [field('api_key', 'API Key')] },
+  { name: 'Cognism', description: 'Compliant B2B contact and intent data.', logo: '🧩', category: 'enrichment', fields: [field('api_key', 'API Key')] },
+  { name: 'ZoomInfo', description: 'Company intelligence and professional contact data.', logo: '🔎', category: 'enrichment', fields: [field('api_key', 'API Key')] },
+  { name: 'Clay', description: 'Automated enrichment workflows across multiple data sources.', logo: '🟤', category: 'enrichment', fields: [field('api_key', 'API Key')] },
 ];
 
 const Integrations = () => {
-  const [customWebhook, setCustomWebhook] = useState("");
-  const [customApiKey, setCustomApiKey] = useState("");
-
-  useEffect(() => {
-    supabase.from('integration_settings').select('settings').eq('integration_type', 'custom').maybeSingle()
-      .then(({ data }) => {
-        const s = (data?.settings || {}) as Record<string, string>;
-        if (s.webhook_url) setCustomWebhook(s.webhook_url);
-        if (s.api_key) setCustomApiKey(s.api_key);
-      });
-  }, []);
-  const [selectedCRM, setSelectedCRM] = useState<typeof popularCRMs[0] | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [selected, setSelected] = useState<Integration | null>(null);
   const [connectionForm, setConnectionForm] = useState<Record<string, string>>({});
-  const [connectedIntegrations, setConnectedIntegrations] = useState<Record<string, boolean>>({});
+  const [connected, setConnected] = useState<Record<string, boolean>>({});
+  const [connecting, setConnecting] = useState(false);
+  const [customWebhook, setCustomWebhook] = useState('');
+  const [customApiKey, setCustomApiKey] = useState('');
   const { toast } = useToast();
 
+  const keyFor = (name: string) => name.toLowerCase();
+
   useEffect(() => {
-    loadConnectedIntegrations();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data, error } = await supabase.from('integration_settings').select('integration_type,is_enabled,settings').eq('user_id', user.id);
+      if (error) return;
+      setConnected(Object.fromEntries((data || []).filter((row) => row.is_enabled).map((row) => [row.integration_type, true])));
+      const custom = (data || []).find((row) => row.integration_type === 'custom');
+      const settings = (custom?.settings || {}) as Record<string, string>;
+      setCustomWebhook(settings.webhook_url || '');
+      setCustomApiKey(settings.api_key || '');
+    });
   }, []);
 
-  const loadConnectedIntegrations = async () => {
+  const connect = async () => {
+    if (!selected) return;
+    const missing = selected.fields.filter((item) => !connectionForm[item.name]);
+    if (missing.length) return toast({ title: 'Missing information', description: `Enter ${missing.map((item) => item.label).join(', ')}.`, variant: 'destructive' });
+    setConnecting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('integration_settings')
-        .select('integration_type, is_enabled')
-        .eq('is_enabled', true)
-        .eq('user_id', user.id);
-      
+      if (!user) throw new Error('Please sign in again.');
+      const integrationType = keyFor(selected.name);
+      const { error } = await supabase.from('integration_settings').upsert({ user_id: user.id, integration_type: integrationType, is_enabled: true, settings: { ...connectionForm, category: selected.category } }, { onConflict: 'user_id,integration_type' });
       if (error) throw error;
-      
-      const connected = data.reduce((acc, integration) => {
-        acc[integration.integration_type] = true;
-        return acc;
-      }, {} as Record<string, boolean>);
-      
-      setConnectedIntegrations(connected);
-    } catch (error) {
-      console.error('Error loading integrations:', error);
-    }
-  };
-
-  const handleConnectCRM = (crm: typeof popularCRMs[0]) => {
-    setSelectedCRM(crm);
-    setConnectionForm({});
-  };
-
-  const handleDisconnectCRM = async (crmName: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('integration_settings')
-        .update({ is_enabled: false })
-        .eq('integration_type', crmName.toLowerCase())
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      setConnectedIntegrations(prev => ({
-        ...prev,
-        [crmName.toLowerCase()]: false
-      }));
-
-      toast({
-        title: "Integration Disconnected",
-        description: `${crmName} has been disconnected successfully.`,
-      });
-    } catch (error) {
-      console.error('Error disconnecting CRM:', error);
-      toast({
-        title: "Error",
-        description: "Failed to disconnect integration. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleFormSubmit = async () => {
-    if (!selectedCRM) return;
-
-    // Validate required fields
-    const missingFields = selectedCRM.fields.filter(field => !connectionForm[field.name]);
-    if (missingFields.length > 0) {
-      toast({
-        title: "Missing Information",
-        description: `Please fill in: ${missingFields.map(f => f.label).join(', ')}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsConnecting(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to connect integrations.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const integrationType = selectedCRM.name.toLowerCase();
-
-      // Store integration settings (one row per user + integration)
-      const { error } = await supabase
-        .from('integration_settings')
-        .upsert({
-          integration_type: integrationType,
-          is_enabled: true,
-          settings: connectionForm,
-          user_id: user.id,
-        }, { onConflict: 'user_id,integration_type' });
-
-      if (error) throw error;
-
-      // Verify the key actually works where a test is available
-      const testFn: Record<string, string> = {
-        apollo: 'apollo-integration',
-        jazzhr: 'jazzhr-integration',
-      };
-      if (testFn[integrationType]) {
-        const { data: testData, error: testError } = await supabase.functions.invoke(testFn[integrationType], {
-          body: { action: 'test_connection' },
-        });
-        let detail = testData?.error as string | undefined;
-        if (testError) {
-          try { detail = JSON.parse(await (testError as any).context.text()).error; } catch { detail = testError.message; }
-        }
-        if (detail) {
-          await supabase.from('integration_settings')
-            .update({ is_enabled: false })
-            .eq('user_id', user.id).eq('integration_type', integrationType);
-          throw new Error(detail);
+      const testFunction: Record<string, string> = { apollo: 'apollo-integration', jazzhr: 'jazzhr-integration' };
+      if (testFunction[integrationType]) {
+        const { data, error: testError } = await supabase.functions.invoke(testFunction[integrationType], { body: { action: 'test_connection' } });
+        if (testError || data?.error) {
+          await supabase.from('integration_settings').update({ is_enabled: false }).eq('user_id', user.id).eq('integration_type', integrationType);
+          throw new Error(data?.error || testError?.message);
         }
       }
-
-      setConnectedIntegrations(prev => ({
-        ...prev,
-        [selectedCRM.name.toLowerCase()]: true
-      }));
-
-      toast({
-        title: "Integration Connected",
-        description: `${selectedCRM.name} has been connected successfully!`,
-      });
-
-      setSelectedCRM(null);
+      setConnected((current) => ({ ...current, [integrationType]: true }));
+      toast({ title: `${selected.name} connected` });
+      setSelected(null);
       setConnectionForm({});
-    } catch (error: any) {
-      console.error('Error connecting CRM:', error);
-      toast({
-        title: "Connection Failed",
-        description: error?.message || "Failed to connect integration. Please check your credentials and try again.",
-        variant: "destructive",
-      });
+    } catch (error) {
+      toast({ title: 'Connection failed', description: error instanceof Error ? error.message : 'Check the credentials and try again.', variant: 'destructive' });
     } finally {
-      setIsConnecting(false);
+      setConnecting(false);
     }
   };
 
-  const handleSaveWebhook = async () => {
-    if (!customWebhook.startsWith("https://")) {
-      toast({ title: "Error", description: "Please enter a webhook URL starting with https://", variant: "destructive" });
-      return;
-    }
+  const disconnect = async (name: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { error } = await supabase.from('integration_settings').upsert({
-      integration_type: 'custom',
-      is_enabled: true,
-      settings: { webhook_url: customWebhook, api_key: customApiKey },
-      user_id: user.id,
-    }, { onConflict: 'user_id,integration_type' });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Custom Integration Saved", description: "Your webhook URL and API key have been saved." });
+    const key = keyFor(name);
+    const { error } = await supabase.from('integration_settings').update({ is_enabled: false }).eq('user_id', user.id).eq('integration_type', key);
+    if (error) return toast({ title: 'Could not disconnect', description: error.message, variant: 'destructive' });
+    setConnected((current) => ({ ...current, [key]: false }));
   };
+
+  const saveCustom = async () => {
+    if (!customWebhook.startsWith('https://')) return toast({ title: 'Invalid webhook', description: 'Enter an HTTPS webhook URL.', variant: 'destructive' });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.from('integration_settings').upsert({ user_id: user.id, integration_type: 'custom', is_enabled: true, settings: { webhook_url: customWebhook, api_key: customApiKey } }, { onConflict: 'user_id,integration_type' });
+    toast(error ? { title: 'Could not save', description: error.message, variant: 'destructive' } : { title: 'Custom integration saved' });
+  };
+
+  const cards = (category: Category) => (
+    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      {integrations.filter((item) => item.category === category).map((item) => {
+        const isConnected = connected[keyFor(item.name)];
+        return (
+          <Card key={item.name} className="border-primary-foreground/20 bg-primary-blue text-primary-foreground">
+            <CardHeader>
+              <div className="flex items-start justify-between"><span className="text-3xl">{item.logo}</span><Badge variant={isConnected ? 'default' : 'secondary'}>{isConnected ? 'Connected' : 'Available'}</Badge></div>
+              <CardTitle>{item.name}</CardTitle>
+              <CardDescription className="text-primary-foreground/70">{item.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {item.link ? (
+                <Link to={item.link}><Button className="w-full bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90"><ExternalLink className="mr-2 h-4 w-4" />Open LinkedIn Recruiter</Button></Link>
+              ) : isConnected ? (
+                <><Link to={`/data?source=${encodeURIComponent(keyFor(item.name))}`}><Button className="w-full bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90"><ExternalLink className="mr-2 h-4 w-4" />Open data</Button></Link><Button variant="outline" className="w-full border-secondary-pink text-secondary-pink" onClick={() => disconnect(item.name)}><Unplug className="mr-2 h-4 w-4" />Disconnect</Button></>
+              ) : (
+                <Button variant="outline" className="w-full border-secondary-pink text-secondary-pink" onClick={() => { setSelected(item); setConnectionForm({}); }}><Plus className="mr-2 h-4 w-4" />Connect</Button>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
 
   return (
     <Layout>
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Integrations</h1>
-            <p className="text-muted-foreground mt-2">
-              Connect your CRM and ATS systems to sync candidate data seamlessly
-            </p>
-          </div>
-          <Link to="/data">
-            <Button className="bg-pink-600 hover:bg-pink-700 text-white">
-              View Integration Data
-            </Button>
-          </Link>
-        </div>
-
-        <Tabs defaultValue="crm" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="crm">CRM/ATS Integrations</TabsTrigger>
-            <TabsTrigger value="custom">Custom Integration</TabsTrigger>
+      <div className="container mx-auto space-y-6 p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-bold">Integrations</h1><p className="mt-2 text-primary-foreground/70">Connect recruitment and enrichment systems.</p></div><Link to="/data"><Button className="bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90">View integration data</Button></Link></div>
+        <Tabs defaultValue="ats">
+          <TabsList className="grid h-auto w-full grid-cols-2 bg-transparent p-0 md:grid-cols-4">
+            {['ats', 'recruitment', 'enrichment', 'custom'].map((tab, index) => <TabsTrigger key={tab} value={tab} className={`rounded-none border-b-2 border-primary-foreground/20 py-3 capitalize data-[state=active]:border-secondary-pink data-[state=active]:text-secondary-pink ${index > 0 ? 'border-l border-l-secondary-pink' : ''}`}>{tab === 'enrichment' ? 'Data Enrichment' : tab === 'ats' ? 'ATS' : tab === 'custom' ? 'Custom Integration' : 'Recruitment'}</TabsTrigger>)}
           </TabsList>
-
-          <TabsContent value="crm" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {popularCRMs.map((crm) => {
-                const isConnected = connectedIntegrations[crm.name.toLowerCase()];
-                return (
-                  <Card key={crm.name} className="hover:shadow-md transition-shadow bg-primary-blue border-white/20" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-2xl">{crm.logo}</span>
-                          <div>
-                            <CardTitle className="text-lg text-white">{crm.name}</CardTitle>
-                            <Badge variant={isConnected ? "default" : "secondary"} className="mt-1">
-                              {isConnected ? "Connected" : crm.status}
-                            </Badge>
-                          </div>
-                        </div>
-                        <Settings className="h-4 w-4 text-white/70" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="mb-4 text-white/80">
-                        {crm.description}
-                      </CardDescription>
-                      {(crm as any).link ? (
-                        <Link to={(crm as any).link}>
-                          <Button className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50" variant="outline">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Connect {crm.name}
-                          </Button>
-                        </Link>
-                      ) : isConnected ? (
-                        <div className="space-y-2">
-                        <Link to={`/data?source=${encodeURIComponent(crm.name.toLowerCase())}`}>
-                          <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white">
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Open {crm.name} data
-                          </Button>
-                        </Link>
-                        <Button 
-                          onClick={() => handleDisconnectCRM(crm.name)}
-                          className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50"
-                          variant="outline"
-                        >
-                          <Unplug className="h-4 w-4 mr-2" />
-                          Disconnect
-                        </Button>
-                        </div>
-                      ) : (
-                        <Button 
-                          onClick={() => handleConnectCRM(crm)}
-                          className="w-full bg-pink-900/20 text-pink-200 border-pink-500 hover:bg-pink-700/50"
-                          variant="outline"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Connect {crm.name}
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            <Card className="bg-primary-blue border-white/20 text-white" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
-              <CardHeader>
-                <CardTitle className="text-white">Integration Benefits</CardTitle>
-                <CardDescription className="text-white/80">
-                  What you get when you connect your CRM/ATS systems
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-start space-x-3">
-                    <Check className="h-5 w-5 text-green-400 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-white">Automatic Sync</h4>
-                      <p className="text-sm text-white/70">
-                        Candidate data syncs automatically between platforms
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <Check className="h-5 w-5 text-green-400 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-white">Unified Pipeline</h4>
-                      <p className="text-sm text-white/70">
-                        Manage your entire recruitment pipeline in one place
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <Check className="h-5 w-5 text-green-400 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-white">Real-time Updates</h4>
-                      <p className="text-sm text-white/70">
-                        Get instant notifications on candidate status changes
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <Check className="h-5 w-5 text-green-400 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-white">Advanced Analytics</h4>
-                      <p className="text-sm text-white/70">
-                        Track performance across all connected platforms
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="custom" className="space-y-6">
-            <Card className="bg-primary-blue border-white/20 text-white" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
-              <CardHeader>
-                <CardTitle className="text-white">Custom Integration</CardTitle>
-                <CardDescription className="text-white/80">
-                  Connect any CRM, ATS or internal system with a webhook URL and (optionally) an API key
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="webhook-url" className="text-white">Webhook URL</Label>
-                  <Input
-                    id="webhook-url"
-                    placeholder="https://your-crm.com/webhook/endpoint"
-                    value={customWebhook}
-                    onChange={(e) => setCustomWebhook(e.target.value)}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                  />
-                  <p className="text-sm text-white/70">We send candidate data to this address whenever something changes.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="custom-api-key" className="text-white">API Key</Label>
-                  <Input
-                    id="custom-api-key"
-                    type="password"
-                    placeholder="Your system's API key"
-                    value={customApiKey}
-                    onChange={(e) => setCustomApiKey(e.target.value)}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                  />
-                  <p className="text-sm text-white/70">Sent with every request so your system knows the data comes from us.</p>
-                </div>
-                <Button onClick={handleSaveWebhook} className="bg-pink-600 hover:bg-pink-700 text-white">
-                  Save Custom Integration
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-primary-blue border-white/20 text-white" style={{ backgroundColor: 'hsl(var(--primary-blue))' }}>
-              <CardHeader>
-                <CardTitle className="text-white">Webhook Documentation</CardTitle>
-                <CardDescription className="text-white/80">Everything your developer needs to receive our data</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5 text-sm text-white/85">
-                <div>
-                  <h4 className="font-medium mb-1 text-white">1. How we send it</h4>
-                  <p>An HTTPS <code className="bg-black/30 px-1 rounded">POST</code> request with a JSON body to your Webhook URL.</p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-1 text-white">2. Headers</h4>
-                  <pre className="bg-black/20 p-2 rounded border border-white/10 overflow-x-auto">{`Content-Type: application/json
-Authorization: Bearer <your API key>
-X-GA-Event: candidate.updated`}</pre>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-1 text-white">3. Events</h4>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li><code>candidate.created</code> — a new candidate was added</li>
-                    <li><code>candidate.updated</code> — candidate details or status changed</li>
-                    <li><code>job.created</code> / <code>job.updated</code> — a vacancy was added or changed</li>
-                    <li><code>placement.created</code> — a candidate was placed / onboarded</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-1 text-white">4. Example body</h4>
-                  <pre className="bg-black/20 p-2 rounded border border-white/10 overflow-x-auto">{`{
-  "event": "candidate.updated",
-  "candidate": {
-    "id": "123",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "status": "interviewed",
-    "job_id": "456"
-  },
-  "timestamp": "2026-01-15T10:30:00Z"
-}`}</pre>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-1 text-white">5. Your response</h4>
-                  <p>Reply with any <code>2xx</code> status within 10 seconds. Other responses are retried up to 3 times (after 1, 5 and 30 minutes).</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <TabsContent value="ats" className="mt-6">{cards('ats')}</TabsContent>
+          <TabsContent value="recruitment" className="mt-6">{cards('recruitment')}</TabsContent>
+          <TabsContent value="enrichment" className="mt-6 space-y-5"><div className="flex items-start gap-3 text-sm text-primary-foreground/70"><Check className="mt-0.5 h-4 w-4 text-secondary-pink" /><p>Enrichment updates can write verified contact details back to Growth Accelerator records. Apollo write-back is active; other providers require their live API connection before data is changed.</p></div>{cards('enrichment')}</TabsContent>
+          <TabsContent value="custom" className="mt-6"><Card className="border-primary-foreground/20 bg-primary-blue text-primary-foreground"><CardHeader><CardTitle>Custom Integration</CardTitle><CardDescription className="text-primary-foreground/70">Send staffing events to your own HTTPS endpoint.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label htmlFor="webhook">Webhook URL</Label><Input id="webhook" value={customWebhook} onChange={(event) => setCustomWebhook(event.target.value)} placeholder="https://your-system.com/webhook" /></div><div className="space-y-2"><Label htmlFor="custom-key">API Key</Label><Input id="custom-key" type="password" value={customApiKey} onChange={(event) => setCustomApiKey(event.target.value)} /></div><Button onClick={saveCustom} className="bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90">Save Custom Integration</Button></CardContent></Card></TabsContent>
         </Tabs>
-
-        {/* CRM Connection Dialog */}
-        <Dialog open={!!selectedCRM} onOpenChange={() => setSelectedCRM(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Connect {selectedCRM?.name}</DialogTitle>
-              <DialogDescription>
-                Enter your {selectedCRM?.name} credentials to connect your {selectedCRM?.type?.toUpperCase() || 'CRM/ATS'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {selectedCRM?.fields.map((field) => (
-                <div key={field.name} className="space-y-2">
-                  <Label htmlFor={field.name}>{field.label}</Label>
-                  <Input
-                    id={field.name}
-                    type={field.type}
-                    placeholder={field.placeholder}
-                    value={connectionForm[field.name] || ""}
-                    onChange={(e) => setConnectionForm(prev => ({
-                      ...prev,
-                      [field.name]: e.target.value
-                    }))}
-                  />
-                </div>
-              ))}
-            </div>
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => setSelectedCRM(null)}
-                disabled={isConnecting}
-                className="border-pink-500 text-pink-200 hover:bg-pink-700/50 bg-pink-900/20"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleFormSubmit}
-                disabled={isConnecting}
-                className="bg-pink-600 hover:bg-pink-700 text-white"
-              >
-                {isConnecting ? "Connecting..." : "Connect"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent><DialogHeader><DialogTitle>Connect {selected?.name}</DialogTitle><DialogDescription>Enter the credentials supplied by {selected?.name}.</DialogDescription></DialogHeader><div className="space-y-4">{selected?.fields.map((item) => <div key={item.name} className="space-y-2"><Label htmlFor={item.name}>{item.label}</Label><Input id={item.name} type={item.type} placeholder={item.placeholder} value={connectionForm[item.name] || ''} onChange={(event) => setConnectionForm((current) => ({ ...current, [item.name]: event.target.value }))} /></div>)}</div><DialogFooter><Button variant="outline" onClick={() => setSelected(null)}>Cancel</Button><Button onClick={connect} disabled={connecting} className="bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90"><Settings className="mr-2 h-4 w-4" />{connecting ? 'Connecting…' : 'Connect'}</Button></DialogFooter></DialogContent>
+      </Dialog>
     </Layout>
   );
 };
