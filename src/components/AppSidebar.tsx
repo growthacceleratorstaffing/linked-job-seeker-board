@@ -68,6 +68,9 @@ const AppSidebar = () => {
     { path: '/candidates', label: 'Candidates', icon: Users, permission: 'candidates' },
     { path: '/matching', label: 'Matching', icon: ArrowRightLeft, permission: 'reviewer' },
     { path: '/ai-matching', label: 'AI Matching', icon: Sparkles, permission: 'reviewer' },
+  ];
+
+  const onboardingItems = [
     { path: '/onboarding', label: 'Onboarding', icon: CheckSquare, permission: 'simple' },
   ];
 
@@ -87,6 +90,9 @@ const AppSidebar = () => {
     !item.permission || !hasLoadedPermissions || permissions[item.permission as keyof typeof permissions]
   );
   const filteredStaffingItems = staffingItems.filter(item => 
+    !item.permission || !hasLoadedPermissions || permissions[item.permission as keyof typeof permissions]
+  );
+  const filteredOnboardingItems = onboardingItems.filter(item =>
     !item.permission || !hasLoadedPermissions || permissions[item.permission as keyof typeof permissions]
   );
   const filteredCrmItems = crmItems;
@@ -171,7 +177,7 @@ const AppSidebar = () => {
         {filteredVacancyItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-              JOBS
+              ATTRACT
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -183,11 +189,11 @@ const AppSidebar = () => {
           </SidebarGroup>
         )}
 
-        {/* Staffing Section - Only show if user has staffing permissions */}
+        {/* Matching Section - Only show if user has matching permissions */}
         {filteredStaffingItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-              STAFFING
+              MATCH
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -199,11 +205,27 @@ const AppSidebar = () => {
           </SidebarGroup>
         )}
 
+        {/* Onboarding Section */}
+        {filteredOnboardingItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
+              ONBOARD
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredOnboardingItems.map((item) => (
+                  <NavItem key={item.path} {...item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {/* Contracting Section - Only show if user has contracting permissions */}
         {filteredContractingItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-              CONTRACTING
+              HIRE
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
