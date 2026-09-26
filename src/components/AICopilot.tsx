@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, lastAssistantMessageIsCompleteWithApprovalResponses, type DynamicToolUIPart, type ToolUIPart, type UIMessage } from "ai";
-import { Bot, RotateCcw, X } from "lucide-react";
+import { Bot, BriefcaseBusiness, Lightbulb, RotateCcw, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ interface AICopilotProps {
 const TOOL_LABELS: Record<string, string> = {
   getDashboardOverview: "Reading dashboard",
   searchCandidates: "Searching candidates",
+  rankCandidatesForJob: "Ranking candidates",
   listVacancies: "Reading vacancies",
   listMatches: "Reading matches",
   listOnboarding: "Reading onboarding",
@@ -139,12 +140,12 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
 
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
-      <Card className="flex h-[min(760px,90vh)] w-full max-w-3xl flex-col overflow-hidden border-border bg-card shadow-xl">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+      <Card className="flex h-[min(720px,90vh)] w-full max-w-xl flex-col overflow-hidden border-white/15 bg-primary-blue text-white shadow-2xl">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-white/15 bg-primary-blue px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-md bg-secondary-pink text-secondary-pink-foreground"><Bot className="size-5" /></div>
-            <div><CardTitle className="text-lg">AI Assistant</CardTitle><p className="text-xs text-muted-foreground">Growth Accelerator Staffing</p></div>
+            <div className="flex size-10 items-center justify-center rounded-full bg-secondary-pink text-white"><Bot className="size-5" /></div>
+            <div><CardTitle className="text-lg text-white">AI Assistant</CardTitle><p className="flex items-center gap-1.5 text-xs text-emerald-400"><span className="size-2 rounded-full bg-emerald-400" />Online &amp; Ready</p></div>
           </div>
           <div className="flex gap-1">
             <Button variant="ghost" size="icon" title="New conversation" onClick={() => { stop(); setMessages([]); setInput(""); setRequestError(null); textareaRef.current?.focus(); }}><RotateCcw className="size-4" /><span className="sr-only">New conversation</span></Button>
@@ -154,7 +155,7 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
         <CardContent className="flex min-h-0 flex-1 flex-col p-0">
           <Conversation>
             <ConversationContent>
-              {messages.length === 0 && <ConversationEmptyState icon={<Bot className="size-9" />} title="How can I help?" description="Ask about candidates, vacancies, matching, onboarding, advertising, or integrations." />}
+               {messages.length === 0 && <div className="flex gap-3 rounded-xl bg-white/10 p-4 text-sm leading-relaxed text-white"><div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary-pink font-bold">G</div><p>Hello! I'm your AI recruitment assistant. I can help you create job vacancies, improve job descriptions, develop interview strategies, and provide hiring insights. What would you like to work on today?</p></div>}
               {messages.map((message) => (
                 <Message from={message.role} key={message.id}>
                   <MessageContent>
@@ -167,15 +168,18 @@ export const AICopilot: React.FC<AICopilotProps> = ({ isOpen, onClose, initialMe
                 </Message>
               ))}
               {status === "submitted" && <Message from="assistant"><MessageContent><Shimmer>Checking your workspace…</Shimmer></MessageContent></Message>}
-              {(requestError || error) && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{requestError ?? "The AI Assistant is temporarily unavailable. Your app and data are unaffected."}</div>}
+              {(requestError || error) && <div className="rounded-md border border-red-500/50 bg-red-500/15 p-3 text-sm text-red-100"><strong className="block">Connection Error</strong>{requestError ?? "Failed to get AI response. Please try again."}</div>}
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
-          <div className="border-t border-border p-4">
-            <PromptInput onSubmit={submit}>
-              <PromptInputBody><PromptInputTextarea ref={textareaRef} value={input} onChange={(event) => setInput(event.currentTarget.value)} placeholder="Ask about your candidates, vacancies, matches, onboarding, or integrations…" /></PromptInputBody>
+          <div className="border-t border-white/15 bg-primary-blue p-4">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {[{ label: "Create Job", prompt: "Help me create a job posting", icon: BriefcaseBusiness }, { label: "Interview Tips", prompt: "Give me interview tips", icon: Lightbulb }, { label: "Hiring Tips", prompt: "Give me hiring tips", icon: Lightbulb }].map(({ label, prompt, icon: Icon }) => <Button key={label} type="button" size="sm" variant="outline" className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => void sendSafely({ text: prompt })}><Icon className="mr-1.5 size-3.5" />{label}</Button>)}
+            </div>
+            <PromptInput onSubmit={submit} className="border-white/20 bg-white text-slate-900">
+              <PromptInputBody><div className="flex items-start"><span className="ml-3 mt-3 flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary-pink text-xs font-bold text-white">G</span><PromptInputTextarea ref={textareaRef} value={input} onChange={(event) => setInput(event.currentTarget.value)} placeholder="Ask me anything about recruitment…" /></div></PromptInputBody>
               <PromptInputFooter>
-                <PromptInputTools><span className="text-xs text-muted-foreground">Changes always require your approval</span></PromptInputTools>
+                <PromptInputTools><span className="text-xs text-slate-500">Changes require approval</span></PromptInputTools>
                 <PromptInputSubmit status={status} onStop={stop} disabled={!input.trim() && status !== "streaming"} />
               </PromptInputFooter>
             </PromptInput>
