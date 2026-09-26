@@ -52,6 +52,7 @@ const Data = () => {
           company: typeof r.company === 'string' ? r.company : (r.organization_name || null),
           location: r.location || null,
           linkedin_profile_url: r.linkedin_url || r.linkedin_profile_url || null,
+          resume_url: r.resume_url || r.cv_url || null,
           source_platform: type,
         } as any).select('id').single();
         if (error) throw error;
@@ -166,7 +167,7 @@ const Data = () => {
       
       if (integrationType === 'growth accelerator') {
         const { data: rows, error } = await supabase.from('candidates')
-          .select('name,email,phone,current_position,company,location,interview_stage,linkedin_profile_url,source_platform,created_at,id')
+          .select('name,email,phone,current_position,company,location,interview_stage,linkedin_profile_url,resume_url,source_platform,created_at,id')
           .order('created_at', { ascending: false });
         if (error) toast({ title: "Could not load candidates", description: error.message, variant: "destructive" });
         data = rows || [];
@@ -254,7 +255,8 @@ const Data = () => {
             status: candidate.stage || 'Unknown',
             job_title: candidate.job?.title || 'No job title',
             applied_date: candidate.created_at || null,
-            source: 'Workable'
+            source: 'Workable',
+            resume_url: candidate.resume_url || null
           }));
           console.log(`✅ Successfully loaded ${data.length} Workable candidates`);
         } else {

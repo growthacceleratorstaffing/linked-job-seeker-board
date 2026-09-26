@@ -282,7 +282,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            jobs: data.jobs || [],
+            jobs: (data.jobs || []).map((job: any) => ({ ...job, url: job.shortcode ? `https://apply.workable.com/${cleanSubdomain}/j/${job.shortcode}/` : job.url })),
             message: `Synced ${data.jobs?.length || 0} jobs from Workable`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -759,6 +759,7 @@ async function processCandidateBatch(supabase: any, candidates: any[]): Promise<
     experience_years: extractExperienceYears(candidate),
     linkedin_profile_url: extractLinkedInUrl(candidate),
     profile_picture_url: candidate.avatar_url || candidate.photo?.url || null,
+    resume_url: candidate.resume_url || null,
     education: extractEducation(candidate),
     last_synced_at: new Date().toISOString(),
     profile_completeness_score: calculateCompletenessScore(candidate),
