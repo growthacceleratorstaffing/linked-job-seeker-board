@@ -252,6 +252,14 @@ serve(async (req) => {
               continue;
             }
 
+            if (response.status === 401 || response.status === 403) {
+              console.warn(`Workable rejected the API token (${response.status}); returning no jobs`);
+              return new Response(
+                JSON.stringify({ success: false, jobs: [], warning: 'Workable API token is invalid or expired' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+
             // Other non-ok status
             throw new Error(`Failed to sync jobs: ${response.status}`);
             
