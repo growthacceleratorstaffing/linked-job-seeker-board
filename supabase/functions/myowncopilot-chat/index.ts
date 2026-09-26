@@ -114,19 +114,25 @@ serve(async (req) => {
         execute: async ({ job_id }) => {
           const [{ data: job, error: jobError }, { data: candidates, error: candidatesError }] = await Promise.all([
             admin.from("jobs").select("id,title,company_name,location_name,job_description,skill_tags,work_type_name").eq("id", job_id).single(),
-            admin.from("candidates").select("id,name,email,current_position,company,location,experience_years,skills,profile_completeness_score,source_platform").limit(1000),
+            admin.from("candidates").select("id,name,email,current_position,company,location,experience_years,skills,profile_completeness_score,source_platform,resume_text,linkedin_profile_url,linkedin_headline").limit(1000),
           ]);
           if (jobError || !job) throw new Error("Vacancy not found.");
           if (candidatesError) throw new Error(candidatesError.message);
           const words = (value: unknown) => String(value ?? "").toLowerCase().match(/[a-z0-9+#.]{2,}/g) ?? [];
           const jobTerms = new Set(words(`${job.title} ${job.job_description ?? ""} ${(job.skill_tags ?? []).join(" ")}`));
-          return (candidates ?? []).map((candidate) => {
+          return (candidates ?? []).map((row) => { let candidate = row;
             const candidateSkills = Array.isArray(candidate.skills) ? candidate.skills.map(String) : words(candidate.skills);
             const sharedSkills = candidateSkills.filter((skill) => jobTerms.has(skill.toLowerCase()));
             const titleOverlap = words(candidate.current_position).filter((term) => jobTerms.has(term)).length;
             const locationMatch = Boolean(job.location_name && candidate.location && String(job.location_name).toLowerCase().includes(String(candidate.location).toLowerCase()));
-            const score = Math.min(100, Math.min(45, sharedSkills.length * 9) + Math.min(40, titleOverlap * 10) + Math.min(10, candidate.experience_years ?? 0) + (locationMatch ? 5 : 0));
-            const reasons = [...(sharedSkills.length ? [`Skills: ${sharedSkills.slice(0, 4).join(", ")}`] : []), ...(titleOverlap ? ["Current role aligns with the vacancy"] : []), ...(candidate.experience_years ? [`${candidate.experience_years} years of experience`] : []), ...(locationMatch ? ["Location matches"] : [])];
+            const cvTerms = new Set(words(candidate.resume_text));
+            const cvOverlap = [...jobTerms].filter((term) => cvTerms.has(term)).length;
+            const liTerms = new Set(words(`${candidate.linkedin_headline ?? ""} ${String(candidate.linkedin_profile_url ?? "").split("/in/")[1] ?? ""}`.replace(/[-_]/g, " ")));
+            const liOverlap = [...jobTerms].filter((term) => liTerms.has(term)).length;
+            const score = Math.min(100, Math.min(45, sharedSkills.length * 9) + Math.min(40, titleOverlap * 10) + Math.min(10, candidate.experience_years ?? 0) + (locationMatch ? 5 : 0) + Math.min(20, cvOverlap * 2) + Math.min(10, liOverlap * 3) + (candidate.linkedin_profile_url ? 2 : 0));
+            const { resume_text: _cv, ...publicCandidate } = candidate;
+            candidate = publicCandidate as typeof candidate;
+            const reasons = [...(cvOverlap ? ["CV matches vacancy terms"] : []), ...(liOverlap ? ["LinkedIn headline aligns"] : []), ...(sharedSkills.length ? [`Skills: ${sharedSkills.slice(0, 4).join(", ")}`] : []), ...(titleOverlap ? ["Current role aligns with the vacancy"] : []), ...(candidate.experience_years ? [`${candidate.experience_years} years of experience`] : []), ...(locationMatch ? ["Location matches"] : [])];
             return { ...candidate, score, reasons: reasons.length ? reasons : ["Limited profile information available"] };
           }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 10);
         },

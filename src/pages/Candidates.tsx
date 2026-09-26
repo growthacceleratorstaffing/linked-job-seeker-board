@@ -12,6 +12,7 @@ import CandidatesPagination from "../components/CandidatesPagination";
 import CandidatesList from "../components/CandidatesList";
 import Layout from "@/components/Layout";
 import EditCandidateDialog from "@/components/EditCandidateDialog";
+import AddCandidateDialog from "@/components/AddCandidateDialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -32,6 +33,10 @@ interface WorkableCandidate {
   updated_at: string;
   source_platform?: string | null;
   resume_url?: string | null;
+  location?: string | null;
+  current_position?: string | null;
+  company?: string | null;
+  linkedin_profile_url?: string | null;
 }
 
 interface WorkableJob {
@@ -61,14 +66,18 @@ const Candidates = () => {
     phone: dbCandidate.phone || '',
     stage: dbCandidate.interview_stage || 'applied',
     job: {
-      id: 'unknown',
-      title: dbCandidate.current_position || 'Unknown Position',
+      id: dbCandidate.linked_job_id || 'unknown',
+      title: dbCandidate.linked_job?.title || dbCandidate.current_position || 'Unknown Position',
       shortcode: 'unknown'
     },
     created_at: dbCandidate.created_at,
     updated_at: dbCandidate.updated_at || dbCandidate.created_at,
     source_platform: dbCandidate.source_platform || 'growth accelerator',
     resume_url: dbCandidate.resume_url || null,
+    location: dbCandidate.location || null,
+    current_position: dbCandidate.current_position || null,
+    company: dbCandidate.company || null,
+    linkedin_profile_url: dbCandidate.linkedin_profile_url || null,
   });
 
   const { data: allCandidates = [], isLoading, error, refetch } = useQuery({
@@ -77,7 +86,7 @@ const Candidates = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const [{ data: dbCandidates, error: dbError }, settingsResult] = await Promise.all([
-          supabase.from('candidates').select('*').order('created_at', { ascending: false }),
+          supabase.from('candidates').select('*, linked_job:jobs(title)').order('created_at', { ascending: false }),
           user ? supabase.from('integration_settings').select('integration_type').eq('user_id', user.id).eq('is_enabled', true) : Promise.resolve({ data: [] }),
         ]);
         if (dbError) throw dbError;
@@ -101,7 +110,7 @@ const Candidates = () => {
             updated_at: candidate.updated_at || candidate.created_at,
             source_platform: 'workable', resume_url: candidate.resume_url || null,
           })) : []));
-        if (enabled.has('apollo')) loaders.push(supabase.functions.invoke('apollo-integration', { body: { action: 'get_contacts' } }).then(({ data }) => (data?.contacts || []).map((candidate: any) => ({ id: `apollo-${candidate.id}`, name: [candidate.first_name, candidate.last_name].filter(Boolean).join(' ') || candidate.email, firstname: candidate.first_name || '', lastname: candidate.last_name || '', email: candidate.email || '', phone: candidate.phone || '', stage: 'sourced', job: { id: 'unknown', title: candidate.title || 'Unknown Position', shortcode: 'unknown' }, created_at: candidate.created_at || new Date().toISOString(), updated_at: candidate.updated_at || candidate.created_at || new Date().toISOString(), source_platform: 'apollo', resume_url: candidate.resume_url || null }))));
+        if (enabled.has('apollo')) loaders.push(supabase.functions.invoke('apollo-integration', { body: { action: 'get_contacts' } }).then(({ data }) => (data?.contacts || []).map((candidate: any) => ({ id: `apollo-${candidate.id}`, name: [candidate.first_name, candidate.last_name].filter(Boolean).join(' ') || candidate.email, firstname: candidate.first_name || '', lastname: candidate.last_name || '', email: candidate.email || '', phone: candidate.phone || '', stage: 'sourced', job: { id: 'unknown', title: candidate.title || 'Unknown Position', shortcode: 'unknown' }, created_at: candidate.created_at || new Date().toISOString(), updated_at: candidate.updated_at || candidate.created_at || new Date().toISOString(), source_platform: 'apollo', resume_url: candidate.resume_url || null, location: [candidate.city, candidate.country].filter(Boolean).join(', ') || null, current_position: candidate.title || null, company: candidate.organization_name || candidate.company || null, linkedin_profile_url: candidate.linkedin_url || null }))));
         if (enabled.has('jazzhr')) loaders.push(supabase.functions.invoke('jazzhr-integration', { body: { action: 'get_candidates' } }).then(({ data }) => (data?.candidates || []).map((candidate: any) => ({ id: `jazzhr-${candidate.id}`, name: candidate.name, firstname: candidate.name?.split(' ')[0] || '', lastname: candidate.name?.split(' ').slice(1).join(' ') || '', email: candidate.email || '', phone: candidate.phone || '', stage: candidate.status || 'applied', job: { id: 'unknown', title: candidate.job_title || 'Unknown Position', shortcode: 'unknown' }, created_at: candidate.applied_date || new Date().toISOString(), updated_at: candidate.applied_date || new Date().toISOString(), source_platform: 'jazzhr', resume_url: candidate.resume_url || null }))));
         const external = (await Promise.allSettled(loaders)).flatMap((result) => result.status === 'fulfilled' ? result.value : []);
         const seen = new Set(merged.map((candidate) => candidate.email.toLowerCase()).filter(Boolean));
@@ -228,6 +237,7 @@ const Candidates = () => {
         <div className="container mx-auto px-6 py-8">
           <div className="space-y-6">
             <CandidatesHeader candidateCount={accessibleCandidates.length} isLoading={isLoading} onRefresh={refetch} />
+            <div className="flex justify-end"><AddCandidateDialog onCreated={() => refetch()} /></div>
             <CandidatesFilters
               searchTerm={searchTerm}
               selectedStatus={selectedStatus}
