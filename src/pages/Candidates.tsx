@@ -14,6 +14,8 @@ import CandidatesPagination from "../components/CandidatesPagination";
 import CandidatesList from "../components/CandidatesList";
 import Layout from "@/components/Layout";
 import EditCandidateDialog from "@/components/EditCandidateDialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface WorkableCandidate {
   id: string;
@@ -30,6 +32,7 @@ interface WorkableCandidate {
   };
   created_at: string;
   updated_at: string;
+  source_platform?: string | null;
 }
 
 interface WorkableJob {
@@ -45,6 +48,7 @@ const Candidates = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedJob, setSelectedJob] = useState<string>("all");
+  const [selectedSource, setSelectedSource] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [editing, setEditing] = useState<WorkableCandidate | null>(null);
   const navigate = useNavigate();
@@ -64,7 +68,8 @@ const Candidates = () => {
       shortcode: 'unknown'
     },
     created_at: dbCandidate.created_at,
-    updated_at: dbCandidate.updated_at || dbCandidate.created_at
+    updated_at: dbCandidate.updated_at || dbCandidate.created_at,
+    source_platform: dbCandidate.source_platform || 'growth accelerator'
   });
 
   const { data: allCandidates = [], isLoading, error, refetch } = useQuery({
@@ -92,7 +97,8 @@ const Candidates = () => {
               shortcode: candidate.job?.shortcode || 'unknown'
             },
             created_at: candidate.created_at,
-            updated_at: candidate.updated_at || candidate.created_at
+            updated_at: candidate.updated_at || candidate.created_at,
+            source_platform: candidate.source_platform || 'workable'
           }));
         }
         
@@ -150,7 +156,17 @@ const Candidates = () => {
   });
 
   // For debugging - don't filter candidates by permissions to see all Workable candidates
-  const accessibleCandidates = allCandidates;
+  const sourceLabel = (source?: string | null) => {
+    if (!source || source === 'manual' || source === 'growth accelerator') return 'Growth Accelerator';
+    return source.split(/[\s_-]+/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+  const sourceOptions = useMemo(
+    () => [...new Set(allCandidates.map((candidate) => sourceLabel(candidate.source_platform)))].sort((a, b) => a === 'Growth Accelerator' ? -1 : b === 'Growth Accelerator' ? 1 : a.localeCompare(b)),
+    [allCandidates]
+  );
+  const accessibleCandidates = selectedSource === 'all'
+    ? allCandidates
+    : allCandidates.filter((candidate) => sourceLabel(candidate.source_platform) === selectedSource);
   const availableJobs = allJobs;
 
   const filteredCandidates = useCandidatesFiltering(
@@ -230,6 +246,18 @@ const Candidates = () => {
               onStatusChange={handleStatusChange}
               onJobChange={handleJobChange}
             />
+            <div className="max-w-sm space-y-2">
+              <Label htmlFor="candidate-source" className="text-primary-foreground">Candidate source</Label>
+              <Select value={selectedSource} onValueChange={(value) => { setSelectedSource(value); setCurrentPage(1); }}>
+                <SelectTrigger id="candidate-source" className="border-primary-foreground/20 bg-primary-blue text-primary-foreground">
+                  <SelectValue placeholder="All sources" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All candidates</SelectItem>
+                  {sourceOptions.map((source) => <SelectItem key={source} value={source}>{source}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
             {isLoading ? (
               <CandidatesLoadingState />

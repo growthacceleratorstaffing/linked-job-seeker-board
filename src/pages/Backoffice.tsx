@@ -17,6 +17,7 @@ const financialTools = [
   { name: 'Nmbrs', key: 'nmbrs', description: 'Payroll and HR administration for accountants and employers.', icon: Building2, fields: ['API Token', 'Debtor Number'] },
   { name: 'Twinfield', key: 'twinfield', description: 'Cloud accounting and financial reporting.', icon: Landmark, fields: ['Client ID', 'Client Secret'] },
   { name: 'Visma', key: 'visma', description: 'Finance, payroll and workforce management.', icon: WalletCards, fields: ['Client ID', 'Client Secret', 'Tenant ID'] },
+  { name: 'Custom Integration', key: 'backoffice custom', description: 'Connect your own financial or administration system.', icon: Plus, fields: ['Webhook URL', 'API Key'] },
 ];
 
 const Backoffice = () => {
@@ -64,7 +65,7 @@ const Backoffice = () => {
     <Layout>
       <div className="container mx-auto space-y-6 p-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary-foreground">Financial software</h1>
+          <h1 className="text-3xl font-bold text-primary-foreground">Your Backoffice</h1>
           <p className="mt-2 text-primary-foreground/70">Connect payroll, accounting and contractor administration.</p>
         </div>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">

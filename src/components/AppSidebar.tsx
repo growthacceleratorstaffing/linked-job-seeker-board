@@ -70,8 +70,8 @@ const AppSidebar = () => {
   ];
 
   const crmItems = [
-    { path: '/integrations', label: 'Integrations', icon: Settings },
-    { path: '/data', label: 'Data', icon: Users },
+    { path: '/integrations', label: 'Providers', icon: Settings },
+    { path: '/data', label: 'Imported Data', icon: Users },
   ];
 
   const contractingItems: { path: string; label: string; icon: React.ElementType; external?: boolean; permission?: string }[] = [
@@ -197,11 +197,11 @@ const AppSidebar = () => {
           </SidebarGroup>
         )}
 
-        {/* CRM Section */}
+        {/* Integrations Section */}
         {filteredCrmItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-secondary-pink text-sm font-bold uppercase tracking-wider">
-              CRM/ATS
+              INTEGRATIONS
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>

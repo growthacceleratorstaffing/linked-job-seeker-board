@@ -84,8 +84,7 @@ const WorkflowHeader = () => {
             {visibleGroups.map((group, groupIndex) => (
               <div key={group.label} className="flex items-stretch">
                 {groupIndex > 0 && <div className="mx-5 w-px self-stretch bg-secondary-pink" />}
-                <section aria-label={group.label}>
-                  <p className="mb-2 text-center text-xs font-bold uppercase text-secondary-pink">{group.label}</p>
+                <section aria-label={group.label} className="flex items-center">
                   <div className="flex gap-2">
                     {group.items.map((item) => {
                       const Icon = item.icon;
