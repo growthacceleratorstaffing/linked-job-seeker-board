@@ -46,15 +46,15 @@ const groups: { label: string; items: HeaderItem[] }[] = [
     ],
   },
   {
+    label: 'CONTRACTING',
+    items: [{ path: '/backoffice', label: 'Backoffice', icon: FileText }],
+  },
+  {
     label: 'INTEGRATIONS',
     items: [
       { path: '/integrations', label: 'Providers', icon: Settings },
       { path: '/data', label: 'Imported Data', icon: Users },
     ],
-  },
-  {
-    label: 'CONTRACTING',
-    items: [{ path: '/backoffice', label: 'Backoffice', icon: FileText }],
   },
 ];
 
