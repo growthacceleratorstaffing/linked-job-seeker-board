@@ -242,15 +242,16 @@ serve(async (req) => {
         startOnboarding: { type: "user-approval", reason: "Are you sure you want to make these edits?" },
       },
       experimental_toolApprovalSecret: approvalSecret,
-      stopWhen: isStepCount(50),
+      stopWhen: isStepCount(6),
+      maxOutputTokens: 900,
       abortSignal: req.signal,
-      providerOptions: { openai: { forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", store: false, include: ["reasoning.encrypted_content"] } },
+      providerOptions: { openai: { forceReasoning: true, reasoningEffort: "low", store: false } },
       onError: ({ error }) => console.error("Assistant stream error:", safeError(error)),
     });
 
     const response = result.toUIMessageStreamResponse({
       originalMessages: recentMessages,
-      sendReasoning: true,
+      sendReasoning: false,
       onError: (error) => safeError(error),
     });
     const headers = new Headers(response.headers);
