@@ -29,7 +29,7 @@ const groups: { label: string; items: HeaderItem[] }[] = [
     ],
   },
   {
-    label: 'JOBS',
+    label: 'ATTRACT',
     items: [
       { path: '/jobs', label: 'Job Posting', icon: FileText, permission: 'jobs' },
       { path: '/post-jobs', label: 'Vacancies', icon: Briefcase, permission: 'jobs' },
@@ -37,16 +37,19 @@ const groups: { label: string; items: HeaderItem[] }[] = [
     ],
   },
   {
-    label: 'STAFFING',
+    label: 'MATCH',
     items: [
       { path: '/candidates', label: 'Candidates', icon: Users, permission: 'candidates' },
       { path: '/matching', label: 'Matching', icon: ArrowRightLeft, permission: 'reviewer' },
       { path: '/ai-matching', label: 'AI Matching', icon: Sparkles, permission: 'reviewer' },
-      { path: '/onboarding', label: 'Onboarding', icon: CheckSquare, permission: 'simple' },
     ],
   },
   {
-    label: 'CONTRACTING',
+    label: 'ONBOARD',
+    items: [{ path: '/onboarding', label: 'Onboarding', icon: CheckSquare, permission: 'simple' }],
+  },
+  {
+    label: 'HIRE',
     items: [{ path: '/backoffice', label: 'Backoffice', icon: FileText }],
   },
   {

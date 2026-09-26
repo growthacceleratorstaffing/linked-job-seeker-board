@@ -65,8 +65,8 @@ const Onboarding = () => {
     },
     {
       id: 'sign-contract',
-      name: 'Sign Contract',
-      description: 'Complete employment contract signing',
+      name: 'Backoffice Introduction',
+      description: 'Introduce the employee to their backoffice provider',
       icon: PenTool,
       color: 'text-orange-400',
       completed: false
@@ -264,18 +264,6 @@ const Onboarding = () => {
           <p className="text-slate-300">Send welcome emails and manage new employee onboarding workflow</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card className="bg-primary-blue border border-white/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-white">Total Matches</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{candidates.length}</div>
-              <p className="text-xs text-slate-400">Selected at Matching, available for onboarding</p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Candidate Selection Card */}
         <Card className="bg-primary-blue border border-white/20 mb-6">
           <CardHeader>
@@ -386,7 +374,6 @@ const Onboarding = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                <h3 className="text-xl font-semibold text-white mb-2">People who received the onboarding email</h3>
                 <div className="overflow-x-auto rounded-lg border border-white/15">
                   <table className="w-full text-sm text-white">
                     <thead className="bg-white/5 text-left text-slate-300">
