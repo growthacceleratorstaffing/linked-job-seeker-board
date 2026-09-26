@@ -1,4 +1,4 @@
-export type MatchCandidate = { id: string; name: string; email: string; current_position?: string | null; company?: string | null; location?: string | null; experience_years?: number | null; skills?: unknown; profile_completeness_score?: number | null; source_platform?: string | null };
+export type MatchCandidate = { id: string; name: string; email: string; current_position?: string | null; company?: string | null; location?: string | null; experience_years?: number | null; skills?: unknown; profile_completeness_score?: number | null; source_platform?: string | null; resume_text?: string | null; linkedin_profile_url?: string | null; linkedin_headline?: string | null };
 export type MatchJob = { id: string; title: string; company_name?: string | null; location_name?: string | null; job_description?: string | null; skill_tags?: string[] | null; work_type_name?: string | null };
 export type CandidateMatch = MatchCandidate & { score: number; reasons: string[] };
 
@@ -22,6 +22,13 @@ export function rankCandidates(job: MatchJob, candidates: MatchCandidate[]): Can
     if (termOverlap) { score += Math.min(15, termOverlap * 2); reasons.push("Profile terminology overlaps with the job"); }
     if (candidate.experience_years) { score += Math.min(7, candidate.experience_years); reasons.push(`${candidate.experience_years} years of experience`); }
     if (jobLocation && candidate.location && jobLocation.includes(candidate.location.toLowerCase())) { score += 5; reasons.push("Location matches"); }
+    const cvTerms = new Set(words(candidate.resume_text));
+    const cvOverlap = [...jobTerms, ...jobSkills].filter((term) => cvTerms.has(String(term).toLowerCase()));
+    if (cvOverlap.length) { score += Math.min(20, cvOverlap.length * 2); reasons.push(`CV mentions: ${[...new Set(cvOverlap)].slice(0, 4).join(", ")}`); }
+    const linkedinTerms = new Set(words(`${candidate.linkedin_headline ?? ""} ${String(candidate.linkedin_profile_url ?? "").split("/in/")[1] ?? ""}`.replace(/[-_]/g, " ")));
+    const linkedinOverlap = [...jobTerms].filter((term) => linkedinTerms.has(term)).length;
+    if (linkedinOverlap) { score += Math.min(10, linkedinOverlap * 3); reasons.push("LinkedIn profile headline aligns with the job"); }
+    if (candidate.linkedin_profile_url) { score += 2; reasons.push("LinkedIn profile available"); }
     score += Math.round(Math.min(3, (candidate.profile_completeness_score ?? 0) * 0.03));
     if (!reasons.length) reasons.push("Limited profile information available");
     return { ...candidate, score: Math.min(100, score), reasons };
