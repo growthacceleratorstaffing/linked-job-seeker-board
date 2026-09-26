@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -5,11 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Mail, Phone, ExternalLink, Pencil, FileText, Linkedin, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const openCv = async (url: string) => {
-  if (!url.startsWith("candidate-cvs/")) { window.open(url, "_blank", "noopener,noreferrer"); return; }
-  const win = window.open("", "_blank");
-  const { data } = await supabase.storage.from("candidate-cvs").createSignedUrl(url.replace("candidate-cvs/", ""), 600);
-  if (win && data?.signedUrl) win.location.href = data.signedUrl; else win?.close();
+export const resolveCvUrl = async (url: string) => {
+  if (!url.startsWith("candidate-cvs/")) return url;
+  const { data, error } = await supabase.storage.from("candidate-cvs").createSignedUrl(url.replace("candidate-cvs/", ""), 900);
+  if (error) throw error;
+  return data.signedUrl;
 };
 
 interface WorkableCandidate {
@@ -41,6 +43,11 @@ interface CandidatesListProps {
 }
 
 const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
+  const [cv, setCv] = useState<{ name: string; url?: string; error?: string } | null>(null);
+  const openCv = async (name: string, url: string) => {
+    setCv({ name });
+    try { setCv({ name, url: await resolveCvUrl(url) }); } catch (e) { setCv({ name, error: e instanceof Error ? e.message : "Could not open CV" }); }
+  };
   const getStageColor = (stage: string) => {
     switch (stage?.toLowerCase()) {
       case 'applied': return 'bg-blue-500/20 text-blue-400 border-blue-400';
@@ -61,6 +68,16 @@ const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
   };
 
   return (
+    <>
+    <Dialog open={!!cv} onOpenChange={(o) => !o && setCv(null)}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader><DialogTitle>CV — {cv?.name}</DialogTitle></DialogHeader>
+        {cv?.error ? <p className="text-destructive">{cv.error}</p> : cv?.url ? <>
+          <iframe src={cv.url} title={`CV ${cv.name}`} className="h-[75vh] w-full rounded border" />
+          <a href={cv.url} target="_blank" rel="noopener noreferrer" className="text-sm text-secondary-pink underline">Open in new tab</a>
+        </> : <p>Loading CV…</p>}
+      </DialogContent>
+    </Dialog>
     <Card className="bg-primary-blue border border-white/20 overflow-hidden">
       <CardContent className="p-0 bg-primary-blue">
         <div className="bg-primary-blue">
@@ -151,7 +168,7 @@ const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
                       </Button>
                     )}
                     {candidate.resume_url ? (
-                      <Button variant="ghost" size="sm" onClick={() => openCv(candidate.resume_url!)} className="text-secondary-pink hover:text-secondary-pink/80 hover:bg-white/10">
+                      <Button variant="ghost" size="sm" onClick={() => openCv(candidate.name, candidate.resume_url!)} className="text-secondary-pink hover:text-secondary-pink/80 hover:bg-white/10">
                         <ExternalLink className="h-3 w-3 mr-1" />View CV
                       </Button>
                     ) : (
@@ -165,6 +182,7 @@ const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };
 
