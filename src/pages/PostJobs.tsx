@@ -33,6 +33,7 @@ const PostJobs = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [viewingJob, setViewingJob] = useState<IntegrationJob | null>(null);
   const [newJob, setNewJob] = useState({
     title: '',
     description: '',
@@ -66,7 +67,7 @@ const PostJobs = () => {
         full_title: job.title,
         state: 'draft', // Local jobs are drafts until published to Workable
         created_at: job.created_at,
-        url: '#',
+        url: `/post-jobs?job=${job.id}`,
         location: {
           location_str: job.location_name || 'Not specified',
           workplace_type: job.work_type_name || 'onsite'
@@ -186,7 +187,7 @@ const PostJobs = () => {
         full_title: newJob.title,
         state: 'published',
         created_at: new Date().toISOString(),
-        url: '#',
+        url: `/post-jobs?job=${localJob.id}`,
         location: {
           location_str: newJob.location || 'Not specified',
           workplace_type: newJob.workplace_type
@@ -416,7 +417,13 @@ const PostJobs = () => {
                           {new Date(job.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
+                          {job.url.startsWith('/') ? <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setViewingJob(job)}
+                            className="text-secondary-pink hover:text-secondary-pink/80"
+                            aria-label={`View ${job.title}`}
+                          ><ExternalLink className="w-4 h-4" /></Button> : <Button
                             size="sm"
                             variant="ghost"
                             asChild
@@ -425,7 +432,7 @@ const PostJobs = () => {
                             <a href={job.url} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="w-4 h-4" />
                             </a>
-                          </Button>
+                          </Button>}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -441,6 +448,14 @@ const PostJobs = () => {
               )}
             </CardContent>
           </Card>
+
+          <Dialog open={Boolean(viewingJob)} onOpenChange={(open) => !open && setViewingJob(null)}>
+            <DialogContent className="bg-primary-blue border-slate-700 text-white">
+              <DialogHeader><DialogTitle>{viewingJob?.title}</DialogTitle><DialogDescription className="text-slate-300">{viewingJob?.location.location_str}</DialogDescription></DialogHeader>
+              <p className="text-sm text-slate-300">This vacancy was created in Growth Accelerator and is managed in this app.</p>
+              <DialogFooter><Button variant="outline" onClick={() => setViewingJob(null)}>Close</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Create Job Dialog */}
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

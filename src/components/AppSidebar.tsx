@@ -5,7 +5,8 @@ import {
   BarChart3, 
   Briefcase, 
   Users, 
-  ArrowRightLeft, 
+  ArrowRightLeft,
+  Sparkles,
   CheckSquare, 
   FileText, 
   LogOut,
@@ -66,6 +67,7 @@ const AppSidebar = () => {
   const staffingItems = [
     { path: '/candidates', label: 'Candidates', icon: Users, permission: 'candidates' },
     { path: '/matching', label: 'Matching', icon: ArrowRightLeft, permission: 'reviewer' },
+    { path: '/ai-matching', label: 'AI Matching', icon: Sparkles, permission: 'reviewer' },
     { path: '/onboarding', label: 'Onboarding', icon: CheckSquare, permission: 'simple' },
   ];
 
