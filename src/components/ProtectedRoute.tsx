@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useEmployee } from '@/hooks/useEmployee';
+import { useWorkablePermissions } from '@/hooks/useWorkablePermissions';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -13,8 +14,9 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, audience = 'staff' }) => {
   const { user, isLoading } = useAuth();
   const { employee, loading } = useEmployee();
+  const { role, isLoading: roleLoading } = useWorkablePermissions();
 
-  if (isLoading || (user && loading)) {
+  if (isLoading || (user && (loading || roleLoading))) {
     return (
       <div className="min-h-screen bg-primary-blue flex items-center justify-center">
         <div className="flex items-center space-x-3 text-white">
@@ -27,6 +29,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, audience = 's
 
   if (!user) return <Navigate to="/auth" replace />;
   if (audience === 'staff' && employee) return <Navigate to="/portal" replace />;
+  if (audience === 'staff' && !role) return <Navigate to="/access-pending" replace />;
   if (audience === 'employee' && !employee) return <Navigate to="/" replace />;
 
   return <>{children}</>;
