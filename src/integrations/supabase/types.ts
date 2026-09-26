@@ -1466,6 +1466,7 @@ export type Database = {
         Returns: boolean
       }
       is_employee: { Args: { _user_id: string }; Returns: boolean }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       log_security_event: {
         Args: {
           p_event_details?: Json
