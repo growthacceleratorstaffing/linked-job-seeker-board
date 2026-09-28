@@ -123,6 +123,8 @@ export type Database = {
       }
       candidates: {
         Row: {
+          availability_status: string
+          available_from: string | null
           company: string | null
           created_at: string
           current_position: string | null
@@ -145,11 +147,14 @@ export type Database = {
           resume_url: string | null
           skills: Json | null
           source_platform: string | null
+          target_rate: number | null
           updated_at: string
           user_id: string | null
           workable_candidate_id: string | null
         }
         Insert: {
+          availability_status?: string
+          available_from?: string | null
           company?: string | null
           created_at?: string
           current_position?: string | null
@@ -174,11 +179,14 @@ export type Database = {
           resume_url?: string | null
           skills?: Json | null
           source_platform?: string | null
+          target_rate?: number | null
           updated_at?: string
           user_id?: string | null
           workable_candidate_id?: string | null
         }
         Update: {
+          availability_status?: string
+          available_from?: string | null
           company?: string | null
           created_at?: string
           current_position?: string | null
@@ -203,6 +211,7 @@ export type Database = {
           resume_url?: string | null
           skills?: Json | null
           source_platform?: string | null
+          target_rate?: number | null
           updated_at?: string
           user_id?: string | null
           workable_candidate_id?: string | null
@@ -648,6 +657,69 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          created_at: string
+          hours: number
+          id: string
+          invoice_number: string
+          pdf_path: string | null
+          placement_id: string | null
+          rate: number
+          subtotal: number
+          timesheet_id: string | null
+          total: number
+          user_id: string
+          vat_amount: number
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          hours: number
+          id?: string
+          invoice_number?: string
+          pdf_path?: string | null
+          placement_id?: string | null
+          rate: number
+          subtotal: number
+          timesheet_id?: string | null
+          total: number
+          user_id: string
+          vat_amount: number
+          vat_rate: number
+        }
+        Update: {
+          created_at?: string
+          hours?: number
+          id?: string
+          invoice_number?: string
+          pdf_path?: string | null
+          placement_id?: string | null
+          rate?: number
+          subtotal?: number
+          timesheet_id?: string | null
+          total?: number
+          user_id?: string
+          vat_amount?: number
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "local_placements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_timesheet_id_fkey"
+            columns: ["timesheet_id"]
+            isOneToOne: false
+            referencedRelation: "timesheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           area_id: string | null
@@ -997,63 +1069,96 @@ export type Database = {
       }
       local_placements: {
         Row: {
+          buy_rate: number | null
           candidate_email: string
           candidate_id: string
           candidate_name: string
           company_name: string
           created_at: string
+          employee_user_id: string | null
           end_date: string | null
+          freelancer_company: string | null
+          freelancer_iban: string | null
+          freelancer_kvk: string | null
+          freelancer_vat_number: string | null
+          hiring_manager_email: string | null
+          hiring_manager_name: string | null
           id: string
           job_id: string
           job_title: string
           notes: string | null
+          project: string | null
           salary_currency: string | null
           salary_rate: number | null
           salary_rate_per: string | null
+          sell_rate: number | null
           start_date: string
           status_id: number | null
           status_name: string | null
           updated_at: string
+          vat_rate: number
           work_type_id: string | null
         }
         Insert: {
+          buy_rate?: number | null
           candidate_email: string
           candidate_id: string
           candidate_name: string
           company_name: string
           created_at?: string
+          employee_user_id?: string | null
           end_date?: string | null
+          freelancer_company?: string | null
+          freelancer_iban?: string | null
+          freelancer_kvk?: string | null
+          freelancer_vat_number?: string | null
+          hiring_manager_email?: string | null
+          hiring_manager_name?: string | null
           id?: string
           job_id: string
           job_title: string
           notes?: string | null
+          project?: string | null
           salary_currency?: string | null
           salary_rate?: number | null
           salary_rate_per?: string | null
+          sell_rate?: number | null
           start_date: string
           status_id?: number | null
           status_name?: string | null
           updated_at?: string
+          vat_rate?: number
           work_type_id?: string | null
         }
         Update: {
+          buy_rate?: number | null
           candidate_email?: string
           candidate_id?: string
           candidate_name?: string
           company_name?: string
           created_at?: string
+          employee_user_id?: string | null
           end_date?: string | null
+          freelancer_company?: string | null
+          freelancer_iban?: string | null
+          freelancer_kvk?: string | null
+          freelancer_vat_number?: string | null
+          hiring_manager_email?: string | null
+          hiring_manager_name?: string | null
           id?: string
           job_id?: string
           job_title?: string
           notes?: string | null
+          project?: string | null
           salary_currency?: string | null
           salary_rate?: number | null
           salary_rate_per?: string | null
+          sell_rate?: number | null
           start_date?: string
           status_id?: number | null
           status_name?: string | null
           updated_at?: string
+          vat_rate?: number
           work_type_id?: string | null
         }
         Relationships: []
@@ -1174,6 +1279,7 @@ export type Database = {
           start_time: string | null
           status: string
           submitted_at: string | null
+          timesheet_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1190,6 +1296,7 @@ export type Database = {
           start_time?: string | null
           status?: string
           submitted_at?: string | null
+          timesheet_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1206,10 +1313,93 @@ export type Database = {
           start_time?: string | null
           status?: string
           submitted_at?: string | null
+          timesheet_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_timesheet_id_fkey"
+            columns: ["timesheet_id"]
+            isOneToOne: false
+            referencedRelation: "timesheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timesheets: {
+        Row: {
+          approval_token_expires_at: string | null
+          approval_token_hash: string | null
+          approved_at: string | null
+          approver_email: string | null
+          approver_name: string | null
+          attachment_path: string | null
+          backoffice_push_status: string | null
+          created_at: string
+          decision_note: string | null
+          id: string
+          period_end: string
+          period_start: string
+          placement_id: string | null
+          rejected_at: string | null
+          requested_at: string | null
+          status: string
+          total_hours: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approval_token_expires_at?: string | null
+          approval_token_hash?: string | null
+          approved_at?: string | null
+          approver_email?: string | null
+          approver_name?: string | null
+          attachment_path?: string | null
+          backoffice_push_status?: string | null
+          created_at?: string
+          decision_note?: string | null
+          id?: string
+          period_end: string
+          period_start: string
+          placement_id?: string | null
+          rejected_at?: string | null
+          requested_at?: string | null
+          status?: string
+          total_hours?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approval_token_expires_at?: string | null
+          approval_token_hash?: string | null
+          approved_at?: string | null
+          approver_email?: string | null
+          approver_name?: string | null
+          attachment_path?: string | null
+          backoffice_push_status?: string | null
+          created_at?: string
+          decision_note?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          placement_id?: string | null
+          rejected_at?: string | null
+          requested_at?: string | null
+          status?: string
+          total_hours?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheets_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "local_placements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trips: {
         Row: {
