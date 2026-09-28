@@ -1,3 +1,4 @@
+import { AVAILABILITY_LABELS } from "@/lib/candidateMatching";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,8 @@ interface WorkableCandidate {
   current_position?: string | null;
   company?: string | null;
   linkedin_profile_url?: string | null;
+  availability_status?: string | null;
+  available_from?: string | null;
 }
 
 interface CandidatesListProps {
@@ -100,6 +103,7 @@ const CandidatesList = ({ candidates, onEdit }: CandidatesListProps) => {
                 <TableRow key={candidate.id} className="border-white/20 hover:bg-white/5 bg-primary-blue">
                   <TableCell className="bg-primary-blue">
                     <div className="font-medium text-white">{candidate.name}</div>
+                    {candidate.availability_status && <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${candidate.availability_status === 'available' ? 'bg-secondary-pink text-primary-foreground' : 'border border-white/30 text-slate-300'}`}>{AVAILABILITY_LABELS[candidate.availability_status] || candidate.availability_status}{candidate.available_from ? ` · ${candidate.available_from}` : ''}</span>}
                     <div className="text-sm text-slate-400">ID: {candidate.id}</div>
                   </TableCell>
                   <TableCell className="bg-primary-blue">
