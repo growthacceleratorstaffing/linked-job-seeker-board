@@ -134,7 +134,7 @@ serve(async (req) => {
             const availReasons = [st.replace("_", " ")];
             if (candidate.available_from) avail += (new Date(candidate.available_from).getTime() - Date.now()) / 86400000 <= 30 ? 5 : -3;
             if (candidate.target_rate && job.salary_rate_high) { const fits = Number(candidate.target_rate) <= Number(job.salary_rate_high); avail += fits ? 5 : -5; availReasons.push(fits ? "rate fits budget" : "rate above budget"); }
-            const score = Math.max(0, avail + 0) + 0 === -1 ? 0 : Math.max(0, Math.min(100, avail + Math.min(45, sharedSkills.length * 9) + Math.min(40, titleOverlap * 10) + Math.min(10, candidate.experience_years ?? 0) + (locationMatch ? 5 : 0) + Math.min(20, cvOverlap * 2) + Math.min(10, liOverlap * 3) + (candidate.linkedin_profile_url ? 2 : 0));
+            const score = Math.max(0, Math.min(100, avail + Math.min(45, sharedSkills.length * 9) + Math.min(40, titleOverlap * 10) + Math.min(10, candidate.experience_years ?? 0) + (locationMatch ? 5 : 0) + Math.min(20, cvOverlap * 2) + Math.min(10, liOverlap * 3) + (candidate.linkedin_profile_url ? 2 : 0));
             const { resume_text: _cv, ...publicCandidate } = candidate;
             candidate = publicCandidate as typeof candidate;
             const reasons = [`Availability: ${availReasons.join(", ")}`, ...(cvOverlap ? ["CV matches vacancy terms"] : []), ...(liOverlap ? ["LinkedIn headline aligns"] : []), ...(sharedSkills.length ? [`Skills: ${sharedSkills.slice(0, 4).join(", ")}`] : []), ...(titleOverlap ? ["Current role aligns with the vacancy"] : []), ...(candidate.experience_years ? [`${candidate.experience_years} years of experience`] : []), ...(locationMatch ? ["Location matches"] : [])];
