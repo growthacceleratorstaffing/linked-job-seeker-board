@@ -25,8 +25,8 @@ const AIMatching = () => {
     queryKey: ["ai-matching-data"],
     queryFn: async () => {
       const [jobsResult, candidatesResult] = await Promise.all([
-        supabase.from("jobs").select("id,title,company_name,location_name,job_description,skill_tags,work_type_name").order("created_at", { ascending: false }),
-        supabase.from("candidates").select("id,name,email,current_position,company,location,experience_years,skills,profile_completeness_score,source_platform,resume_text,linkedin_profile_url,linkedin_headline").limit(1000),
+        supabase.from("jobs").select("id,title,company_name,location_name,job_description,skill_tags,work_type_name,salary_rate_high").order("created_at", { ascending: false }),
+        supabase.from("candidates").select("id,name,email,current_position,company,location,experience_years,skills,profile_completeness_score,source_platform,resume_text,linkedin_profile_url,linkedin_headline,available_from,target_rate,availability_status").limit(1000),
       ]);
       const apollo = await supabase.functions.invoke("apollo-integration", { body: { action: "get_contacts" } }).catch(() => ({ data: null }));
       const known = new Set((candidatesResult.data ?? []).map((c) => c.email?.toLowerCase()));

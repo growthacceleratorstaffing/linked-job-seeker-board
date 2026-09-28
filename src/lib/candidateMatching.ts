@@ -1,5 +1,5 @@
-export type MatchCandidate = { id: string; name: string; email: string; current_position?: string | null; company?: string | null; location?: string | null; experience_years?: number | null; skills?: unknown; profile_completeness_score?: number | null; source_platform?: string | null; resume_text?: string | null; linkedin_profile_url?: string | null; linkedin_headline?: string | null };
-export type MatchJob = { id: string; title: string; company_name?: string | null; location_name?: string | null; job_description?: string | null; skill_tags?: string[] | null; work_type_name?: string | null };
+export type MatchCandidate = { id: string; name: string; email: string; current_position?: string | null; company?: string | null; location?: string | null; experience_years?: number | null; skills?: unknown; profile_completeness_score?: number | null; source_platform?: string | null; resume_text?: string | null; linkedin_profile_url?: string | null; linkedin_headline?: string | null; available_from?: string | null; target_rate?: number | null; availability_status?: string | null };
+export type MatchJob = { id: string; title: string; company_name?: string | null; location_name?: string | null; job_description?: string | null; skill_tags?: string[] | null; work_type_name?: string | null; salary_rate_high?: number | null };
 export type CandidateMatch = MatchCandidate & { score: number; reasons: string[] };
 
 const words = (value: unknown) => String(value ?? "").toLowerCase().match(/[a-z0-9+#.]{2,}/g) ?? [];
@@ -30,7 +30,30 @@ export function rankCandidates(job: MatchJob, candidates: MatchCandidate[]): Can
     if (linkedinOverlap) { score += Math.min(10, linkedinOverlap * 3); reasons.push("LinkedIn profile headline aligns with the job"); }
     if (candidate.linkedin_profile_url) { score += 2; reasons.push("LinkedIn profile available"); }
     score += Math.round(Math.min(3, (candidate.profile_completeness_score ?? 0) * 0.03));
+    const avail = availabilityScore(candidate, job);
+    score += avail.points; reasons.push(...avail.reasons);
     if (!reasons.length) reasons.push("Limited profile information available");
-    return { ...candidate, score: Math.min(100, score), reasons };
+    return { ...candidate, score: Math.max(0, Math.min(100, score)), reasons };
   }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 10);
+}
+
+export const AVAILABILITY_LABELS: Record<string, string> = { available: "Available", available_soon: "Available soon", on_assignment: "On assignment", not_available: "Not available" };
+
+/** Availability & rate prioritisation, shared with the assistant. */
+export function availabilityScore(candidate: Pick<MatchCandidate, "available_from" | "target_rate" | "availability_status">, job: Pick<MatchJob, "salary_rate_high">) {
+  let points = 0; const reasons: string[] = [];
+  const status = candidate.availability_status ?? "available";
+  if (status === "available") { points += 8; reasons.push("Available now"); }
+  else if (status === "available_soon") { points += 4; reasons.push("Available soon"); }
+  else if (status === "on_assignment") { points -= 10; reasons.push("Currently on assignment"); }
+  else if (status === "not_available") { points -= 25; reasons.push("Not available"); }
+  if (candidate.available_from) {
+    const days = (new Date(candidate.available_from).getTime() - Date.now()) / 86400000;
+    if (days <= 30) { points += 5; reasons.push(`Available from ${candidate.available_from}`); } else points -= 3;
+  }
+  if (candidate.target_rate && job.salary_rate_high) {
+    if (Number(candidate.target_rate) <= Number(job.salary_rate_high)) { points += 5; reasons.push(`Rate €${candidate.target_rate} fits budget`); }
+    else { points -= 5; reasons.push(`Rate €${candidate.target_rate} above budget`); }
+  }
+  return { points, reasons };
 }
