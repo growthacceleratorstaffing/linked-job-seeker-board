@@ -5,6 +5,7 @@ import { BarChart3, Users, Briefcase, TrendingUp, RefreshCw, Clock, CheckCircle,
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
+import PlacementOverview from "@/components/PlacementOverview";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -114,6 +115,8 @@ const Dashboard = () => {
               Refresh Data
             </Button>
           </div>
+
+          <PlacementOverview />
 
           {/* Key Metrics */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">

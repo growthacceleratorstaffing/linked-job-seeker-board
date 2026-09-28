@@ -29,6 +29,9 @@ import Data from "./pages/Data";
 import Advertising from "./pages/Advertising";
 import Backoffice from "./pages/Backoffice";
 import PortalHome from "./pages/portal/PortalHome";
+import PortalHours from "./pages/portal/PortalHours";
+import PortalBackoffice from "./pages/portal/PortalBackoffice";
+import TimesheetApproval from "./pages/TimesheetApproval";
 import PortalAuth from "./pages/PortalAuth";
 import AccessPending from "./pages/AccessPending";
 
@@ -123,6 +126,9 @@ const App = () => (
             } />
             <Route path="/backoffice" element={<ProtectedRoute><Backoffice /></ProtectedRoute>} />
             <Route path="/portal" element={<ProtectedRoute audience="employee"><PortalHome /></ProtectedRoute>} />
+            <Route path="/portal/hours" element={<ProtectedRoute audience="employee"><PortalHours /></ProtectedRoute>} />
+            <Route path="/portal/backoffice" element={<ProtectedRoute audience="employee"><PortalBackoffice /></ProtectedRoute>} />
+            <Route path="/timesheet-approval" element={<TimesheetApproval />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

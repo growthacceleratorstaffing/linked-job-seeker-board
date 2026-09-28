@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Building2, Check, ExternalLink, Landmark, Plus, Unplug, WalletCards } from 'lucide-react';
 import Layout from '@/components/Layout';
+import InvoicesList from '@/components/InvoicesList';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -108,7 +109,8 @@ const Backoffice = () => {
                 <Input id={field} type={field.toLowerCase().includes('secret') || field.toLowerCase().includes('token') ? 'password' : 'text'} value={values[field] || ''} onChange={(event) => setValues((current) => ({ ...current, [field]: event.target.value }))} />
               </div>
             ))}
-          </div>
+          <InvoicesList />
+      </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelected(null)}>Cancel</Button>
             <Button onClick={save} disabled={saving || Boolean(selected?.fields.some((field) => !values[field]))} className="bg-secondary-pink text-primary-foreground hover:bg-secondary-pink/90">
