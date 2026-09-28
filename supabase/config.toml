@@ -19,3 +19,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.linkedin-job-feed]
 verify_jwt = false
+
+[functions.approve-timesheet]
+verify_jwt = false
+[functions.request-hours-approval]
+verify_jwt = false

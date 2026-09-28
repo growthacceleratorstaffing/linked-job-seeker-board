@@ -37,6 +37,8 @@ interface WorkableCandidate {
   current_position?: string | null;
   company?: string | null;
   linkedin_profile_url?: string | null;
+  availability_status?: string | null;
+  available_from?: string | null;
 }
 
 interface WorkableJob {
@@ -78,6 +80,8 @@ const Candidates = () => {
     current_position: dbCandidate.current_position || null,
     company: dbCandidate.company || null,
     linkedin_profile_url: dbCandidate.linkedin_profile_url || null,
+    availability_status: (dbCandidate as any).availability_status || null,
+    available_from: (dbCandidate as any).available_from || null,
   });
 
   const { data: allCandidates = [], isLoading, error, refetch } = useQuery({

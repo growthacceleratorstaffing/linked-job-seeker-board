@@ -1,3 +1,4 @@
+import { AVAILABILITY_LABELS } from "@/lib/candidateMatching";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,11 @@ interface Props {
 const EditCandidateDialog = ({ candidate, onClose, onSaved }: Props) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", current_position: "", company: "", location: "", linkedin_profile_url: "", interview_stage: "applied" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", current_position: "", company: "", location: "", linkedin_profile_url: "", interview_stage: "applied", available_from: "", target_rate: "", availability_status: "available" });
 
   useEffect(() => {
     if (!candidate) return;
-    const base = { name: candidate.name || "", email: candidate.email || "", phone: candidate.phone || "", current_position: candidate.job?.title === "Unknown Position" ? "" : candidate.job?.title || "", company: "", location: "", linkedin_profile_url: "", interview_stage: STAGES.includes(candidate.stage) ? candidate.stage : "applied" };
+    const base = { name: candidate.name || "", email: candidate.email || "", phone: candidate.phone || "", current_position: candidate.job?.title === "Unknown Position" ? "" : candidate.job?.title || "", company: "", location: "", linkedin_profile_url: "", available_from: "", target_rate: "", availability_status: "available", interview_stage: STAGES.includes(candidate.stage) ? candidate.stage : "applied" };
     setForm(base);
     // Load the full saved record if it exists
     const q = isUuid(candidate.id)
@@ -35,6 +36,7 @@ const EditCandidateDialog = ({ candidate, onClose, onSaved }: Props) => {
         name: data.name || "", email: data.email || "", phone: data.phone || "", current_position: data.current_position || "",
         company: data.company || "", location: data.location || "", linkedin_profile_url: data.linkedin_profile_url || "",
         interview_stage: (data.interview_stage as string) || base.interview_stage,
+        available_from: (data as any).available_from || "", target_rate: (data as any).target_rate?.toString() || "", availability_status: (data as any).availability_status || "available",
       });
     });
   }, [candidate]);
@@ -43,7 +45,7 @@ const EditCandidateDialog = ({ candidate, onClose, onSaved }: Props) => {
     if (!candidate) return;
     if (!form.name.trim() || !form.email.trim()) { toast({ title: "Name and email are required", variant: "destructive" }); return; }
     setSaving(true);
-    const payload: any = { ...form, name: form.name.trim(), email: form.email.trim() };
+    const payload: any = { ...form, name: form.name.trim(), email: form.email.trim(), available_from: form.available_from || null, target_rate: form.target_rate ? Number(form.target_rate) : null };
     let error;
     if (isUuid(candidate.id)) {
       ({ error } = await supabase.from("candidates").update(payload).eq("id", candidate.id));
@@ -82,6 +84,15 @@ const EditCandidateDialog = ({ candidate, onClose, onSaved }: Props) => {
           {f("company", "Company")}
           {f("location", "Location")}
           <div className="col-span-2">{f("linkedin_profile_url", "LinkedIn URL")}</div>
+          {f("available_from", "Available from", "date")}
+          {f("target_rate", "Target rate (€/h)", "number")}
+          <div className="space-y-1 col-span-2">
+            <Label>Availability</Label>
+            <Select value={form.availability_status} onValueChange={(v) => setForm({ ...form, availability_status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{Object.entries(AVAILABILITY_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1 col-span-2">
             <Label>Stage</Label>
             <Select value={form.interview_stage} onValueChange={(v) => setForm({ ...form, interview_stage: v })}>
